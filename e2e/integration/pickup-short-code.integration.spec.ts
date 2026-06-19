@@ -1,9 +1,7 @@
 import { test, expect } from '@playwright/test';
 import {
   apiBase,
-  kioskHeaders,
   loadCommerceE2eState,
-  tenantV1Path,
 } from '../../../e2e/helpers/commerceE2eState.js';
 
 const integrationEnabled = process.env.E2E_INTEGRATION === '1';
@@ -11,29 +9,20 @@ const integrationEnabled = process.env.E2E_INTEGRATION === '1';
 test.describe('pickup short-code resolve (integration)', () => {
   test.skip(!integrationEnabled, 'Set E2E_INTEGRATION=1');
 
-  test('resolve-by-code returns fulfillment snapshot', async ({ request }) => {
+  test('resolve-by-code returns fulfillment snapshot for Journey K cash prepay', async ({
+    request,
+  }) => {
     const state = loadCommerceE2eState();
     const base = apiBase();
-    const kioskId = state.cashPm.kioskId;
-
-    const ticketRes = await request.post(
-      `${base}${tenantV1Path(state.tenantCode, 'kiosk/orders/collect-later')}`,
-      {
-      headers: kioskHeaders(kioskId),
-      data: {
-        kioskId,
-        items: [{ productId: state.productId, quantity: 1 }],
-        idempotencyKey: `pw-short-${Date.now()}`,
-      },
+    const pickupCode = state.cashTicket?.pickupCode;
+    expect(pickupCode, 'Seed with --with-artifacts for cashTicket pickup code').toBeTruthy();
+    if (!pickupCode) {
+      return;
     }
-    );
-    expect(ticketRes.ok()).toBeTruthy();
-    const pickupCode = ((await ticketRes.json()) as { data: { pickupCode: string } }).data.pickupCode;
-    expect(pickupCode.length).toBeGreaterThan(3);
 
     const loginRes = await request.post(`${base}/api/${state.tenantCode}/v1/pickup/auth/login`, {
       headers: { 'Accept-Encoding': 'identity' },
-      data: { kioskId, pin: state.pickupPin },
+      data: { kioskId: state.cashPm.kioskId, pin: state.pickupPin },
     });
     const token = ((await loginRes.json()) as { data: { accessToken: string } }).data.accessToken;
 
