@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 import {
   apiBase,
   loadCommerceE2eState,
-} from '../../../e2e/helpers/commerceE2eState.js';
+} from '../../../up-backend/e2e/helpers/commerceE2eState.js';
 
 const integrationEnabled = process.env.E2E_INTEGRATION === '1';
 
