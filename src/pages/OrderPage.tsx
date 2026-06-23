@@ -17,6 +17,25 @@ import { ReprintPanel } from '../components/ReprintPanel';
 import { useStaffToken, useTenantCode } from '../hooks/useStaffToken';
 import type { ResolveResponse } from '../types';
 
+function buildLineSelectionState(order: ResolveResponse): {
+  partialQty: Record<number, number>;
+  partialSelected: Record<number, boolean>;
+  refuseQty: Record<number, number>;
+  refuseSelected: Record<number, boolean>;
+} {
+  const partialQty: Record<number, number> = {};
+  const partialSelected: Record<number, boolean> = {};
+  const refuseQty: Record<number, number> = {};
+  const refuseSelected: Record<number, boolean> = {};
+  for (const line of order.lines) {
+    partialQty[line.lineId] = line.quantityRemaining > 0 ? 1 : 0;
+    partialSelected[line.lineId] = line.quantityRemaining > 0;
+    refuseQty[line.lineId] = 0;
+    refuseSelected[line.lineId] = false;
+  }
+  return { partialQty, partialSelected, refuseQty, refuseSelected };
+}
+
 export function OrderPage(): JSX.Element {
   const tenantCode = useTenantCode();
   const { fulfillmentId = '' } = useParams();
@@ -35,49 +54,41 @@ export function OrderPage(): JSX.Element {
   const [order, setOrder] = useState<ResolveResponse | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [messageKind, setMessageKind] = useState<'success' | 'error'>('success');
-  const [loading, setLoading] = useState(true);
+  const canResolveOrder = shortCode.length >= 4 || scanToken.length >= 8;
+  const [loading, setLoading] = useState(canResolveOrder);
+
+  function applyOrder(data: ResolveResponse | null): void {
+    setOrder(data);
+    if (data) {
+      const lineState = buildLineSelectionState(data);
+      setPartialQty(lineState.partialQty);
+      setPartialSelected(lineState.partialSelected);
+      setRefuseQty(lineState.refuseQty);
+      setRefuseSelected(lineState.refuseSelected);
+    }
+  }
 
   useEffect(() => {
-    if (!accessToken) {
+    if (!accessToken || !canResolveOrder) {
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      setLoading(true);
+      const data =
+        shortCode.length >= 4
+          ? await fetchResolveByCode(tenantCode, accessToken, shortCode)
+          : await fetchResolve(tenantCode, accessToken, scanToken);
+      if (cancelled) {
+        return;
+      }
+      applyOrder(data);
       setLoading(false);
-      return;
-    }
-    if (shortCode.length >= 4) {
-      void fetchResolveByCode(tenantCode, accessToken, shortCode).then((data) => {
-        setOrder(data);
-        setLoading(false);
-      });
-      return;
-    }
-    if (scanToken.length < 8) {
-      setLoading(false);
-      return;
-    }
-    void fetchResolve(tenantCode, accessToken, scanToken).then((data) => {
-      setOrder(data);
-      setLoading(false);
-    });
-  }, [accessToken, scanToken, shortCode, tenantCode]);
-
-  useEffect(() => {
-    if (!order) {
-      return;
-    }
-    const nextPartial: Record<number, number> = {};
-    const nextPartialSelected: Record<number, boolean> = {};
-    const nextRefuse: Record<number, number> = {};
-    const nextRefuseSelected: Record<number, boolean> = {};
-    for (const line of order.lines) {
-      nextPartial[line.lineId] = line.quantityRemaining > 0 ? 1 : 0;
-      nextPartialSelected[line.lineId] = line.quantityRemaining > 0;
-      nextRefuse[line.lineId] = 0;
-      nextRefuseSelected[line.lineId] = false;
-    }
-    setPartialQty(nextPartial);
-    setPartialSelected(nextPartialSelected);
-    setRefuseQty(nextRefuse);
-    setRefuseSelected(nextRefuseSelected);
-  }, [order]);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [accessToken, canResolveOrder, scanToken, shortCode, tenantCode]);
 
   if (!accessToken) {
     return <Navigate to={`/${encodeURIComponent(tenantCode)}/login`} replace />;
@@ -88,18 +99,14 @@ export function OrderPage(): JSX.Element {
   async function refreshOrder(): Promise<ResolveResponse | null> {
     if (shortCode.length >= 4) {
       const fresh = await fetchResolveByCode(tenantCode, staffToken, shortCode);
-      if (fresh) {
-        setOrder(fresh);
-      }
+      applyOrder(fresh);
       return fresh;
     }
     if (scanToken.length < 8) {
       return order;
     }
     const fresh = await fetchResolve(tenantCode, staffToken, scanToken);
-    if (fresh) {
-      setOrder(fresh);
-    }
+    applyOrder(fresh);
     return fresh;
   }
 
@@ -127,14 +134,15 @@ export function OrderPage(): JSX.Element {
       ...(pickupCode.trim().length > 0 ? { pickupCode: pickupCode.trim() } : {}),
       ...(lines && lines.length > 0 ? { lines } : {}),
     });
-    showToast(
-      ok
-        ? partial
-          ? t('pickup.toast.partialConfirmSuccess')
-          : t('pickup.toast.confirmSuccess')
-        : t('pickup.toast.confirmFailed'),
-      ok ? 'success' : 'error'
-    );
+    let toastMessage: string;
+    if (!ok) {
+      toastMessage = t('pickup.toast.confirmFailed');
+    } else if (partial) {
+      toastMessage = t('pickup.toast.partialConfirmSuccess');
+    } else {
+      toastMessage = t('pickup.toast.confirmSuccess');
+    }
+    showToast(toastMessage, ok ? 'success' : 'error');
     if (ok) {
       await refreshOrder();
     }

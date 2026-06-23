@@ -15,18 +15,31 @@ export function LoginPage(): JSX.Element {
   const [pmLoading, setPmLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const parsedKioskId = Number(kioskId);
+  const validKioskId =
+    Number.isFinite(parsedKioskId) && parsedKioskId > 0 ? parsedKioskId : null;
+
   useEffect(() => {
-    const parsedId = Number(kioskId);
-    if (!Number.isFinite(parsedId) || parsedId <= 0) {
-      setPmName(null);
+    if (validKioskId === null) {
       return;
     }
-    setPmLoading(true);
-    void fetchKioskById(tenantCode, parsedId).then((kiosk) => {
+    let cancelled = false;
+    void (async () => {
+      setPmLoading(true);
+      const kiosk = await fetchKioskById(tenantCode, validKioskId);
+      if (cancelled) {
+        return;
+      }
       setPmName(kiosk?.name ?? null);
       setPmLoading(false);
-    });
-  }, [kioskId, tenantCode]);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [validKioskId, tenantCode]);
+
+  const displayPmName = validKioskId === null ? null : pmName;
+  const displayPmLoading = validKioskId === null ? false : pmLoading;
 
   async function onSubmit(event: FormEvent): Promise<void> {
     event.preventDefault();
@@ -44,8 +57,8 @@ export function LoginPage(): JSX.Element {
   return (
     <main className="pickup-shell">
       <h1>{t('pickup.login.title')}</h1>
-      {pmLoading ? <p>{t('pickup.login.pmLoading')}</p> : null}
-      {pmName ? <p>{t('pickup.login.pmName', { name: pmName })}</p> : null}
+      {displayPmLoading ? <p>{t('pickup.login.pmLoading')}</p> : null}
+      {displayPmName ? <p>{t('pickup.login.pmName', { name: displayPmName })}</p> : null}
       <form className="pickup-stack" onSubmit={(event) => void onSubmit(event)}>
         <label className="pickup-label">
           {t('pickup.login.kioskId')}

@@ -17,7 +17,6 @@ export function QueuePage(): JSX.Element {
 
   useEffect(() => {
     if (!accessToken) {
-      setLoading(false);
       return;
     }
     void (async () => {

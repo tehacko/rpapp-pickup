@@ -38,8 +38,6 @@ export function useQrScanner(options: UseQrScannerOptions): UseQrScannerReturn {
   useEffect(() => {
     if (!enabled) {
       stop();
-      setStatus('idle');
-      setErrorMessage(null);
       return;
     }
 
@@ -107,5 +105,8 @@ export function useQrScanner(options: UseQrScannerOptions): UseQrScannerReturn {
     };
   }, [enabled, stop, t, videoRef]);
 
-  return { status, errorMessage };
+  return {
+    status: enabled ? status : 'idle',
+    errorMessage: enabled ? errorMessage : null,
+  };
 }
