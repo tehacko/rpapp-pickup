@@ -106,9 +106,10 @@ export function ScanPage(): JSX.Element {
       </section>
 
       <form className="pickup-stack" onSubmit={(event) => void resolveToken(event)}>
-        <label className="pickup-label">
+        <label className="pickup-label" htmlFor="pickup-scan-token">
           {t('pickup.scan.tokenLabel')}
           <input
+            id="pickup-scan-token"
             className="pickup-input"
             value={scanToken}
             onChange={(event) => setScanToken(event.target.value)}
@@ -120,9 +121,10 @@ export function ScanPage(): JSX.Element {
       </form>
 
       <form className="pickup-stack" onSubmit={(event) => void resolveShortCode(event)}>
-        <label className="pickup-label">
+        <label className="pickup-label" htmlFor="pickup-short-code">
           {t('pickup.scan.shortCodeLabel')}
           <input
+            id="pickup-short-code"
             className="pickup-input"
             value={shortCode}
             onChange={(event) => setShortCode(event.target.value)}

@@ -1,32 +1,28 @@
 import { defineConfig, devices } from '@playwright/test';
 
+const port = 3005;
+const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? `http://127.0.0.1:${port}`;
+
 export default defineConfig({
   testDir: './e2e',
-  testMatch: '**/*.spec.ts',
-  globalSetup: './e2e/global-setup.ts',
-  fullyParallel: process.env['E2E_INTEGRATION'] !== '1',
-  workers: process.env['E2E_INTEGRATION'] === '1' || process.env['CI'] ? 1 : undefined,
-  forbidOnly: Boolean(process.env['CI']),
-  retries: process.env['CI'] ? 1 : 0,
-  reporter: process.env['CI'] ? 'github' : 'list',
+  fullyParallel: false,
+  forbidOnly: Boolean(process.env.CI),
+  retries: process.env.CI ? 1 : 0,
+  workers: 1,
+  reporter: [['list']],
   use: {
-    baseURL: 'http://localhost:3005',
-    trace: 'on-first-retry',
+    baseURL,
+    trace: 'retain-on-failure',
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: {
-    command:
-      process.env['E2E_INTEGRATION'] === '1'
-        ? 'npm run dev -- --host 127.0.0.1 --port 3005 --strictPort'
-        : 'npm run preview -- --port 3005 --strictPort',
-    url: 'http://localhost:3005',
-    reuseExistingServer: !process.env['CI'],
-    timeout: 120000,
+    command: 'npm run dev',
+    url: baseURL,
+    reuseExistingServer: !process.env.CI,
+    timeout: 120_000,
     env: {
-      VITE_DEV_API_PROXY_TARGET:
-        process.env['E2E_INTEGRATION'] === '1'
-          ? (process.env['VITE_DEV_API_PROXY_TARGET'] ?? 'http://localhost:3015')
-          : 'http://127.0.0.1:65530',
+      ...process.env,
+      VITE_DEFAULT_LOCALE: 'en',
     },
   },
 });

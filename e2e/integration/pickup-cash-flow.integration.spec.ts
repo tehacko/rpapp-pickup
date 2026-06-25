@@ -15,13 +15,13 @@ test.describe('pickup cash flow (integration)', () => {
     const state = loadCommerceE2eState();
     const base = apiBase();
     const tenant = state.tenantCode;
-    const kioskId = state.cashPm.kioskId;
+    const salesPointId = state.cashPm.salesPointId;
     const idempotencyKey = `pw-cash-${Date.now()}`;
 
     const prepareRes = await request.post(`${base}${tenantV1Path(tenant, 'kiosk/payments/cash-prepare')}`, {
-      headers: kioskHeaders(kioskId),
+      headers: kioskHeaders(salesPointId),
       data: {
-        kioskId,
+        salesPointId,
         checkoutSubMode: 'PREPAY_COLLECT_LATER',
         items: [{ productId: state.productId, quantity: 1 }],
       },
@@ -35,9 +35,9 @@ test.describe('pickup cash flow (integration)', () => {
     expect(amountMinor).toBeGreaterThan(0);
 
     const cashRes = await request.post(`${base}${tenantV1Path(tenant, 'kiosk/payments/cash-complete')}`, {
-      headers: kioskHeaders(kioskId),
+      headers: kioskHeaders(salesPointId),
       data: {
-        kioskId,
+        salesPointId,
         checkoutSessionId,
         idempotencyKey,
         amountMinor,
@@ -51,7 +51,7 @@ test.describe('pickup cash flow (integration)', () => {
 
     const loginRes = await request.post(`${base}/api/${tenant}/v1/pickup/auth/login`, {
       headers: { 'Accept-Encoding': 'identity' },
-      data: { kioskId, pin: state.pickupPin },
+      data: { salesPointId, pin: state.pickupPin },
     });
     expect(loginRes.ok()).toBeTruthy();
     const token = ((await loginRes.json()) as { data: { accessToken: string } }).data.accessToken;

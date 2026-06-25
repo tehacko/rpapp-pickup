@@ -12,7 +12,7 @@ export interface FulfillmentLine {
 export interface ResolveResponse {
   fulfillmentId: number;
   transactionId: number;
-  kioskId: number;
+  salesPointId: number;
   version: number;
   fulfillmentStatus: string;
   paymentCompleted: boolean;
@@ -36,8 +36,11 @@ export interface QueueItem {
   promisedPickupAt: string | null;
 }
 
-export interface KioskLookupResponse {
-  kioskId: number;
+export interface SalesPointLookupResponse {
+  salesPointId: number;
   name: string;
   code?: string | null;
 }
+
+/** @deprecated Use SalesPointLookupResponse */
+export type KioskLookupResponse = SalesPointLookupResponse;

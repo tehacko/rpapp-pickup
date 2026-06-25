@@ -10,6 +10,7 @@
     "type-check": "tsc --noEmit",
     "lint": "eslint . --max-warnings 0",
     "lint:fix": "eslint . --fix",
+    "test": "jest --config jest.config.cjs",
     "test:e2e": "playwright test",
     "test:e2e:commerce": "playwright test e2e/staff-confirm-pickup.spec.ts --workers=1",
     "test:e2e:integration": "playwright test e2e/integration"
@@ -19,7 +20,7 @@
     "@zxing/browser": "^0.1.5",
     "@zxing/library": "^0.21.3",
     "i18next": "^26.3.1",
-    "pi-kiosk-shared": "^2.1.75",
+    "pi-kiosk-shared": "^2.1.76",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-i18next": "^17.0.8",
@@ -28,6 +29,7 @@
   "devDependencies": {
     "@eslint/js": "^9.39.2",
     "@playwright/test": "^1.61.0",
+    "@types/jest": "^29.5.0",
     "@typescript-eslint/eslint-plugin": "^8.49.0",
     "@typescript-eslint/parser": "^8.49.0",
     "@types/react": "^18.2.0",
@@ -39,6 +41,8 @@
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",
     "globals": "^16.5.0",
+    "jest": "^29.5.0",
+    "ts-jest": "^29.1.0",
     "typescript": "^5.8.3",
     "vite": "^5.4.10"
   }

@@ -1,6 +1,6 @@
 {
   "pickup.login.title": "Pickup staff login",
-  "pickup.login.kioskId": "Kiosk ID",
+  "pickup.login.salesPointId": "Sales point ID",
   "pickup.login.pin": "PIN",
   "pickup.login.submit": "Sign in",
   "pickup.login.pmName": "Pickup machine: {{name}}",

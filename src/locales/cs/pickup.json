@@ -1,6 +1,6 @@
 {
   "pickup.login.title": "Přihlášení obsluhy vyzvednutí",
-  "pickup.login.kioskId": "ID kiosku",
+  "pickup.login.salesPointId": "ID prodejního místa",
   "pickup.login.pin": "PIN",
   "pickup.login.submit": "Přihlásit se",
   "pickup.login.pmName": "Prodejní místo: {{name}}",

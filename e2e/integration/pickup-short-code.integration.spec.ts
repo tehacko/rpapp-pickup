@@ -22,7 +22,10 @@ test.describe('pickup short-code resolve (integration)', () => {
 
     const loginRes = await request.post(`${base}/api/${state.tenantCode}/v1/pickup/auth/login`, {
       headers: { 'Accept-Encoding': 'identity' },
-      data: { kioskId: state.cashPm.kioskId, pin: state.pickupPin },
+      data: {
+        salesPointId: state.cashPm.salesPointId,
+        pin: state.pickupPin,
+      },
     });
     const token = ((await loginRes.json()) as { data: { accessToken: string } }).data.accessToken;
 

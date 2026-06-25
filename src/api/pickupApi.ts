@@ -1,29 +1,29 @@
 import { authHeaders } from '../lib/auth';
-import type { KioskLookupResponse, QueueItem, ResolveResponse } from '../types';
+import type { QueueItem, ResolveResponse, SalesPointLookupResponse } from '../types';
 
-export async function fetchKioskById(
+export async function fetchSalesPointById(
   tenantCode: string,
-  kioskId: number
-): Promise<KioskLookupResponse | null> {
+  salesPointId: number
+): Promise<SalesPointLookupResponse | null> {
   const res = await fetch(
-    `/api/${encodeURIComponent(tenantCode)}/v1/customer/kiosks/by-id/${encodeURIComponent(String(kioskId))}`
+    `/api/${encodeURIComponent(tenantCode)}/v1/customer/sales-points/by-id/${encodeURIComponent(String(salesPointId))}`
   );
   if (!res.ok) {
     return null;
   }
-  const body = (await res.json()) as { data?: KioskLookupResponse };
+  const body = (await res.json()) as { data?: SalesPointLookupResponse };
   return body.data ?? null;
 }
 
 export async function loginPickupStaff(
   tenantCode: string,
-  kioskId: number,
+  salesPointId: number,
   pin: string
 ): Promise<string | null> {
   const res = await fetch(`/api/${encodeURIComponent(tenantCode)}/v1/pickup/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ kioskId, pin }),
+    body: JSON.stringify({ salesPointId, pin }),
   });
   if (!res.ok) {
     return null;
@@ -85,8 +85,8 @@ export async function fetchQueue(
 export async function confirmPickup(
   tenantCode: string,
   accessToken: string,
-  fulfillmentId: string,
-  payload: {
+  fulfillmentId: number,
+  body: {
     version: number;
     scanToken?: string;
     pickupCode?: string;
@@ -94,11 +94,11 @@ export async function confirmPickup(
   }
 ): Promise<boolean> {
   const res = await fetch(
-    `/api/${encodeURIComponent(tenantCode)}/v1/pickup/fulfillments/${encodeURIComponent(fulfillmentId)}/confirm-pickup`,
+    `/api/${encodeURIComponent(tenantCode)}/v1/pickup/fulfillments/${encodeURIComponent(String(fulfillmentId))}/confirm-pickup`,
     {
       method: 'POST',
       headers: authHeaders(accessToken),
-      body: JSON.stringify(payload),
+      body: JSON.stringify(body),
     }
   );
   return res.ok;
@@ -107,18 +107,18 @@ export async function confirmPickup(
 export async function refuseLines(
   tenantCode: string,
   accessToken: string,
-  fulfillmentId: string,
-  payload: {
+  fulfillmentId: number,
+  body: {
     version: number;
     lines: Array<{ lineId: number; quantityToRefuse: number }>;
   }
 ): Promise<boolean> {
   const res = await fetch(
-    `/api/${encodeURIComponent(tenantCode)}/v1/pickup/fulfillments/${encodeURIComponent(fulfillmentId)}/refuse`,
+    `/api/${encodeURIComponent(tenantCode)}/v1/pickup/fulfillments/${encodeURIComponent(String(fulfillmentId))}/refuse`,
     {
       method: 'POST',
       headers: authHeaders(accessToken),
-      body: JSON.stringify(payload),
+      body: JSON.stringify(body),
     }
   );
   return res.ok;
@@ -127,15 +127,15 @@ export async function refuseLines(
 export async function holdOrder(
   tenantCode: string,
   accessToken: string,
-  fulfillmentId: string,
-  payload: { version: number; reason: string }
+  fulfillmentId: number,
+  body: { version: number; reason: string }
 ): Promise<boolean> {
   const res = await fetch(
-    `/api/${encodeURIComponent(tenantCode)}/v1/pickup/fulfillments/${encodeURIComponent(fulfillmentId)}/hold`,
+    `/api/${encodeURIComponent(tenantCode)}/v1/pickup/fulfillments/${encodeURIComponent(String(fulfillmentId))}/hold`,
     {
       method: 'POST',
       headers: authHeaders(accessToken),
-      body: JSON.stringify(payload),
+      body: JSON.stringify(body),
     }
   );
   return res.ok;
@@ -144,11 +144,11 @@ export async function holdOrder(
 export async function releaseHold(
   tenantCode: string,
   accessToken: string,
-  fulfillmentId: string,
+  fulfillmentId: number,
   version: number
 ): Promise<boolean> {
   const res = await fetch(
-    `/api/${encodeURIComponent(tenantCode)}/v1/pickup/fulfillments/${encodeURIComponent(fulfillmentId)}/release-hold`,
+    `/api/${encodeURIComponent(tenantCode)}/v1/pickup/fulfillments/${encodeURIComponent(String(fulfillmentId))}/release-hold`,
     {
       method: 'POST',
       headers: authHeaders(accessToken),
@@ -161,11 +161,11 @@ export async function releaseHold(
 export async function reprintCredentials(
   tenantCode: string,
   accessToken: string,
-  fulfillmentId: string,
+  fulfillmentId: number,
   version: number
 ): Promise<{ ok: boolean; pickupScanToken?: string }> {
   const res = await fetch(
-    `/api/${encodeURIComponent(tenantCode)}/v1/pickup/fulfillments/${encodeURIComponent(fulfillmentId)}/reprint`,
+    `/api/${encodeURIComponent(tenantCode)}/v1/pickup/fulfillments/${encodeURIComponent(String(fulfillmentId))}/reprint`,
     {
       method: 'POST',
       headers: authHeaders(accessToken),
@@ -175,6 +175,8 @@ export async function reprintCredentials(
   if (!res.ok) {
     return { ok: false };
   }
-  const body = (await res.json()) as { data?: { pickupScanToken?: string } };
-  return { ok: true, pickupScanToken: body.data?.pickupScanToken };
+  const json = (await res.json()) as {
+    data?: { pickupScanToken?: string };
+  };
+  return { ok: true, pickupScanToken: json.data?.pickupScanToken };
 }

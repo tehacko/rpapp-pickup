@@ -20,10 +20,10 @@ test.describe('staff-confirm-pickup (integration)', () => {
     const ticket = state.pickupStaffTicket!;
 
     const tenant = state.tenantCode;
-    const kioskId = state.cashPm.kioskId;
+    const salesPointId = state.cashPm.salesPointId;
 
     await page.goto(`/${tenant}/login`);
-    await page.getByLabel(/Kiosk ID|ID kiosku/i).fill(String(kioskId));
+    await page.getByLabel(/Sales point ID|ID prodejního místa/i).fill(String(salesPointId));
     await page.getByLabel(/^PIN$/i).fill(state.pickupPin);
     await page.getByRole('button', { name: /Sign in|Přihlásit se/i }).click();
     await expect(page).toHaveURL(new RegExp(`/${tenant}/scan`), { timeout: 15_000 });
@@ -57,7 +57,7 @@ test.describe('staff-confirm-pickup (integration)', () => {
 
     const linesRes = await request.get(
       `${apiBase()}${tenantV1Path(tenant, `kiosk/orders/${ticket.transactionId}/fulfillment-lines`)}`,
-      { headers: kioskHeaders(kioskId) }
+      { headers: kioskHeaders(salesPointId) }
     );
     expect(linesRes.ok()).toBeTruthy();
     const lines = ((await linesRes.json()) as { data: { lines: Array<{ collectedQty: number; orderedQty: number }> } })
