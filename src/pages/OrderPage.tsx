@@ -128,7 +128,7 @@ export function OrderPage(): JSX.Element {
           }))
       : undefined;
 
-    const ok = await confirmPickup(tenantCode, staffToken, fulfillmentId, {
+    const ok = await confirmPickup(tenantCode, staffToken, order.fulfillmentId, {
       version: order.version,
       ...(scanToken.length > 0 ? { scanToken } : {}),
       ...(pickupCode.trim().length > 0 ? { pickupCode: pickupCode.trim() } : {}),
@@ -162,7 +162,7 @@ export function OrderPage(): JSX.Element {
       showToast(t('pickup.toast.refuseSelectQty'), 'error');
       return;
     }
-    const ok = await refuseLines(tenantCode, staffToken, fulfillmentId, {
+    const ok = await refuseLines(tenantCode, staffToken, order.fulfillmentId, {
       version: order.version,
       lines,
     });
@@ -177,7 +177,7 @@ export function OrderPage(): JSX.Element {
       showToast(t('pickup.toast.holdReasonRequired'), 'error');
       return;
     }
-    const ok = await holdOrder(tenantCode, staffToken, fulfillmentId, {
+    const ok = await holdOrder(tenantCode, staffToken, order.fulfillmentId, {
       version: order.version,
       reason: holdReason.trim(),
     });
@@ -191,7 +191,7 @@ export function OrderPage(): JSX.Element {
     if (!order) {
       return;
     }
-    const ok = await releaseHold(tenantCode, staffToken, fulfillmentId, order.version);
+    const ok = await releaseHold(tenantCode, staffToken, order.fulfillmentId, order.version);
     showToast(
       ok ? t('pickup.toast.releaseSuccess') : t('pickup.toast.releaseFailed'),
       ok ? 'success' : 'error'
@@ -205,7 +205,12 @@ export function OrderPage(): JSX.Element {
     if (!order) {
       return;
     }
-    const result = await reprintCredentials(tenantCode, staffToken, fulfillmentId, order.version);
+    const result = await reprintCredentials(
+      tenantCode,
+      staffToken,
+      order.fulfillmentId,
+      order.version
+    );
     if (!result.ok) {
       showToast(t('pickup.toast.reprintFailed'), 'error');
       return;
