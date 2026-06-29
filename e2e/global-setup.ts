@@ -21,7 +21,11 @@ export default async function globalSetup(): Promise<void> {
     {
     cwd: UP_BACKEND_ROOT,
     stdio: 'inherit',
-    env: { ...process.env },
+    env: {
+      ...process.env,
+      E2E_INTEGRATION: '1',
+      COMMERCE_E2E_USE_TEST_DATABASE: '1',
+    },
   });
   if (process.env['E2E_INTEGRATION'] === '1') {
     assertSeededCommerceArtifacts({ requirePickupStaffTicket: true });
