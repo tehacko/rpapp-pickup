@@ -4,6 +4,8 @@ import { useTranslation } from 'react-i18next';
 import { fetchSalesPointById, loginPickupStaff } from '../api/pickupApi';
 import { useTenantCode } from '../hooks/useStaffToken';
 import { tokenStorageKey } from '../lib/auth';
+import { useTurnstileAuth } from '../lib/turnstile/useTurnstileAuth';
+import { PickupTurnstileField } from '../lib/turnstile/PickupTurnstileField';
 
 export function LoginPage(): JSX.Element {
   const tenantCode = useTenantCode();
@@ -14,6 +16,7 @@ export function LoginPage(): JSX.Element {
   const [pmName, setPmName] = useState<string | null>(null);
   const [pmLoading, setPmLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const turnstile = useTurnstileAuth();
 
   const parsedSalesPointId = Number(salesPointId);
   const validSalesPointId =
@@ -44,12 +47,22 @@ export function LoginPage(): JSX.Element {
   async function onSubmit(event: FormEvent): Promise<void> {
     event.preventDefault();
     setError(null);
+    if (!turnstile.ready) {
+      return;
+    }
     const parsedId = Number(salesPointId);
-    const token = await loginPickupStaff(tenantCode, parsedId, pin);
+    const token = await loginPickupStaff(
+      tenantCode,
+      parsedId,
+      pin,
+      turnstile.token ?? undefined
+    );
     if (!token) {
+      turnstile.resetTurnstile();
       setError(t('pickup.toast.loginFailed'));
       return;
     }
+    turnstile.resetTurnstile();
     localStorage.setItem(tokenStorageKey(tenantCode), token);
     navigate(`/${encodeURIComponent(tenantCode)}/scan`);
   }
@@ -79,7 +92,8 @@ export function LoginPage(): JSX.Element {
             onChange={(event) => setPin(event.target.value)}
           />
         </label>
-        <button className="pickup-button" type="submit">
+        <PickupTurnstileField turnstile={turnstile} />
+        <button className="pickup-button" type="submit" disabled={!turnstile.ready}>
           {t('pickup.login.submit')}
         </button>
       </form>

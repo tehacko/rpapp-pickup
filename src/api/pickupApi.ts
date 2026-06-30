@@ -18,12 +18,19 @@ export async function fetchSalesPointById(
 export async function loginPickupStaff(
   tenantCode: string,
   salesPointId: number,
-  pin: string
+  pin: string,
+  turnstileToken?: string
 ): Promise<string | null> {
   const res = await fetch(`/api/${encodeURIComponent(tenantCode)}/v1/pickup/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ salesPointId, pin }),
+    body: JSON.stringify({
+      salesPointId,
+      pin,
+      ...(turnstileToken !== undefined && turnstileToken.length > 0
+        ? { turnstileToken }
+        : {}),
+    }),
   });
   if (!res.ok) {
     return null;

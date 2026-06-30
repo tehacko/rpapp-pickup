@@ -5,6 +5,7 @@
   "pickup.login.submit": "Přihlásit se",
   "pickup.login.pmName": "Prodejní místo: {{name}}",
   "pickup.login.pmLoading": "Načítání názvu místa…",
+  "pickup.turnstile.loading": "Načítání bezpečnostní kontroly…",
   "pickup.root.title": "Vyzvednutí — obsluha",
   "pickup.root.hint": "Zadejte kód tenanta v URL: /{tenant}/login",
   "pickup.scan.title": "Skenovat token vyzvednutí",
