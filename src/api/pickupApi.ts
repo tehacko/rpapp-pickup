@@ -1,5 +1,55 @@
 import { authHeaders } from '../lib/auth';
+import { getRetryAfterMs } from 'pi-kiosk-shared';
+import { capturePickupRateLimitBreadcrumb } from '../lib/observability/sentry';
 import type { QueueItem, ResolveResponse, SalesPointLookupResponse } from '../types';
+
+export class PickupApiError extends Error {
+  public readonly status: number;
+  public readonly retryAfterMs: number | undefined;
+
+  public constructor(status: number, message: string, retryAfterMs?: number) {
+    super(message);
+    this.name = 'PickupApiError';
+    this.status = status;
+    this.retryAfterMs = retryAfterMs;
+  }
+}
+
+function noteRateLimit(response: Response, path: string, method: string): void {
+  if (response.status !== 429) {
+    return;
+  }
+  capturePickupRateLimitBreadcrumb({
+    path,
+    method,
+    retryAfterMs: getRetryAfterMs({ response }),
+  });
+}
+
+function generateIdempotencyKey(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return `idem-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+}
+
+function handleMutationFailure(res: Response, path: string, method: string): never | false {
+  noteRateLimit(res, path, method);
+  if (res.status === 429) {
+    throw new PickupApiError(429, 'Rate limited', getRetryAfterMs({ response: res }));
+  }
+  return false;
+}
+
+function mutationHeaders(
+  accessToken: string,
+  idempotencyKey = generateIdempotencyKey()
+): Record<string, string> {
+  return {
+    ...authHeaders(accessToken),
+    'Idempotency-Key': idempotencyKey,
+  };
+}
 
 export async function fetchSalesPointById(
   tenantCode: string,
@@ -19,11 +69,15 @@ export async function loginPickupStaff(
   tenantCode: string,
   salesPointId: number,
   pin: string,
-  turnstileToken?: string
+  turnstileToken?: string,
+  idempotencyKey?: string
 ): Promise<string | null> {
   const res = await fetch(`/api/${encodeURIComponent(tenantCode)}/v1/pickup/auth/login`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'Idempotency-Key': idempotencyKey ?? generateIdempotencyKey(),
+    },
     body: JSON.stringify({
       salesPointId,
       pin,
@@ -33,7 +87,9 @@ export async function loginPickupStaff(
     }),
   });
   if (!res.ok) {
-    return null;
+    noteRateLimit(res, `/api/${tenantCode}/v1/pickup/auth/login`, 'POST');
+    const retryAfterMs = res.status === 429 ? getRetryAfterMs({ response: res }) : undefined;
+    throw new PickupApiError(res.status, 'Login failed', retryAfterMs);
   }
   const body = (await res.json()) as { data?: { accessToken: string } };
   return body.data?.accessToken ?? null;
@@ -42,17 +98,22 @@ export async function loginPickupStaff(
 export async function fetchResolveByCode(
   tenantCode: string,
   accessToken: string,
-  pickupCode: string
+  pickupCode: string,
+  idempotencyKey?: string
 ): Promise<ResolveResponse | null> {
   const res = await fetch(
     `/api/${encodeURIComponent(tenantCode)}/v1/pickup/staff/resolve-by-code`,
     {
       method: 'POST',
-      headers: authHeaders(accessToken),
+      headers: mutationHeaders(accessToken, idempotencyKey),
       body: JSON.stringify({ pickupCode: pickupCode.trim().toUpperCase() }),
     }
   );
   if (!res.ok) {
+    noteRateLimit(res, `/api/${tenantCode}/v1/pickup/staff/resolve-by-code`, 'POST');
+    if (res.status === 429) {
+      throw new PickupApiError(429, 'Rate limited', getRetryAfterMs({ response: res }));
+    }
     return null;
   }
   const body = (await res.json()) as { data?: ResolveResponse };
@@ -98,17 +159,20 @@ export async function confirmPickup(
     scanToken?: string;
     pickupCode?: string;
     lines?: Array<{ lineId: number; quantityToCollectThisConfirm: number }>;
-  }
+  },
+  idempotencyKey?: string
 ): Promise<boolean> {
-  const res = await fetch(
-    `/api/${encodeURIComponent(tenantCode)}/v1/pickup/fulfillments/${encodeURIComponent(String(fulfillmentId))}/confirm-pickup`,
-    {
+  const path = `/api/${encodeURIComponent(tenantCode)}/v1/pickup/fulfillments/${encodeURIComponent(String(fulfillmentId))}/confirm-pickup`;
+  const res = await fetch(path, {
       method: 'POST',
-      headers: authHeaders(accessToken),
+      headers: mutationHeaders(accessToken, idempotencyKey),
       body: JSON.stringify(body),
     }
   );
-  return res.ok;
+  if (res.ok) {
+    return true;
+  }
+  return handleMutationFailure(res, path, 'POST');
 }
 
 export async function refuseLines(
@@ -118,68 +182,78 @@ export async function refuseLines(
   body: {
     version: number;
     lines: Array<{ lineId: number; quantityToRefuse: number }>;
-  }
+  },
+  idempotencyKey?: string
 ): Promise<boolean> {
-  const res = await fetch(
-    `/api/${encodeURIComponent(tenantCode)}/v1/pickup/fulfillments/${encodeURIComponent(String(fulfillmentId))}/refuse`,
-    {
+  const path = `/api/${encodeURIComponent(tenantCode)}/v1/pickup/fulfillments/${encodeURIComponent(String(fulfillmentId))}/refuse`;
+  const res = await fetch(path, {
       method: 'POST',
-      headers: authHeaders(accessToken),
+      headers: mutationHeaders(accessToken, idempotencyKey),
       body: JSON.stringify(body),
     }
   );
-  return res.ok;
+  if (res.ok) {
+    return true;
+  }
+  return handleMutationFailure(res, path, 'POST');
 }
 
 export async function holdOrder(
   tenantCode: string,
   accessToken: string,
   fulfillmentId: number,
-  body: { version: number; reason: string }
+  body: { version: number; reason: string },
+  idempotencyKey?: string
 ): Promise<boolean> {
-  const res = await fetch(
-    `/api/${encodeURIComponent(tenantCode)}/v1/pickup/fulfillments/${encodeURIComponent(String(fulfillmentId))}/hold`,
-    {
+  const path = `/api/${encodeURIComponent(tenantCode)}/v1/pickup/fulfillments/${encodeURIComponent(String(fulfillmentId))}/hold`;
+  const res = await fetch(path, {
       method: 'POST',
-      headers: authHeaders(accessToken),
+      headers: mutationHeaders(accessToken, idempotencyKey),
       body: JSON.stringify(body),
     }
   );
-  return res.ok;
+  if (res.ok) {
+    return true;
+  }
+  return handleMutationFailure(res, path, 'POST');
 }
 
 export async function releaseHold(
   tenantCode: string,
   accessToken: string,
   fulfillmentId: number,
-  version: number
+  version: number,
+  idempotencyKey?: string
 ): Promise<boolean> {
-  const res = await fetch(
-    `/api/${encodeURIComponent(tenantCode)}/v1/pickup/fulfillments/${encodeURIComponent(String(fulfillmentId))}/release-hold`,
-    {
+  const path = `/api/${encodeURIComponent(tenantCode)}/v1/pickup/fulfillments/${encodeURIComponent(String(fulfillmentId))}/release-hold`;
+  const res = await fetch(path, {
       method: 'POST',
-      headers: authHeaders(accessToken),
+      headers: mutationHeaders(accessToken, idempotencyKey),
       body: JSON.stringify({ version }),
     }
   );
-  return res.ok;
+  if (res.ok) {
+    return true;
+  }
+  return handleMutationFailure(res, path, 'POST');
 }
 
 export async function reprintCredentials(
   tenantCode: string,
   accessToken: string,
   fulfillmentId: number,
-  version: number
+  version: number,
+  idempotencyKey?: string
 ): Promise<{ ok: boolean; pickupScanToken?: string }> {
-  const res = await fetch(
-    `/api/${encodeURIComponent(tenantCode)}/v1/pickup/fulfillments/${encodeURIComponent(String(fulfillmentId))}/reprint`,
-    {
+  const path = `/api/${encodeURIComponent(tenantCode)}/v1/pickup/fulfillments/${encodeURIComponent(String(fulfillmentId))}/reprint`;
+  const res = await fetch(path, {
       method: 'POST',
-      headers: authHeaders(accessToken),
+      headers: mutationHeaders(accessToken, idempotencyKey),
       body: JSON.stringify({ version }),
     }
   );
   if (!res.ok) {
+    handleMutationFailure(res, path, 'POST');
     return { ok: false };
   }
   const json = (await res.json()) as {

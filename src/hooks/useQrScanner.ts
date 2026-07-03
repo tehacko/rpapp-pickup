@@ -6,7 +6,7 @@ export type QrScannerStatus = 'idle' | 'starting' | 'running' | 'denied' | 'erro
 
 export interface UseQrScannerOptions {
   enabled: boolean;
-  videoRef: React.RefObject<HTMLVideoElement>;
+  videoRef: React.RefObject<HTMLVideoElement | null>;
   onDecode: (rawValue: string) => void;
 }
 

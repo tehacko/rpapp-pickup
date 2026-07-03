@@ -2,10 +2,17 @@ import { useEffect, useState } from 'react';
 import { Link, Navigate, useParams, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
+  formatRateLimitMessage,
+  getRetryAfterMs,
+  isRateLimitError,
+  useSubmitCooldown,
+} from 'pi-kiosk-shared';
+import {
   confirmPickup,
   fetchResolve,
   fetchResolveByCode,
   holdOrder,
+  PickupApiError,
   refuseLines,
   releaseHold,
   reprintCredentials,
@@ -44,6 +51,7 @@ export function OrderPage(): JSX.Element {
   const shortCode = searchParams.get('code') ?? '';
   const accessToken = useStaffToken();
   const { t } = useTranslation();
+  const submitCooldown = useSubmitCooldown();
 
   const [pickupCode, setPickupCode] = useState('');
   const [holdReason, setHoldReason] = useState('');
@@ -115,8 +123,21 @@ export function OrderPage(): JSX.Element {
     setMessageKind(kind);
   }
 
+  function handleRateLimit(err: unknown): boolean {
+    if (!isRateLimitError(err) && !(err instanceof PickupApiError && err.status === 429)) {
+      return false;
+    }
+    const retryAfterMs =
+      err instanceof PickupApiError && err.retryAfterMs !== undefined
+        ? err.retryAfterMs
+        : getRetryAfterMs(err);
+    submitCooldown.startCooldown(Math.ceil(retryAfterMs / 1000));
+    showToast(formatRateLimitMessage(t, Math.ceil(retryAfterMs / 1000)), 'error');
+    return true;
+  }
+
   async function handleConfirmPickup(partial = false): Promise<void> {
-    if (!order) {
+    if (!order || submitCooldown.isCoolingDown) {
       return;
     }
     const lines = partial
@@ -128,28 +149,34 @@ export function OrderPage(): JSX.Element {
           }))
       : undefined;
 
-    const ok = await confirmPickup(tenantCode, staffToken, order.fulfillmentId, {
-      version: order.version,
-      ...(scanToken.length > 0 ? { scanToken } : {}),
-      ...(pickupCode.trim().length > 0 ? { pickupCode: pickupCode.trim() } : {}),
-      ...(lines && lines.length > 0 ? { lines } : {}),
-    });
-    let toastMessage: string;
-    if (!ok) {
-      toastMessage = t('pickup.toast.confirmFailed');
-    } else if (partial) {
-      toastMessage = t('pickup.toast.partialConfirmSuccess');
-    } else {
-      toastMessage = t('pickup.toast.confirmSuccess');
-    }
-    showToast(toastMessage, ok ? 'success' : 'error');
-    if (ok) {
-      await refreshOrder();
+    try {
+      const ok = await confirmPickup(tenantCode, staffToken, order.fulfillmentId, {
+        version: order.version,
+        ...(scanToken.length > 0 ? { scanToken } : {}),
+        ...(pickupCode.trim().length > 0 ? { pickupCode: pickupCode.trim() } : {}),
+        ...(lines && lines.length > 0 ? { lines } : {}),
+      });
+      let toastMessage: string;
+      if (!ok) {
+        toastMessage = t('pickup.toast.confirmFailed');
+      } else if (partial) {
+        toastMessage = t('pickup.toast.partialConfirmSuccess');
+      } else {
+        toastMessage = t('pickup.toast.confirmSuccess');
+      }
+      showToast(toastMessage, ok ? 'success' : 'error');
+      if (ok) {
+        await refreshOrder();
+      }
+    } catch (err) {
+      if (!handleRateLimit(err)) {
+        showToast(t('pickup.toast.confirmFailed'), 'error');
+      }
     }
   }
 
   async function handleRefuseLines(): Promise<void> {
-    if (!order) {
+    if (!order || submitCooldown.isCoolingDown) {
       return;
     }
     const lines = order.lines
@@ -162,66 +189,90 @@ export function OrderPage(): JSX.Element {
       showToast(t('pickup.toast.refuseSelectQty'), 'error');
       return;
     }
-    const ok = await refuseLines(tenantCode, staffToken, order.fulfillmentId, {
-      version: order.version,
-      lines,
-    });
-    showToast(ok ? t('pickup.toast.refuseSuccess') : t('pickup.toast.refuseFailed'), ok ? 'success' : 'error');
-    if (ok) {
-      await refreshOrder();
+    try {
+      const ok = await refuseLines(tenantCode, staffToken, order.fulfillmentId, {
+        version: order.version,
+        lines,
+      });
+      showToast(ok ? t('pickup.toast.refuseSuccess') : t('pickup.toast.refuseFailed'), ok ? 'success' : 'error');
+      if (ok) {
+        await refreshOrder();
+      }
+    } catch (err) {
+      if (!handleRateLimit(err)) {
+        showToast(t('pickup.toast.refuseFailed'), 'error');
+      }
     }
   }
 
   async function handleHoldOrder(): Promise<void> {
-    if (!order || holdReason.trim().length === 0) {
+    if (!order || holdReason.trim().length === 0 || submitCooldown.isCoolingDown) {
       showToast(t('pickup.toast.holdReasonRequired'), 'error');
       return;
     }
-    const ok = await holdOrder(tenantCode, staffToken, order.fulfillmentId, {
-      version: order.version,
-      reason: holdReason.trim(),
-    });
-    showToast(ok ? t('pickup.toast.holdSuccess') : t('pickup.toast.holdFailed'), ok ? 'success' : 'error');
-    if (ok) {
-      await refreshOrder();
+    try {
+      const ok = await holdOrder(tenantCode, staffToken, order.fulfillmentId, {
+        version: order.version,
+        reason: holdReason.trim(),
+      });
+      showToast(ok ? t('pickup.toast.holdSuccess') : t('pickup.toast.holdFailed'), ok ? 'success' : 'error');
+      if (ok) {
+        await refreshOrder();
+      }
+    } catch (err) {
+      if (!handleRateLimit(err)) {
+        showToast(t('pickup.toast.holdFailed'), 'error');
+      }
     }
   }
 
   async function handleReleaseHold(): Promise<void> {
-    if (!order) {
+    if (!order || submitCooldown.isCoolingDown) {
       return;
     }
-    const ok = await releaseHold(tenantCode, staffToken, order.fulfillmentId, order.version);
-    showToast(
-      ok ? t('pickup.toast.releaseSuccess') : t('pickup.toast.releaseFailed'),
-      ok ? 'success' : 'error'
-    );
-    if (ok) {
-      await refreshOrder();
+    try {
+      const ok = await releaseHold(tenantCode, staffToken, order.fulfillmentId, order.version);
+      showToast(
+        ok ? t('pickup.toast.releaseSuccess') : t('pickup.toast.releaseFailed'),
+        ok ? 'success' : 'error'
+      );
+      if (ok) {
+        await refreshOrder();
+      }
+    } catch (err) {
+      if (!handleRateLimit(err)) {
+        showToast(t('pickup.toast.releaseFailed'), 'error');
+      }
     }
   }
 
   async function handleReprintCredentials(): Promise<void> {
-    if (!order) {
+    if (!order || submitCooldown.isCoolingDown) {
       return;
     }
-    const result = await reprintCredentials(
-      tenantCode,
-      staffToken,
-      order.fulfillmentId,
-      order.version
-    );
-    if (!result.ok) {
-      showToast(t('pickup.toast.reprintFailed'), 'error');
-      return;
+    try {
+      const result = await reprintCredentials(
+        tenantCode,
+        staffToken,
+        order.fulfillmentId,
+        order.version
+      );
+      if (!result.ok) {
+        showToast(t('pickup.toast.reprintFailed'), 'error');
+        return;
+      }
+      showToast(
+        result.pickupScanToken
+          ? t('pickup.reprint.tokenPreview', { preview: result.pickupScanToken.slice(0, 24) })
+          : t('pickup.reprint.done'),
+        'success'
+      );
+      await refreshOrder();
+    } catch (err) {
+      if (!handleRateLimit(err)) {
+        showToast(t('pickup.toast.reprintFailed'), 'error');
+      }
     }
-    showToast(
-      result.pickupScanToken
-        ? t('pickup.reprint.tokenPreview', { preview: result.pickupScanToken.slice(0, 24) })
-        : t('pickup.reprint.done'),
-      'success'
-    );
-    await refreshOrder();
   }
 
   if (loading) {

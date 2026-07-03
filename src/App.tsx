@@ -1,19 +1,42 @@
+import { lazy, Suspense } from 'react';
 import { Route, Routes } from 'react-router-dom';
-import { LoginPage } from './pages/LoginPage';
-import { OrderPage } from './pages/OrderPage';
-import { QueuePage } from './pages/QueuePage';
-import { RootPage } from './pages/RootPage';
-import { ScanPage } from './pages/ScanPage';
+
+const LoginPage = lazy(async () => {
+  const mod = await import('./pages/LoginPage');
+  return { default: mod.LoginPage };
+});
+const OrderPage = lazy(async () => {
+  const mod = await import('./pages/OrderPage');
+  return { default: mod.OrderPage };
+});
+const QueuePage = lazy(async () => {
+  const mod = await import('./pages/QueuePage');
+  return { default: mod.QueuePage };
+});
+const RootPage = lazy(async () => {
+  const mod = await import('./pages/RootPage');
+  return { default: mod.RootPage };
+});
+const ScanPage = lazy(async () => {
+  const mod = await import('./pages/ScanPage');
+  return { default: mod.ScanPage };
+});
+
+function RouteFallback(): JSX.Element {
+  return <p className="pickup-shell">Loading…</p>;
+}
 
 export function App(): JSX.Element {
   return (
-    <Routes>
-      <Route path="/" element={<RootPage />} />
-      <Route path="/:tenantCode/login" element={<LoginPage />} />
-      <Route path="/:tenantCode/scan" element={<ScanPage />} />
-      <Route path="/:tenantCode/queue" element={<QueuePage />} />
-      <Route path="/:tenantCode/order/:fulfillmentId" element={<OrderPage />} />
-      <Route path="*" element={<RootPage />} />
-    </Routes>
+    <Suspense fallback={<RouteFallback />}>
+      <Routes>
+        <Route path="/" element={<RootPage />} />
+        <Route path="/:tenantCode/login" element={<LoginPage />} />
+        <Route path="/:tenantCode/scan" element={<ScanPage />} />
+        <Route path="/:tenantCode/queue" element={<QueuePage />} />
+        <Route path="/:tenantCode/order/:fulfillmentId" element={<OrderPage />} />
+        <Route path="*" element={<RootPage />} />
+      </Routes>
+    </Suspense>
   );
 }

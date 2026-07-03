@@ -1,22 +1,29 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { fetchSalesPointById, loginPickupStaff } from '../api/pickupApi';
+import {
+  formatRateLimitMessage,
+  getRetryAfterMs,
+  isRateLimitError,
+  useSubmitCooldown,
+} from 'pi-kiosk-shared';
+import { TurnstileExecuteWidget, useTurnstileExecute } from 'pi-kiosk-shared/ui';
+import { fetchSalesPointById, loginPickupStaff, PickupApiError } from '../api/pickupApi';
 import { useTenantCode } from '../hooks/useStaffToken';
 import { tokenStorageKey } from '../lib/auth';
-import { useTurnstileAuth } from '../lib/turnstile/useTurnstileAuth';
-import { PickupTurnstileField } from '../lib/turnstile/PickupTurnstileField';
 
 export function LoginPage(): JSX.Element {
   const tenantCode = useTenantCode();
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const submitCooldown = useSubmitCooldown();
   const [salesPointId, setSalesPointId] = useState('');
   const [pin, setPin] = useState('');
   const [pmName, setPmName] = useState<string | null>(null);
   const [pmLoading, setPmLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const turnstile = useTurnstileAuth();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const turnstile = useTurnstileExecute('');
 
   const parsedSalesPointId = Number(salesPointId);
   const validSalesPointId =
@@ -44,27 +51,59 @@ export function LoginPage(): JSX.Element {
   const displayPmName = validSalesPointId === null ? null : pmName;
   const displayPmLoading = validSalesPointId === null ? false : pmLoading;
 
+  const cooldownMessage =
+    submitCooldown.isCoolingDown && submitCooldown.remainingSeconds > 0
+      ? formatRateLimitMessage(t, submitCooldown.remainingSeconds)
+      : null;
+
   async function onSubmit(event: FormEvent): Promise<void> {
     event.preventDefault();
+    if (isSubmitting || submitCooldown.isCoolingDown) {
+      return;
+    }
     setError(null);
-    if (!turnstile.ready) {
-      return;
-    }
-    const parsedId = Number(salesPointId);
-    const token = await loginPickupStaff(
-      tenantCode,
-      parsedId,
-      pin,
-      turnstile.token ?? undefined
-    );
-    if (!token) {
+    setIsSubmitting(true);
+    try {
+      let turnstileToken: string | undefined;
+      try {
+        turnstileToken = await turnstile.execute();
+      } catch {
+        turnstile.resetTurnstile();
+        return;
+      }
+      if (turnstile.required && (turnstileToken === undefined || turnstileToken.length === 0)) {
+        return;
+      }
+      const parsedId = Number(salesPointId);
+      const token = await loginPickupStaff(
+        tenantCode,
+        parsedId,
+        pin,
+        turnstileToken
+      );
+      if (!token) {
+        turnstile.resetTurnstile();
+        setError(t('pickup.toast.loginFailed'));
+        return;
+      }
       turnstile.resetTurnstile();
-      setError(t('pickup.toast.loginFailed'));
-      return;
+      localStorage.setItem(tokenStorageKey(tenantCode), token);
+      navigate(`/${encodeURIComponent(tenantCode)}/scan`);
+    } catch (err) {
+      turnstile.resetTurnstile();
+      if (isRateLimitError(err) || err instanceof PickupApiError && err.status === 429) {
+        const retryAfterMs =
+          err instanceof PickupApiError && err.retryAfterMs !== undefined
+            ? err.retryAfterMs
+            : getRetryAfterMs(err);
+        submitCooldown.startCooldown(Math.ceil(retryAfterMs / 1000));
+        setError(formatRateLimitMessage(t, Math.ceil(retryAfterMs / 1000)));
+        return;
+      }
+      setError(err instanceof Error ? err.message : t('pickup.toast.loginFailed'));
+    } finally {
+      setIsSubmitting(false);
     }
-    turnstile.resetTurnstile();
-    localStorage.setItem(tokenStorageKey(tenantCode), token);
-    navigate(`/${encodeURIComponent(tenantCode)}/scan`);
   }
 
   return (
@@ -80,6 +119,7 @@ export function LoginPage(): JSX.Element {
             className="pickup-input"
             value={salesPointId}
             onChange={(event) => setSalesPointId(event.target.value)}
+            disabled={submitCooldown.isCoolingDown}
           />
         </label>
         <label className="pickup-label" htmlFor="pickup-pin">
@@ -90,14 +130,30 @@ export function LoginPage(): JSX.Element {
             value={pin}
             type="password"
             onChange={(event) => setPin(event.target.value)}
+            disabled={submitCooldown.isCoolingDown}
           />
         </label>
-        <PickupTurnstileField turnstile={turnstile} />
-        <button className="pickup-button" type="submit" disabled={!turnstile.ready}>
+        <TurnstileExecuteWidget
+          turnstile={turnstile}
+          className="pickup-turnstile"
+          testId="pickup-turnstile-execute-field"
+        />
+        <button
+          className="pickup-button"
+          type="submit"
+          disabled={isSubmitting || submitCooldown.isCoolingDown}
+        >
           {t('pickup.login.submit')}
         </button>
       </form>
-      {error ? <p className="pickup-message pickup-message--error">{error}</p> : null}
+      {cooldownMessage ? (
+        <p className="pickup-message pickup-message--error" role="alert">
+          {cooldownMessage}
+        </p>
+      ) : null}
+      {error && !cooldownMessage ? (
+        <p className="pickup-message pickup-message--error">{error}</p>
+      ) : null}
     </main>
   );
 }

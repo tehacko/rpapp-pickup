@@ -12,6 +12,10 @@ module.exports = {
   moduleNameMapper: {
     '^pi-kiosk-shared/clientLogRedaction$':
       '<rootDir>/../shared/src/clientLogRedaction.ts',
+    '^pi-kiosk-shared/sentry/captureRateLimitBreadcrumb$':
+      '<rootDir>/../shared/src/sentry/captureRateLimitBreadcrumb.ts',
+    '^pi-kiosk-shared/sentry$': '<rootDir>/../shared/src/sentry/initSentry.ts',
+    '^pi-kiosk-shared$': '<rootDir>/../shared/src/index.ts',
     '^(\\.{1,2}/.*)\\.js$': '$1',
   },
   transform: {
@@ -27,4 +31,5 @@ module.exports = {
       },
     ],
   },
+  transformIgnorePatterns: ['node_modules/(?!(pi-kiosk-shared)/)'],
 };

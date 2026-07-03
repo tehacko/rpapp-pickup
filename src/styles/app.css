@@ -1,4 +1,21 @@
-@import './tokens.css';
+@import 'pi-kiosk-shared/theme.css';
+
+/* Pickup layout tokens (not in shared theme) */
+:root {
+  --spacing-4: 8px;
+  --spacing-6: 12px;
+  --spacing-8: 16px;
+  --spacing-10: 20px;
+  --spacing-12: 24px;
+  --font-family-primary: 'Inter', 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-size-base: 0.95rem;
+  --font-size-lg: 1.1rem;
+  --font-size-xl: 1.25rem;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --touch-target-min: 44px;
+  --transition-fast: var(--motion-duration-base) var(--motion-easing-standard);
+}
 
 *,
 *::before,
@@ -10,8 +27,8 @@ body {
   margin: 0;
   font-family: var(--font-family-primary);
   font-size: var(--font-size-base);
-  color: var(--color-text-dark);
-  background: var(--color-gray-50);
+  color: var(--color-on-surface);
+  background: var(--color-surface-muted);
 }
 
 .pickup-shell {
@@ -54,7 +71,7 @@ body {
 .pickup-input {
   min-height: var(--touch-target-min);
   padding: var(--spacing-4) var(--spacing-6);
-  border: 1px solid var(--color-border-gray);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   font: inherit;
 }
@@ -66,8 +83,8 @@ body {
   border-radius: var(--radius-lg);
   background: linear-gradient(
     135deg,
-    var(--color-button-primary-start) 0%,
-    var(--color-button-primary-end) 100%
+    var(--color-accent) 0%,
+    var(--color-accent) 100%
   );
   color: white;
   font: inherit;
@@ -83,8 +100,8 @@ body {
 
 .pickup-button--secondary {
   background: white;
-  color: var(--color-text-dark);
-  border: 1px solid var(--color-border-gray);
+  color: var(--color-on-surface);
+  border: 1px solid var(--color-border);
 }
 
 .pickup-tabs {
@@ -96,14 +113,14 @@ body {
 .pickup-tab {
   min-height: var(--touch-target-min);
   padding: var(--spacing-4) var(--spacing-8);
-  border: 1px solid var(--color-border-gray);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-xl);
   background: white;
   cursor: pointer;
 }
 
 .pickup-tab--active {
-  border-color: var(--color-button-primary-start);
+  border-color: var(--color-accent);
   background: rgba(59, 130, 246, 0.08);
   font-weight: var(--font-weight-semibold);
 }
@@ -113,22 +130,22 @@ body {
   padding: var(--spacing-6);
   border-radius: var(--radius-lg);
   background: white;
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-card);
 }
 
 .pickup-message--error {
-  color: var(--color-error);
+  color: var(--color-danger);
 }
 
 .pickup-message--success {
-  color: #15803d;
+  color: var(--color-success);
 }
 
 .pickup-scan-video {
   width: 100%;
   max-height: 280px;
   border-radius: var(--radius-xl);
-  background: var(--color-gray-800);
+  background: var(--color-on-surface);
   object-fit: cover;
 }
 
@@ -138,13 +155,13 @@ body {
   background: white;
   border-radius: var(--radius-xl);
   overflow: hidden;
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-card);
 }
 
 .pickup-table th,
 .pickup-table td {
   padding: var(--spacing-6);
-  border-bottom: 1px solid var(--color-gray-200);
+  border-bottom: 1px solid var(--color-border);
   text-align: left;
 }
 
@@ -161,7 +178,7 @@ body {
 }
 
 .pickup-link {
-  color: var(--color-button-primary-start);
+  color: var(--color-accent);
 }
 
 .pickup-list {
@@ -181,14 +198,14 @@ body {
   padding: var(--spacing-8);
   background: white;
   border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-card);
 }
 
 .pickup-panel {
   padding: var(--spacing-10);
   background: white;
   border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-card);
 }
 
 .pickup-panel + .pickup-panel {

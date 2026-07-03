@@ -20,6 +20,7 @@ export default defineConfig(({ mode }) => {
   };
 
   return {
+  // BUNDLE_BUDGET_KB = 1200 (gzip main chunk ceiling — see scripts/__tests__/bundle-budget.test.mjs)
     plugins: [react()],
     server: {
       port: 3005,
@@ -30,6 +31,11 @@ export default defineConfig(({ mode }) => {
       port: 3005,
       host: true,
       proxy: apiProxy,
+    },
+    build: {
+      outDir: 'dist',
+      sourcemap: true,
+      chunkSizeWarningLimit: 500,
     },
   };
 });
