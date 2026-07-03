@@ -5,6 +5,8 @@
   "pickup.login.submit": "Sign in",
   "pickup.login.pmName": "Pickup machine: {{name}}",
   "pickup.login.pmLoading": "Loading machine name…",
+  "pickup.login.entitlementDenied": "Pickup staff access is not enabled for this tenant ({{block}}).",
+  "pickup.login.entitlementLoading": "Checking access…",
   "pickup.turnstile.loading": "Loading security check…",
   "pickup.root.title": "Pickup staff",
   "pickup.root.hint": "Enter tenant code in the URL: /{tenant}/login",

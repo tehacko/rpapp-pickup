@@ -5,6 +5,8 @@
   "pickup.login.submit": "Přihlásit se",
   "pickup.login.pmName": "Prodejní místo: {{name}}",
   "pickup.login.pmLoading": "Načítání názvu místa…",
+  "pickup.login.entitlementDenied": "Přístup pro pickup personál není pro tohoto tenanta zapnutý ({{block}}).",
+  "pickup.login.entitlementLoading": "Kontrola přístupu…",
   "pickup.turnstile.loading": "Načítání bezpečnostní kontroly…",
   "pickup.root.title": "Vyzvednutí — obsluha",
   "pickup.root.hint": "Zadejte kód tenanta v URL: /{tenant}/login",

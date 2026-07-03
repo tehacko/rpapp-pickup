@@ -9,6 +9,7 @@ import {
 } from 'pi-kiosk-shared';
 import { TurnstileExecuteWidget, useTurnstileExecute } from 'pi-kiosk-shared/ui';
 import { fetchSalesPointById, loginPickupStaff, PickupApiError } from '../api/pickupApi';
+import { usePickupEntitlement } from '../hooks/usePickupEntitlement';
 import { useTenantCode } from '../hooks/useStaffToken';
 import { tokenStorageKey } from '../lib/auth';
 
@@ -16,6 +17,7 @@ export function LoginPage(): JSX.Element {
   const tenantCode = useTenantCode();
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const { isLoginAllowed, denialReason, isLoading: entitlementLoading } = usePickupEntitlement(tenantCode);
   const submitCooldown = useSubmitCooldown();
   const [salesPointId, setSalesPointId] = useState('');
   const [pin, setPin] = useState('');
@@ -109,6 +111,14 @@ export function LoginPage(): JSX.Element {
   return (
     <main className="pickup-shell">
       <h1>{t('pickup.login.title')}</h1>
+      {entitlementLoading ? <p role="status">{t('pickup.login.entitlementLoading')}</p> : null}
+      {!entitlementLoading && !isLoginAllowed ? (
+        <p className="pickup-message pickup-message--error" role="alert">
+          {t('pickup.login.entitlementDenied', {
+            block: denialReason ?? 'staff_pickup_scan',
+          })}
+        </p>
+      ) : null}
       {displayPmLoading ? <p>{t('pickup.login.pmLoading')}</p> : null}
       {displayPmName ? <p>{t('pickup.login.pmName', { name: displayPmName })}</p> : null}
       <form className="pickup-stack" onSubmit={(event) => void onSubmit(event)}>
@@ -141,7 +151,7 @@ export function LoginPage(): JSX.Element {
         <button
           className="pickup-button"
           type="submit"
-          disabled={isSubmitting || submitCooldown.isCoolingDown}
+          disabled={isSubmitting || submitCooldown.isCoolingDown || !isLoginAllowed}
         >
           {t('pickup.login.submit')}
         </button>

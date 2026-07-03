@@ -2,12 +2,14 @@
 module.exports = {
   displayName: 'pickup-app',
   preset: 'ts-jest',
-  testEnvironment: 'node',
+  testEnvironment: 'jsdom',
   rootDir: '.',
   setupFilesAfterEnv: ['<rootDir>/src/setupTests.ts'],
   testMatch: [
     '<rootDir>/src/**/*.test.ts',
+    '<rootDir>/src/**/*.test.tsx',
     '<rootDir>/src/**/__tests__/**/*.ts',
+    '<rootDir>/src/**/__tests__/**/*.tsx',
   ],
   moduleNameMapper: {
     '^pi-kiosk-shared/clientLogRedaction$':

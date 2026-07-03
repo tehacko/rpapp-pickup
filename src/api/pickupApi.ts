@@ -51,6 +51,28 @@ function mutationHeaders(
   };
 }
 
+export interface PickupStaffEntitlementSnapshot {
+  readonly revision: number;
+  readonly staffPickupScan: boolean;
+  readonly orderPickupInfrastructure: boolean;
+}
+
+export async function fetchPickupStaffEntitlement(
+  tenantCode: string,
+): Promise<PickupStaffEntitlementSnapshot> {
+  const res = await fetch(
+    `/api/${encodeURIComponent(tenantCode)}/v1/pickup/staff/entitlement`,
+  );
+  if (!res.ok) {
+    throw new PickupApiError(res.status, 'Failed to load pickup staff entitlement');
+  }
+  const body = (await res.json()) as { data?: PickupStaffEntitlementSnapshot };
+  if (body.data === undefined) {
+    throw new PickupApiError(res.status, 'Invalid pickup staff entitlement response');
+  }
+  return body.data;
+}
+
 export async function fetchSalesPointById(
   tenantCode: string,
   salesPointId: number
