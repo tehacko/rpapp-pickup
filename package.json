@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "predev": "npm run build --workspace=pi-kiosk-shared",
     "dev": "vite --port 3005",
     "build": "tsc -b && vite build",
     "preview": "vite preview --host 0.0.0.0 --port 3005",
@@ -22,7 +23,7 @@
     "@zxing/browser": "^0.1.5",
     "@zxing/library": "^0.21.3",
     "i18next": "^26.3.1",
-    "pi-kiosk-shared": "^2.1.92",
+    "pi-kiosk-shared": "^2.1.93",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-i18next": "^17.0.8",
