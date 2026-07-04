@@ -1,8 +1,13 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { BrowserQRCodeReader } from '@zxing/browser';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import {
+  useBarcodeScanner,
+  type UseBarcodeScannerMessages,
+  type UseBarcodeScannerReturn,
+} from 'pi-kiosk-shared';
 
-export type QrScannerStatus = 'idle' | 'starting' | 'running' | 'denied' | 'error';
+export type { UseBarcodeScannerReturn as UseQrScannerReturn };
+export type QrScannerStatus = UseBarcodeScannerReturn['status'];
 
 export interface UseQrScannerOptions {
   enabled: boolean;
@@ -10,103 +15,33 @@ export interface UseQrScannerOptions {
   onDecode: (rawValue: string) => void;
 }
 
-export interface UseQrScannerReturn {
-  status: QrScannerStatus;
-  errorMessage: string | null;
-}
-
-export function useQrScanner(options: UseQrScannerOptions): UseQrScannerReturn {
-  const { enabled, videoRef, onDecode } = options;
+export function useQrScanner(options: UseQrScannerOptions): UseBarcodeScannerReturn {
   const { t } = useTranslation();
-  const [status, setStatus] = useState<QrScannerStatus>('idle');
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const onDecodeRef = useRef(onDecode);
 
-  useEffect(() => {
-    onDecodeRef.current = onDecode;
-  }, [onDecode]);
+  const messages = useMemo<UseBarcodeScannerMessages>(
+    () => ({
+      permissionDenied: t('pickup.scan.cameraDenied'),
+      noCamera: t('pickup.scan.cameraError'),
+      starting: t('pickup.scan.cameraStarting'),
+      runningNative: t('pickup.scan.cameraRunning'),
+      runningZxing: t('pickup.scan.cameraRunning'),
+      error: t('pickup.scan.cameraError'),
+      scannerOff: t('pickup.scan.cameraOff'),
+    }),
+    [t],
+  );
 
-  const stopRef = useRef<(() => void) | null>(null);
-
-  const stop = useCallback((): void => {
-    if (stopRef.current !== null) {
-      stopRef.current();
-      stopRef.current = null;
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!enabled) {
-      stop();
-      return;
-    }
-
-    let cancelled = false;
-    const reader = new BrowserQRCodeReader();
-
-    const cleanup = (): void => {
-      const video = videoRef.current;
-      if (video?.srcObject instanceof MediaStream) {
-        for (const track of video.srcObject.getTracks()) {
-          track.stop();
-        }
-        video.srcObject = null;
-      }
-    };
-    stopRef.current = cleanup;
-
-    void (async (): Promise<void> => {
-      setStatus('starting');
-      setErrorMessage(null);
-
-      try {
-        const controls = await reader.decodeFromConstraints(
-          { video: { facingMode: { ideal: 'environment' } } },
-          videoRef.current ?? undefined,
-          (result, _error, ctrl) => {
-            if (cancelled) {
-              ctrl.stop();
-              return;
-            }
-            if (result !== undefined && result !== null) {
-              onDecodeRef.current(result.getText());
-            }
-          }
-        );
-        if (cancelled) {
-          controls.stop();
-          cleanup();
-          return;
-        }
-        stopRef.current = () => {
-          controls.stop();
-          cleanup();
-        };
-        setStatus('running');
-      } catch (err) {
-        if (cancelled) {
-          return;
-        }
-        const isPermissionDenied =
-          err instanceof DOMException &&
-          (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError');
-        setStatus(isPermissionDenied ? 'denied' : 'error');
-        setErrorMessage(
-          isPermissionDenied ? t('pickup.scan.cameraDenied') : t('pickup.scan.cameraError')
-        );
-        cleanup();
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-      cleanup();
-      stopRef.current = null;
-    };
-  }, [enabled, stop, t, videoRef]);
+  const result = useBarcodeScanner({
+    enabled: options.enabled,
+    videoRef: options.videoRef,
+    onDecode: options.onDecode,
+    messages,
+    formatProfile: 'qr-only',
+  });
 
   return {
-    status: enabled ? status : 'idle',
-    errorMessage: enabled ? errorMessage : null,
+    status: options.enabled ? result.status : 'idle',
+    engine: options.enabled ? result.engine : null,
+    errorMessage: options.enabled ? result.errorMessage : null,
   };
 }

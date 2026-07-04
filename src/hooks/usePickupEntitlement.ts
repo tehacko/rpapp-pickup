@@ -1,11 +1,15 @@
 /**
- * Pickup staff app entitlement hook (ENT-PR-18, plan §16.3).
+ * Pickup staff app entitlement hook (ENT-PR-18, BAR-PR-12 OR login).
  */
 import { useQuery } from '@tanstack/react-query';
 import {
   fetchPickupStaffEntitlement,
   type PickupStaffEntitlementSnapshot,
 } from '../api/pickupApi.js';
+import {
+  PickupStaffFunction,
+  type PickupStaffFunctionKey,
+} from '../features/hub/pickupStaffFunctions.js';
 
 export type { PickupStaffEntitlementSnapshot as PickupEntitlementSnapshot };
 
@@ -14,7 +18,21 @@ export interface UsePickupEntitlementResult {
   readonly isLoading: boolean;
   readonly isError: boolean;
   readonly isLoginAllowed: boolean;
-  readonly denialReason: 'staff_pickup_scan' | 'order_pickup_infrastructure' | null;
+  readonly entitledFunctions: readonly PickupStaffFunctionKey[];
+  readonly denialReason: 'staff_pickup_scan' | 'assign_barcode' | 'order_pickup_infrastructure' | null;
+}
+
+function buildEntitledFunctions(
+  snapshot: PickupStaffEntitlementSnapshot,
+): readonly PickupStaffFunctionKey[] {
+  const functions: PickupStaffFunctionKey[] = [];
+  if (snapshot.staffPickupScan) {
+    functions.push(PickupStaffFunction.FULFILLMENT_SCAN);
+  }
+  if (snapshot.assignBarcode) {
+    functions.push(PickupStaffFunction.BARCODE_ASSIGN);
+  }
+  return functions;
 }
 
 export function usePickupEntitlement(tenantCode: string): UsePickupEntitlementResult {
@@ -27,21 +45,24 @@ export function usePickupEntitlement(tenantCode: string): UsePickupEntitlementRe
 
   const snapshot = query.data ?? null;
 
+  const entitledFunctions =
+    snapshot !== null ? buildEntitledFunctions(snapshot) : [];
+
   const isLoginAllowed =
     query.isSuccess &&
     snapshot !== null &&
-    snapshot.staffPickupScan &&
-    snapshot.orderPickupInfrastructure;
+    snapshot.orderPickupInfrastructure &&
+    (snapshot.staffPickupScan || snapshot.assignBarcode);
 
   const denialReason: UsePickupEntitlementResult['denialReason'] = (() => {
     if (!query.isSuccess || snapshot === null) {
       return null;
     }
-    if (!snapshot.staffPickupScan) {
-      return 'staff_pickup_scan';
-    }
     if (!snapshot.orderPickupInfrastructure) {
       return 'order_pickup_infrastructure';
+    }
+    if (!snapshot.staffPickupScan && !snapshot.assignBarcode) {
+      return 'staff_pickup_scan';
     }
     return null;
   })();
@@ -51,6 +72,7 @@ export function usePickupEntitlement(tenantCode: string): UsePickupEntitlementRe
     isLoading: query.isLoading,
     isError: query.isError,
     isLoginAllowed,
+    entitledFunctions,
     denialReason,
   };
 }

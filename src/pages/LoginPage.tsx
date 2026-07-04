@@ -9,6 +9,7 @@ import {
 } from 'pi-kiosk-shared';
 import { TurnstileExecuteWidget, useTurnstileExecute } from 'pi-kiosk-shared/ui';
 import { fetchSalesPointById, loginPickupStaff, PickupApiError } from '../api/pickupApi';
+import { resolvePostLoginPath } from '../features/hub/pickupStaffFunctions';
 import { usePickupEntitlement } from '../hooks/usePickupEntitlement';
 import { useTenantCode } from '../hooks/useStaffToken';
 import { tokenStorageKey } from '../lib/auth';
@@ -17,7 +18,7 @@ export function LoginPage(): JSX.Element {
   const tenantCode = useTenantCode();
   const navigate = useNavigate();
   const { t } = useTranslation();
-  const { isLoginAllowed, denialReason, isLoading: entitlementLoading } = usePickupEntitlement(tenantCode);
+  const { isLoginAllowed, denialReason, isLoading: entitlementLoading, entitledFunctions } = usePickupEntitlement(tenantCode);
   const submitCooldown = useSubmitCooldown();
   const [salesPointId, setSalesPointId] = useState('');
   const [pin, setPin] = useState('');
@@ -90,7 +91,7 @@ export function LoginPage(): JSX.Element {
       }
       turnstile.resetTurnstile();
       localStorage.setItem(tokenStorageKey(tenantCode), token);
-      navigate(`/${encodeURIComponent(tenantCode)}/scan`);
+      navigate(resolvePostLoginPath(tenantCode, entitledFunctions));
     } catch (err) {
       turnstile.resetTurnstile();
       if (isRateLimitError(err) || err instanceof PickupApiError && err.status === 429) {

@@ -54,6 +54,7 @@ function mutationHeaders(
 export interface PickupStaffEntitlementSnapshot {
   readonly revision: number;
   readonly staffPickupScan: boolean;
+  readonly assignBarcode: boolean;
   readonly orderPickupInfrastructure: boolean;
 }
 

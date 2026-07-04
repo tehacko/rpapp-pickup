@@ -18,11 +18,31 @@ describe('usePickupEntitlement', () => {
     jest.clearAllMocks();
   });
 
+  it('allows login when assignBarcode is true even if staffPickupScan is false', () => {
+    mockUseQuery.mockReturnValue({
+      data: {
+        revision: 1,
+        staffPickupScan: false,
+        assignBarcode: true,
+        orderPickupInfrastructure: true,
+      },
+      isSuccess: true,
+      isLoading: false,
+      isError: false,
+    });
+
+    const { result } = renderHook(() => usePickupEntitlement('demo-tenant'));
+
+    expect(result.current.isLoginAllowed).toBe(true);
+    expect(result.current.entitledFunctions).toContain('barcode_assign');
+  });
+
   it('returns isLoginAllowed false when staffPickupScan is false', () => {
     mockUseQuery.mockReturnValue({
       data: {
         revision: 1,
         staffPickupScan: false,
+        assignBarcode: false,
         orderPickupInfrastructure: true,
       },
       isSuccess: true,
