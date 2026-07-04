@@ -71,7 +71,7 @@ test.describe('pickup staff flow (mocked API)', () => {
 
   test('login → resolve by code → confirm', async ({ page }) => {
     await page.goto('/demo/login');
-    await page.getByLabel(/Sales point ID|ID prodejního místa/i).fill('3');
+    await page.getByLabel(/Sales point ID|ID platebního místa/i).fill('3');
     await page.getByLabel(/^PIN$/i).fill('1234');
     await page.getByRole('button', { name: /Sign in|Přihlásit se/i }).click();
     await expect(page).toHaveURL(/\/demo\/scan$/, { timeout: 15_000 });

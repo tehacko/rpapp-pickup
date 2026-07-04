@@ -23,7 +23,7 @@ test.describe('staff-confirm-pickup (integration)', () => {
     const salesPointId = state.cashPm.salesPointId;
 
     await page.goto(`/${tenant}/login`);
-    await page.getByLabel(/Sales point ID|ID prodejního místa/i).fill(String(salesPointId));
+    await page.getByLabel(/Sales point ID|ID platebního místa/i).fill(String(salesPointId));
     await page.getByLabel(/^PIN$/i).fill(state.pickupPin);
     await page.getByRole('button', { name: /Sign in|Přihlásit se/i }).click();
     await expect(page).toHaveURL(new RegExp(`/${tenant}/scan`), { timeout: 15_000 });
