@@ -1,5 +1,15 @@
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { defineConfig, loadEnv, type HttpProxy, type ProxyOptions } from 'vite';
 import react from '@vitejs/plugin-react';
+import { buildMonorepoPiKioskSharedAlias } from '../shared/vite/monorepoPiKioskSharedAlias.js';
+
+const appRoot = path.dirname(fileURLToPath(import.meta.url));
+const repoRoot = path.resolve(appRoot, '..');
+const monorepoShared = buildMonorepoPiKioskSharedAlias(appRoot);
+
+/** GAP-X-03 — gzip main-chunk budget ceiling (KB); enforced by gate:bundle-budget */
+const BUNDLE_BUDGET_KB = 1200;
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
@@ -20,11 +30,23 @@ export default defineConfig(({ mode }) => {
   };
 
   return {
-  // BUNDLE_BUDGET_KB = 1200 (gzip main chunk ceiling — see scripts/__tests__/bundle-budget.test.mjs)
     plugins: [react()],
+    resolve: {
+      dedupe: ['react', 'react-dom'],
+      alias: monorepoShared.alias,
+    },
     server: {
       port: 3005,
       host: true,
+      ...(monorepoShared.enabled
+        ? {
+            fs: {
+              allow: [repoRoot],
+              strict: false,
+            },
+            watch: { ignored: ['**/node_modules/**', '!**/shared/dist/**'] },
+          }
+        : {}),
       proxy: apiProxy,
     },
     preview: {
@@ -35,7 +57,10 @@ export default defineConfig(({ mode }) => {
     build: {
       outDir: 'dist',
       sourcemap: true,
-      chunkSizeWarningLimit: 500,
+      chunkSizeWarningLimit: Math.ceil((BUNDLE_BUDGET_KB * 1024) / 4),
     },
+    optimizeDeps: monorepoShared.enabled
+      ? { exclude: monorepoShared.excludeDeps }
+      : undefined,
   };
 });

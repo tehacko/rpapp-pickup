@@ -10,6 +10,7 @@ import {
   PickupStaffFunction,
   type PickupStaffFunctionKey,
 } from '../features/hub/pickupStaffFunctions.js';
+import { resolvePickupDeviceFlags } from './pickupDeviceFlags.js';
 
 export type { PickupStaffEntitlementSnapshot as PickupEntitlementSnapshot };
 
@@ -19,6 +20,7 @@ export interface UsePickupEntitlementResult {
   readonly isError: boolean;
   readonly isLoginAllowed: boolean;
   readonly entitledFunctions: readonly PickupStaffFunctionKey[];
+  readonly deviceFlags: PickupStaffEntitlementSnapshot['deviceFlags'];
   readonly denialReason: 'staff_pickup_scan' | 'assign_barcode' | 'order_pickup_infrastructure' | null;
 }
 
@@ -44,6 +46,7 @@ export function usePickupEntitlement(tenantCode: string): UsePickupEntitlementRe
   });
 
   const snapshot = query.data ?? null;
+  const deviceFlags = resolvePickupDeviceFlags(snapshot);
 
   const entitledFunctions =
     snapshot !== null ? buildEntitledFunctions(snapshot) : [];
@@ -73,6 +76,7 @@ export function usePickupEntitlement(tenantCode: string): UsePickupEntitlementRe
     isError: query.isError,
     isLoginAllowed,
     entitledFunctions,
+    deviceFlags,
     denialReason,
   };
 }

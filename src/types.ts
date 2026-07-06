@@ -23,6 +23,8 @@ export interface ResolveResponse {
   pickupPointId: number | null;
   pickupPointName: string | null;
   allowedForStaff: boolean | null;
+  heldAt: string | null;
+  holdReason: string | null;
   lines: FulfillmentLine[];
 }
 
@@ -34,6 +36,8 @@ export interface QueueItem {
   pickupPointId: number | null;
   pickupPointName: string | null;
   promisedPickupAt: string | null;
+  claimedByDeviceLabel: string | null;
+  claimExpiresAt: string | null;
 }
 
 export interface SalesPointLookupResponse {

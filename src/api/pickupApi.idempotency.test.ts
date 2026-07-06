@@ -5,6 +5,10 @@ jest.mock('../lib/auth.js', () => ({
     Authorization: `Bearer ${accessToken}`,
     'Content-Type': 'application/json',
   }),
+  pickupFetchInit: (init?: RequestInit): RequestInit => ({
+    credentials: 'include',
+    ...init,
+  }),
 }));
 
 import {
@@ -25,7 +29,7 @@ describe('pickupApi idempotency', () => {
   beforeEach(() => {
     fetchMock.mockResolvedValue({
       ok: true,
-      json: async () => ({ data: { accessToken: 'tok' } }),
+      json: async () => ({ data: { expiresInSeconds: 3600, salesPointId: 3 } }),
     } as Response);
     global.fetch = fetchMock as unknown as typeof fetch;
   });
@@ -79,6 +83,6 @@ describe('pickupApi idempotency', () => {
       status: 401,
       json: async () => ({ error: 'Unauthorized' }),
     } as Response);
-    await expect(loginPickupStaff('tenant-a', 1, 'bad')).rejects.toBeInstanceOf(PickupApiError);
+    await expect(loginPickupStaff('tenant-a', { salesPointId: 1, pin: 'bad' })).rejects.toBeInstanceOf(PickupApiError);
   });
 });

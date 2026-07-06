@@ -16,6 +16,8 @@ module.exports = {
       '<rootDir>/../shared/src/clientLogRedaction.ts',
     '^pi-kiosk-shared/sentry/captureRateLimitBreadcrumb$':
       '<rootDir>/../shared/src/sentry/captureRateLimitBreadcrumb.ts',
+    '^pi-kiosk-shared/sentry/captureConflictBreadcrumb$':
+      '<rootDir>/../shared/src/sentry/captureConflictBreadcrumb.ts',
     '^pi-kiosk-shared/sentry$': '<rootDir>/../shared/src/sentry/initSentry.ts',
     '^pi-kiosk-shared$': '<rootDir>/../shared/src/index.ts',
     '^(\\.{1,2}/.*)\\.js$': '$1',

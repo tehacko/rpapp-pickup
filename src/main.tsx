@@ -5,6 +5,8 @@ import { I18nextProvider } from 'react-i18next';
 import { BrowserRouter } from 'react-router-dom';
 import { initSentry } from 'pi-kiosk-shared/sentry';
 import { App } from './App';
+import { PickupErrorBoundary } from './shared/components/PickupErrorBoundary.js';
+import { PickupStaffSessionProvider } from './shared/session/PickupStaffSessionProvider.js';
 import i18n from './i18n';
 import './styles/app.css';
 
@@ -27,7 +29,11 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
     <I18nextProvider i18n={i18n}>
       <QueryClientProvider client={queryClient}>
         <BrowserRouter>
-          <App />
+          <PickupErrorBoundary>
+            <PickupStaffSessionProvider>
+              <App />
+            </PickupStaffSessionProvider>
+          </PickupErrorBoundary>
         </BrowserRouter>
       </QueryClientProvider>
     </I18nextProvider>

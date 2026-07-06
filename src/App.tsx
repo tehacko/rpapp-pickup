@@ -33,6 +33,14 @@ const BarcodeAssignDetailPage = lazy(async () => {
   const mod = await import('./features/barcode-assign/BarcodeAssignDetailPage');
   return { default: mod.BarcodeAssignDetailPage };
 });
+const DevicePairingPage = lazy(async () => {
+  const mod = await import('./features/device-pairing/DevicePairingPage');
+  return { default: mod.DevicePairingPage };
+});
+const SellPage = lazy(async () => {
+  const mod = await import('./features/sell/SellPage');
+  return { default: mod.SellPage };
+});
 
 function RouteFallback(): JSX.Element {
   return <p className="pickup-shell">Loading…</p>;
@@ -45,6 +53,7 @@ export function App(): JSX.Element {
         <Route path="/" element={<RootPage />} />
         <Route path="/:tenantCode/login" element={<LoginPage />} />
         <Route path="/:tenantCode/hub" element={<StaffHubPage />} />
+        <Route path="/:tenantCode/device-pairing" element={<DevicePairingPage />} />
         <Route path="/:tenantCode/scan" element={<ScanPage />} />
         <Route path="/:tenantCode/barcode-assign" element={<BarcodeAssignPage />} />
         <Route
@@ -53,6 +62,7 @@ export function App(): JSX.Element {
         />
         <Route path="/:tenantCode/barcode-assign/:productId" element={<BarcodeAssignDetailPage />} />
         <Route path="/:tenantCode/queue" element={<QueuePage />} />
+        <Route path="/:tenantCode/sell" element={<SellPage />} />
         <Route path="/:tenantCode/order/:fulfillmentId" element={<OrderPage />} />
         <Route path="*" element={<RootPage />} />
       </Routes>

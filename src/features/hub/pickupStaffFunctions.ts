@@ -1,6 +1,7 @@
 export const PickupStaffFunction = {
   FULFILLMENT_SCAN: 'fulfillment_scan',
   BARCODE_ASSIGN: 'barcode_assign',
+  STAFF_SELL: 'staff_sell',
 } as const;
 
 export type PickupStaffFunctionKey =

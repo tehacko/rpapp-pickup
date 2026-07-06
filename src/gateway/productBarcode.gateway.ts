@@ -1,3 +1,5 @@
+import { authHeaders, pickupFetchInit } from '../lib/auth.js';
+
 export interface BarcodeConflictDTO {
   readonly holderType: 'product' | 'variant';
   readonly productId: number;
@@ -56,6 +58,10 @@ function pickupBarcodeBase(tenantCode: string): string {
   return `/api/${encodeURIComponent(tenantCode)}/v1/pickup/products`;
 }
 
+function pickupBarcodeFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  return fetch(input, pickupFetchInit(init));
+}
+
 function buildIdempotencyKey(explicit?: string): string {
   if (explicit !== undefined && explicit.length > 0) {
     return explicit;
@@ -88,9 +94,9 @@ export async function listProductsForBarcodeAssign(
     params.set('q', query.trim());
   }
   const suffix = params.size > 0 ? `?${params.toString()}` : '';
-  const res = await fetch(
+  const res = await pickupBarcodeFetch(
     `${pickupBarcodeBase(tenantCode)}/barcode-assign/catalog${suffix}`,
-    { headers: { Authorization: `Bearer ${accessToken}` } },
+    { headers: authHeaders(accessToken) },
   );
   const data = await parseJson<{
     products: Array<{
@@ -138,9 +144,9 @@ export async function checkBarcodeAssign(
   if (input.variantId !== undefined) {
     params.set('variantId', String(input.variantId));
   }
-  const res = await fetch(
+  const res = await pickupBarcodeFetch(
     `${pickupBarcodeBase(tenantCode)}/barcode-assign/check?${params.toString()}`,
-    { headers: { Authorization: `Bearer ${accessToken}` } },
+    { headers: authHeaders(accessToken) },
   );
   return parseJson<BarcodeAssignCheckResult>(res);
 }
@@ -152,9 +158,9 @@ export async function getProductBarcode(
   variantId?: number,
 ): Promise<ProductBarcodeStateDTO> {
   const params = variantId !== undefined ? `?variantId=${encodeURIComponent(String(variantId))}` : '';
-  const res = await fetch(
+  const res = await pickupBarcodeFetch(
     `${pickupBarcodeBase(tenantCode)}/${encodeURIComponent(String(productId))}/barcode${params}`,
-    { headers: { Authorization: `Bearer ${accessToken}` } },
+    { headers: authHeaders(accessToken) },
   );
   return parseJson<ProductBarcodeStateDTO>(res);
 }
@@ -166,13 +172,12 @@ export async function assignPrimaryBarcode(
   input: AssignPrimaryBarcodeInput,
   idempotencyKey?: string,
 ): Promise<ProductBarcodeStateDTO> {
-  const res = await fetch(
+  const res = await pickupBarcodeFetch(
     `${pickupBarcodeBase(tenantCode)}/${encodeURIComponent(String(productId))}/barcode/primary`,
     {
       method: 'PUT',
       headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
+        ...authHeaders(accessToken),
         'Idempotency-Key': buildIdempotencyKey(idempotencyKey),
       },
       body: JSON.stringify(input),
@@ -192,12 +197,12 @@ export async function clearPrimaryBarcode(
   variantId?: number,
   idempotencyKey?: string,
 ): Promise<ProductBarcodeStateDTO> {
-  const res = await fetch(
+  const res = await pickupBarcodeFetch(
     `${pickupBarcodeBase(tenantCode)}/${encodeURIComponent(String(productId))}/barcode/primary${variantQuery(variantId)}`,
     {
       method: 'DELETE',
       headers: {
-        Authorization: `Bearer ${accessToken}`,
+        ...authHeaders(accessToken),
         'Idempotency-Key': buildIdempotencyKey(idempotencyKey),
       },
     },
@@ -213,13 +218,12 @@ export async function addAltBarcode(
   idempotencyKey?: string,
 ): Promise<ProductBarcodeStateDTO> {
   const params = input.variantId !== undefined ? `?variantId=${encodeURIComponent(String(input.variantId))}` : '';
-  const res = await fetch(
+  const res = await pickupBarcodeFetch(
     `${pickupBarcodeBase(tenantCode)}/${encodeURIComponent(String(productId))}/barcode/alt${params}`,
     {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
+        ...authHeaders(accessToken),
         'Idempotency-Key': buildIdempotencyKey(idempotencyKey),
       },
       body: JSON.stringify({
@@ -243,12 +247,12 @@ export async function removeAltBarcode(
   variantId?: number,
   idempotencyKey?: string,
 ): Promise<ProductBarcodeStateDTO> {
-  const res = await fetch(
+  const res = await pickupBarcodeFetch(
     `${pickupBarcodeBase(tenantCode)}/${encodeURIComponent(String(productId))}/barcode/alt/${encodeURIComponent(code)}${variantQuery(variantId)}`,
     {
       method: 'DELETE',
       headers: {
-        Authorization: `Bearer ${accessToken}`,
+        ...authHeaders(accessToken),
         'Idempotency-Key': buildIdempotencyKey(idempotencyKey),
       },
     },
@@ -264,13 +268,12 @@ export async function promoteAltBarcode(
   idempotencyKey?: string,
 ): Promise<ProductBarcodeStateDTO> {
   const params = input.variantId !== undefined ? `?variantId=${encodeURIComponent(String(input.variantId))}` : '';
-  const res = await fetch(
+  const res = await pickupBarcodeFetch(
     `${pickupBarcodeBase(tenantCode)}/${encodeURIComponent(String(productId))}/barcode/promote-alt${params}`,
     {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
+        ...authHeaders(accessToken),
         'Idempotency-Key': buildIdempotencyKey(idempotencyKey),
       },
       body: JSON.stringify({ altBarcode: input.altBarcode }),
@@ -285,14 +288,11 @@ export async function regenerateBarcodeArtifacts(
   productId: number,
   variantId?: number,
 ): Promise<ProductBarcodeStateDTO> {
-  const res = await fetch(
+  const res = await pickupBarcodeFetch(
     `${pickupBarcodeBase(tenantCode)}/${encodeURIComponent(String(productId))}/barcode/artifacts/regenerate`,
     {
       method: 'POST',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
+      headers: authHeaders(accessToken),
       body: JSON.stringify(variantId !== undefined ? { variantId } : {}),
     },
   );

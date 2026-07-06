@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
   formatRateLimitMessage,
@@ -11,17 +11,22 @@ import { TurnstileExecuteWidget, useTurnstileExecute } from 'pi-kiosk-shared/ui'
 import { fetchSalesPointById, loginPickupStaff, PickupApiError } from '../api/pickupApi';
 import { resolvePostLoginPath } from '../features/hub/pickupStaffFunctions';
 import { usePickupEntitlement } from '../hooks/usePickupEntitlement';
+import { isDevicePaired, setPairedDevice } from '../lib/deviceStorage.js';
+import { usePickupStaffSession } from '../shared/session/PickupStaffSessionProvider.js';
 import { useTenantCode } from '../hooks/useStaffToken';
-import { tokenStorageKey } from '../lib/auth';
 
 export function LoginPage(): JSX.Element {
   const tenantCode = useTenantCode();
+  const { establishSession } = usePickupStaffSession();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { t } = useTranslation();
   const { isLoginAllowed, denialReason, isLoading: entitlementLoading, entitledFunctions } = usePickupEntitlement(tenantCode);
   const submitCooldown = useSubmitCooldown();
-  const [salesPointId, setSalesPointId] = useState('');
+  const kioskHintDefault = searchParams.get('kioskHint')?.trim() ?? '';
+  const [salesPointId, setSalesPointId] = useState(kioskHintDefault);
   const [pin, setPin] = useState('');
+  const [deviceCode, setDeviceCode] = useState('');
   const [pmName, setPmName] = useState<string | null>(null);
   const [pmLoading, setPmLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -37,6 +42,8 @@ export function LoginPage(): JSX.Element {
     parsedSalesPointId > 0
       ? parsedSalesPointId
       : null;
+
+  const showDeviceCodeField = !isDevicePaired(tenantCode);
 
   useEffect(() => {
     if (validSalesPointId === null) {
@@ -73,6 +80,10 @@ export function LoginPage(): JSX.Element {
     setError(null);
     setIsSubmitting(true);
     try {
+      if (!isSuperPickuperLogin && validSalesPointId === null) {
+        setError(t('pickup.login.salesPointIdInvalid'));
+        return;
+      }
       let turnstileToken: string | undefined;
       try {
         turnstileToken = await turnstile.execute();
@@ -86,18 +97,25 @@ export function LoginPage(): JSX.Element {
       const loginCredentials = isSuperPickuperLogin
         ? { staffLoginId: 'superpickuper' as const, pin }
         : { salesPointId: Number(trimmedSalesPointId), pin };
-      const token = await loginPickupStaff(
+      const loginResult = await loginPickupStaff(
         tenantCode,
         loginCredentials,
         turnstileToken
       );
-      if (!token) {
+      if (!loginResult) {
         turnstile.resetTurnstile();
         setError(t('pickup.toast.loginFailed'));
         return;
       }
       turnstile.resetTurnstile();
-      localStorage.setItem(tokenStorageKey(tenantCode), token);
+      await establishSession(tenantCode);
+      const trimmedDeviceCode = deviceCode.trim().toUpperCase();
+      if (showDeviceCodeField && trimmedDeviceCode.length > 0) {
+        setPairedDevice(tenantCode, {
+          deviceCode: trimmedDeviceCode,
+          deviceLabel: trimmedDeviceCode,
+        });
+      }
       navigate(resolvePostLoginPath(tenantCode, entitledFunctions));
     } catch (err) {
       turnstile.resetTurnstile();
@@ -108,6 +126,10 @@ export function LoginPage(): JSX.Element {
             : getRetryAfterMs(err);
         submitCooldown.startCooldown(Math.ceil(retryAfterMs / 1000));
         setError(formatRateLimitMessage(t, Math.ceil(retryAfterMs / 1000)));
+        return;
+      }
+      if (err instanceof PickupApiError && err.code === 'PICKUP_POINT_NOT_ALLOWED') {
+        setError(t('pickup.login.pickupPointNotAllowed'));
         return;
       }
       setError(err instanceof Error ? err.message : t('pickup.toast.loginFailed'));
@@ -154,6 +176,20 @@ export function LoginPage(): JSX.Element {
             placeholder={t('pickup.login.pinPlaceholder')}
           />
         </label>
+        {showDeviceCodeField ? (
+          <label className="pickup-label" htmlFor="pickup-device-code">
+            {t('pickup.login.deviceCode')}
+            <input
+              id="pickup-device-code"
+              className="pickup-input"
+              value={deviceCode}
+              onChange={(event) => setDeviceCode(event.target.value)}
+              disabled={submitCooldown.isCoolingDown}
+              placeholder={t('pickup.login.deviceCodePlaceholder')}
+              autoComplete="off"
+            />
+          </label>
+        ) : null}
         <TurnstileExecuteWidget
           turnstile={turnstile}
           className="pickup-turnstile"

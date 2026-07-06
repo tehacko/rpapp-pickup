@@ -1,13 +1,10 @@
-import { useMemo } from 'react';
-import { useParams } from 'react-router-dom';
-import { tokenStorageKey } from '../lib/auth';
+import { usePickupStaffSession } from '../shared/session/PickupStaffSessionProvider.js';
 
 export function useStaffToken(): string | null {
-  const { tenantCode = '' } = useParams();
-  return useMemo(() => localStorage.getItem(tokenStorageKey(tenantCode)), [tenantCode]);
+  return usePickupStaffSession().accessToken;
 }
 
 export function useTenantCode(): string {
-  const { tenantCode = '' } = useParams();
-  return tenantCode;
+  const { tenantCode } = usePickupStaffSession();
+  return tenantCode ?? '';
 }

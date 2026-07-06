@@ -1,7 +1,16 @@
+import { execFileSync, execSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { assertCommerceIntegrationEnv } from '../../up-backend/e2e/helpers/assertIntegrationEnv.js';
+
+function ensureSharedDist(): void {
+  if (process.env.E2E_SHARED_PREBUILT === '1') {
+    return;
+  }
+  const ensureDist = resolve(dirname(fileURLToPath(import.meta.url)), '../../shared/scripts/ensureDist.mjs');
+  execFileSync(process.execPath, [ensureDist], { stdio: 'inherit' });
+}
 
 function loadBackendEnvForE2e(): void {
   const envPath = resolve(dirname(fileURLToPath(import.meta.url)), '../../up-backend/.env');
@@ -35,6 +44,8 @@ function loadBackendEnvForE2e(): void {
 }
 
 export default async function globalSetup(): Promise<void> {
+  ensureSharedDist();
+
   if (process.env['E2E_INTEGRATION'] !== '1') {
     return;
   }

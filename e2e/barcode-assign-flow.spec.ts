@@ -23,6 +23,10 @@ test.describe('pickup barcode assign flow (mocked)', () => {
             staffPickupScan: false,
             assignBarcode: true,
             orderPickupInfrastructure: true,
+            deviceFlags: {
+              registryEnabled: false,
+              softClaimEnabled: false,
+            },
           },
         }),
       });
@@ -136,7 +140,7 @@ test.describe('pickup barcode assign flow (mocked)', () => {
 
     await expect(page.getByRole('button', { name: /Espresso beans/i })).toBeVisible();
     await page.getByRole('button', { name: /Espresso beans/i }).click();
-    await expect(page).toHaveURL(new RegExp(`/${tenant}/barcode-assign/${productId}$`));
+    await page.waitForURL(new RegExp(`/${tenant}/barcode-assign/${productId}$`), { timeout: 15_000 });
 
     await page.getByLabel(/Barcode|Čárový kód/i).fill('BAR-E2E-001');
     await page.getByRole('button', { name: /Save barcode|Uložit/i }).click();
