@@ -36,7 +36,7 @@ describe('pickupApi idempotency', () => {
   });
 
   it('sends Idempotency-Key on staff login', async () => {
-    await loginPickupStaff('tenant-a', 1, '1234', undefined, 'login-idem-key');
+    await loginPickupStaff('tenant-a', { salesPointId: 1, pin: '1234' }, undefined, 'login-idem-key');
     const [, init] = fetchMock.mock.calls[0] ?? [];
     expect(init?.headers).toMatchObject({
       'Idempotency-Key': 'login-idem-key',

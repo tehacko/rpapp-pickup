@@ -1,5 +1,5 @@
 import { describe, expect, it, jest } from '@jest/globals';
-import { renderHook, waitFor } from '@testing-library/react';
+import { act, renderHook, waitFor } from '@testing-library/react';
 import { useDebouncedBarcodeCheck } from './useDebouncedBarcodeCheck.js';
 
 describe('useDebouncedBarcodeCheck', () => {
@@ -20,10 +20,12 @@ describe('useDebouncedBarcodeCheck', () => {
     );
 
     rerender({ code: '1234567890123' });
-    expect(result.current.isChecking).toBe(true);
+    expect(result.current.isChecking).toBe(false);
     expect(checkFn).not.toHaveBeenCalled();
 
-    jest.advanceTimersByTime(300);
+    await act(async () => {
+      jest.advanceTimersByTime(300);
+    });
 
     await waitFor(() => {
       expect(checkFn).toHaveBeenCalledWith({

@@ -88,10 +88,13 @@ export async function fetchSalesPointById(
   return body.data ?? null;
 }
 
+export type PickupStaffLoginCredentials =
+  | { salesPointId: number; pin: string }
+  | { staffLoginId: 'superpickuper'; pin: string };
+
 export async function loginPickupStaff(
   tenantCode: string,
-  salesPointId: number,
-  pin: string,
+  credentials: PickupStaffLoginCredentials,
   turnstileToken?: string,
   idempotencyKey?: string
 ): Promise<string | null> {
@@ -102,8 +105,7 @@ export async function loginPickupStaff(
       'Idempotency-Key': idempotencyKey ?? generateIdempotencyKey(),
     },
     body: JSON.stringify({
-      salesPointId,
-      pin,
+      ...credentials,
       ...(turnstileToken !== undefined && turnstileToken.length > 0
         ? { turnstileToken }
         : {}),

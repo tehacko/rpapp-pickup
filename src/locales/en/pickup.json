@@ -1,7 +1,10 @@
 {
   "pickup.login.title": "Pickup staff login",
   "pickup.login.salesPointId": "Sales point ID",
+  "pickup.login.salesPointIdPlaceholder": "sales point ID or superpickuper",
   "pickup.login.pin": "PIN",
+  "pickup.login.pinPlaceholder": "PIN or dev password (superpickuper)",
+  "pickup.login.superPickuperHint": "Universal dev login — same password as superadmin (test1234).",
   "pickup.login.submit": "Sign in",
   "pickup.login.pmName": "Pickup machine: {{name}}",
   "pickup.login.pmLoading": "Loading machine name…",

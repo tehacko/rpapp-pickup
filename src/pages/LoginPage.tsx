@@ -28,9 +28,15 @@ export function LoginPage(): JSX.Element {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const turnstile = useTurnstileExecute('');
 
-  const parsedSalesPointId = Number(salesPointId);
+  const trimmedSalesPointId = salesPointId.trim();
+  const isSuperPickuperLogin = trimmedSalesPointId.toLowerCase() === 'superpickuper';
+  const parsedSalesPointId = Number(trimmedSalesPointId);
   const validSalesPointId =
-    Number.isFinite(parsedSalesPointId) && parsedSalesPointId > 0 ? parsedSalesPointId : null;
+    !isSuperPickuperLogin &&
+    Number.isFinite(parsedSalesPointId) &&
+    parsedSalesPointId > 0
+      ? parsedSalesPointId
+      : null;
 
   useEffect(() => {
     if (validSalesPointId === null) {
@@ -77,11 +83,12 @@ export function LoginPage(): JSX.Element {
       if (turnstile.required && (turnstileToken === undefined || turnstileToken.length === 0)) {
         return;
       }
-      const parsedId = Number(salesPointId);
+      const loginCredentials = isSuperPickuperLogin
+        ? { staffLoginId: 'superpickuper' as const, pin }
+        : { salesPointId: Number(trimmedSalesPointId), pin };
       const token = await loginPickupStaff(
         tenantCode,
-        parsedId,
-        pin,
+        loginCredentials,
         turnstileToken
       );
       if (!token) {
@@ -122,6 +129,7 @@ export function LoginPage(): JSX.Element {
       ) : null}
       {displayPmLoading ? <p>{t('pickup.login.pmLoading')}</p> : null}
       {displayPmName ? <p>{t('pickup.login.pmName', { name: displayPmName })}</p> : null}
+      {isSuperPickuperLogin ? <p>{t('pickup.login.superPickuperHint')}</p> : null}
       <form className="pickup-stack" onSubmit={(event) => void onSubmit(event)}>
         <label className="pickup-label" htmlFor="pickup-sales-point-id">
           {t('pickup.login.salesPointId')}
@@ -131,6 +139,7 @@ export function LoginPage(): JSX.Element {
             value={salesPointId}
             onChange={(event) => setSalesPointId(event.target.value)}
             disabled={submitCooldown.isCoolingDown}
+            placeholder={t('pickup.login.salesPointIdPlaceholder')}
           />
         </label>
         <label className="pickup-label" htmlFor="pickup-pin">
@@ -142,6 +151,7 @@ export function LoginPage(): JSX.Element {
             type="password"
             onChange={(event) => setPin(event.target.value)}
             disabled={submitCooldown.isCoolingDown}
+            placeholder={t('pickup.login.pinPlaceholder')}
           />
         </label>
         <TurnstileExecuteWidget

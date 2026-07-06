@@ -1,7 +1,10 @@
 {
   "pickup.login.title": "Přihlášení obsluhy vyzvednutí",
   "pickup.login.salesPointId": "ID platebního místa",
+  "pickup.login.salesPointIdPlaceholder": "ID místa nebo superpickuper",
   "pickup.login.pin": "PIN",
+  "pickup.login.pinPlaceholder": "PIN nebo dev heslo (superpickuper)",
+  "pickup.login.superPickuperHint": "Univerzální dev přihlášení — stejné heslo jako superadmin (test1234).",
   "pickup.login.submit": "Přihlásit se",
   "pickup.login.pmName": "Platební místo: {{name}}",
   "pickup.login.pmLoading": "Načítání názvu místa…",
