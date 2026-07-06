@@ -1,5 +1,5 @@
-import type { BarcodeScannerFormatProfile, UseBarcodeScannerMessages } from 'pi-kiosk-shared';
-import { useBarcodeScanner } from 'pi-kiosk-shared';
+import type { BarcodeScannerFormatProfile, UseBarcodeScannerMessages } from 'pi-kiosk-shared/barcode-scanner';
+import { useBarcodeScanner } from 'pi-kiosk-shared/barcode-scanner';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 

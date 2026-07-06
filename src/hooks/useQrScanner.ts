@@ -4,7 +4,7 @@ import {
   useBarcodeScanner,
   type UseBarcodeScannerMessages,
   type UseBarcodeScannerReturn,
-} from 'pi-kiosk-shared';
+} from 'pi-kiosk-shared/barcode-scanner';
 
 export type { UseBarcodeScannerReturn as UseQrScannerReturn };
 export type QrScannerStatus = UseBarcodeScannerReturn['status'];
