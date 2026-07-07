@@ -1,5 +1,7 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { Button } from 'pi-kiosk-shared/ui';
+import { ScreenState } from '../../shared/ui/ScreenState.js';
 import type { QueuePageViewModel } from './buildQueuePageViewModel.js';
 import type { QueueScreenActions } from './useQueueScreen.js';
 import type { QueueScreenState } from './queueScreenState.js';
@@ -25,7 +27,7 @@ export function QueueScreenView({
     return (
       <main className="pickup-shell">
         <h1>{t('pickup.queue.title')}</h1>
-        <p>{t('pickup.queue.loading')}</p>
+        <ScreenState variant="loading" message={t('pickup.queue.loading')} />
       </main>
     );
   }
@@ -34,9 +36,11 @@ export function QueueScreenView({
     return (
       <main className="pickup-shell">
         <h1>{t('pickup.queue.title')}</h1>
-        <p className="pickup-message pickup-message--error">
-          {viewModel?.errorMessage ?? t('pickup.toast.queueLoadFailed')}
-        </p>
+        <ScreenState
+          variant="error"
+          message={viewModel?.errorMessage ?? t('pickup.toast.queueLoadFailed')}
+          onRetry={actions.refresh}
+        />
         <p>
           <Link className="pickup-link" to={`/${encodedTenant}/scan`}>
             {t('pickup.queue.backToScan')}
@@ -82,13 +86,9 @@ export function QueueScreenView({
       {viewModel.showOfflineRetryBanner ? (
         <div className="pickup-offline-banner" role="status" data-testid="queue-offline-banner">
           <p>{t('pickup.queue.offlineBanner')}</p>
-          <button
-            className="pickup-button pickup-button--secondary"
-            type="button"
-            onClick={actions.refresh}
-          >
+          <Button surface="pickup" intent="secondary" type="button" onClick={actions.refresh}>
             {t('pickup.queue.retry')}
-          </button>
+          </Button>
         </div>
       ) : null}
 
@@ -117,20 +117,23 @@ export function QueueScreenView({
                 </span>
               ) : null}
             </span>
-            <button
-              className="pickup-button pickup-button--secondary"
+            <Button
+              surface="pickup"
+              intent="secondary"
               type="button"
               onClick={() =>
                 navigate(`/${encodedTenant}/order/${item.fulfillmentId}`)
               }
             >
               {t('pickup.queue.open')}
-            </button>
+            </Button>
           </li>
         ))}
       </ul>
 
-      {viewModel.isEmpty ? <p>{t('pickup.queue.empty')}</p> : null}
+      {viewModel.isEmpty ? (
+        <ScreenState variant="empty" message={t('pickup.queue.empty')} />
+      ) : null}
     </main>
   );
 }

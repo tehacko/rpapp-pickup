@@ -1,7 +1,50 @@
 @import 'pi-kiosk-shared/theme.css';
 
-/* Pickup layout tokens (not in shared theme) */
+/**
+ * MFE-v3-D-02-EXCEPTION — CSS_EXCEPTION permanent path (ADR-FE-PICKUP-STYLING-001)
+ *
+ * Single CSS entry imported from main.tsx — no tailwind.css / PostCSS pipeline.
+ * SSOT: rpappp/docs/FRONTEND/PICKUP_STYLING_ADR.md
+ *
+ * Sections:
+ *  1. Shared theme import (above)
+ *  2. @theme bridge — :root mirrors shared/src/tokens/theme.css @theme (sync on S-2)
+ *  3. Dark mode — prefers-color-scheme (DECISION-2 hybrid)
+ *  4. Layout tokens — spacing, touch, typography (pickup-local only)
+ *  5. .pickup-* composition helpers
+ */
 :root {
+  --color-surface: #ffffff;
+  --color-surface-muted: #f8fafc;
+  --color-surface-elevated: #ffffff;
+  --color-surface-hover: #f1f5f9;
+  --color-on-surface: #0f172a;
+  --color-on-surface-muted: #475569;
+  --color-on-surface-disabled: #94a3b8;
+  --color-primary: #0f172a;
+  --color-primary-foreground: #f8fafc;
+  --color-accent: var(--brand-consumer-accent);
+  --color-accent-foreground: var(--brand-consumer-accent-foreground);
+  --color-accent-hover: #001a33;
+  --color-success: #16a34a;
+  --color-success-foreground: #ecfdf5;
+  --color-danger: #dc2626;
+  --color-danger-foreground: #fef2f2;
+  --color-warning: #d97706;
+  --color-warning-foreground: #fffbeb;
+  --color-border: #e2e8f0;
+  --color-border-strong: #cbd5e1;
+  --color-focus-ring: var(--brand-consumer-accent);
+  --color-disabled-opacity: 0.55;
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --shadow-card: 0 1px 2px rgba(15, 23, 42, 0.06), 0 4px 12px rgba(15, 23, 42, 0.04);
+  --shadow-popover: 0 6px 24px rgba(15, 23, 42, 0.12);
+  --motion-duration-fast: 120ms;
+  --motion-duration-base: 200ms;
+  --motion-easing-standard: cubic-bezier(0.2, 0.8, 0.2, 1);
   --spacing-4: 8px;
   --spacing-6: 12px;
   --spacing-8: 16px;
@@ -15,6 +58,42 @@
   --font-weight-semibold: 600;
   --touch-target-min: 44px;
   --transition-fast: var(--motion-duration-base) var(--motion-easing-standard);
+}
+
+/* §3 — Dark mode (prefers-color-scheme; no .dark toggle in pickup) */
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --color-surface: #0b1220;
+    --color-surface-muted: #0f172a;
+    --color-surface-elevated: #111a2e;
+    --color-surface-hover: #162031;
+    --color-on-surface: #e2e8f0;
+    --color-on-surface-muted: #94a3b8;
+    --color-on-surface-disabled: #64748b;
+    --color-primary: #f8fafc;
+    --color-primary-foreground: #0f172a;
+    --color-accent: var(--brand-consumer-accent);
+    --color-accent-foreground: var(--brand-consumer-accent-foreground);
+    --color-accent-hover: var(--brand-consumer-accent-soft);
+    --color-success: #22c55e;
+    --color-success-foreground: #052e16;
+    --color-danger: #f87171;
+    --color-danger-foreground: #450a0a;
+    --color-warning: #fbbf24;
+    --color-warning-foreground: #451a03;
+    --color-border: #1f2937;
+    --color-border-strong: #334155;
+    --color-focus-ring: var(--brand-consumer-accent-soft);
+    --color-disabled-opacity: 0.5;
+    --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.28), 0 4px 12px rgba(0, 0, 0, 0.2);
+    --shadow-popover: 0 6px 24px rgba(0, 0, 0, 0.36);
+  }
+}
+
+/* §4 — Base document + layout tokens applied */
+html {
+  color-scheme: light dark;
 }
 
 *,
@@ -31,6 +110,7 @@ body {
   background: var(--color-surface-muted);
 }
 
+/* §5 — .pickup-* composition helpers (operator touch UX) */
 .pickup-shell {
   max-width: 720px;
   margin: 0 auto;
@@ -73,7 +153,16 @@ body {
   padding: var(--spacing-4) var(--spacing-6);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  color: var(--color-on-surface);
   font: inherit;
+}
+
+.pickup-input:focus-visible,
+.pickup-button:focus-visible,
+.pickup-tab:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
 }
 
 .pickup-button {
@@ -86,7 +175,7 @@ body {
     var(--color-accent) 0%,
     var(--color-accent) 100%
   );
-  color: white;
+  color: var(--color-accent-foreground);
   font: inherit;
   font-weight: var(--font-weight-medium);
   cursor: pointer;
@@ -99,7 +188,7 @@ body {
 }
 
 .pickup-button--secondary {
-  background: white;
+  background: var(--color-surface);
   color: var(--color-on-surface);
   border: 1px solid var(--color-border);
 }
@@ -115,13 +204,13 @@ body {
   padding: var(--spacing-4) var(--spacing-8);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-xl);
-  background: white;
+  background: var(--color-surface);
   cursor: pointer;
 }
 
 .pickup-tab--active {
   border-color: var(--color-accent);
-  background: rgba(59, 130, 246, 0.08);
+  background: var(--color-surface-hover);
   font-weight: var(--font-weight-semibold);
 }
 
@@ -129,7 +218,7 @@ body {
   margin: 0;
   padding: var(--spacing-6);
   border-radius: var(--radius-lg);
-  background: white;
+  background: var(--color-surface-elevated);
   box-shadow: var(--shadow-card);
 }
 
@@ -152,7 +241,7 @@ body {
 .pickup-table {
   width: 100%;
   border-collapse: collapse;
-  background: white;
+  background: var(--color-surface-elevated);
   border-radius: var(--radius-xl);
   overflow: hidden;
   box-shadow: var(--shadow-card);
@@ -196,14 +285,14 @@ body {
   gap: var(--spacing-6);
   align-items: center;
   padding: var(--spacing-8);
-  background: white;
+  background: var(--color-surface-elevated);
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-card);
 }
 
 .pickup-panel {
   padding: var(--spacing-10);
-  background: white;
+  background: var(--color-surface-elevated);
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-card);
 }

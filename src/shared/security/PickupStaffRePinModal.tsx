@@ -80,13 +80,18 @@ export function PickupStaffRePinModal({
   }
 
   return (
-    <div className="pickup-modal-backdrop" role="presentation" onClick={handleCancel}>
+    <>
+      <button
+        type="button"
+        className="pickup-modal-backdrop"
+        aria-label={t('pickup.repin.cancel')}
+        onClick={handleCancel}
+      />
       <section
         className="pickup-modal"
         role="dialog"
         aria-modal="true"
         aria-labelledby="pickup-repin-title"
-        onClick={(event) => event.stopPropagation()}
       >
         <h2 id="pickup-repin-title">{t(titleKey)}</h2>
         <p>{t(descriptionKey)}</p>
@@ -128,6 +133,6 @@ export function PickupStaffRePinModal({
           </p>
         ) : null}
       </section>
-    </div>
+    </>
   );
 }

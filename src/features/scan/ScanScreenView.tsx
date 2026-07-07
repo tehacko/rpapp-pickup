@@ -1,5 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { Button, Card } from 'pi-kiosk-shared/ui';
+import { ScreenState } from '../../shared/ui/ScreenState.js';
 import type { ScanPageViewModel } from './buildScanPageViewModel.js';
 import type { ScanScreenActions } from './useScanScreen.js';
 import type { ScanScreenState } from './scanScreenState.js';
@@ -13,7 +15,7 @@ export interface ScanScreenViewProps {
 }
 
 export function ScanScreenView({
-  screenState,
+  screenState: _screenState,
   viewModel,
   actions,
   tenantCode,
@@ -21,10 +23,6 @@ export function ScanScreenView({
 }: ScanScreenViewProps): JSX.Element {
   const { t } = useTranslation();
   const encodedTenant = encodeURIComponent(tenantCode);
-
-  if (screenState.kind !== 'ready') {
-    return <></>;
-  }
 
   return (
     <main className="pickup-shell">
@@ -36,21 +34,21 @@ export function ScanScreenView({
         </Link>
       </p>
 
-      <section className="pickup-panel pickup-stack">
+      <Card surface="pickup" className="pickup-stack">
         <video ref={videoRef} className="pickup-scan-video" muted playsInline />
         {viewModel.cameraError ? (
-          <p className="pickup-message pickup-message--error">{viewModel.cameraError}</p>
+          <ScreenState
+            variant="error"
+            message={viewModel.cameraError}
+            onRetry={actions.startCamera}
+          />
         ) : null}
         {viewModel.cameraStatus === 'running' ? null : (
-          <button
-            className="pickup-button pickup-button--secondary"
-            type="button"
-            onClick={actions.startCamera}
-          >
+          <Button surface="pickup" intent="secondary" type="button" onClick={actions.startCamera}>
             {t('pickup.scan.startCamera')}
-          </button>
+          </Button>
         )}
-      </section>
+      </Card>
 
       <form className="pickup-stack" onSubmit={actions.resolveToken}>
         <label className="pickup-label" htmlFor="pickup-scan-token">
@@ -63,9 +61,9 @@ export function ScanScreenView({
             disabled={viewModel.isResolving}
           />
         </label>
-        <button className="pickup-button" type="submit" disabled={viewModel.isResolving}>
+        <Button surface="pickup" type="submit" disabled={viewModel.isResolving}>
           {t('pickup.scan.resolve')}
-        </button>
+        </Button>
       </form>
 
       <form className="pickup-stack" onSubmit={actions.resolveShortCode}>
@@ -79,23 +77,21 @@ export function ScanScreenView({
             disabled={viewModel.isResolving}
           />
         </label>
-        <button className="pickup-button" type="submit" disabled={viewModel.isResolving}>
+        <Button surface="pickup" type="submit" disabled={viewModel.isResolving}>
           {t('pickup.scan.resolveCode')}
-        </button>
+        </Button>
       </form>
 
       {viewModel.errorMessage ? (
-        <p className="pickup-message pickup-message--error">{viewModel.errorMessage}</p>
+        <ScreenState variant="error" message={viewModel.errorMessage} />
       ) : null}
 
       {viewModel.wrongPickupPointMessage ? (
-        <p className="pickup-message pickup-message--error" role="alert">
-          {viewModel.wrongPickupPointMessage}
-        </p>
+        <ScreenState variant="error" message={viewModel.wrongPickupPointMessage} />
       ) : null}
 
       {viewModel.resolved ? (
-        <section className="pickup-panel pickup-stack">
+        <Card surface="pickup" className="pickup-stack">
           <p>{t('pickup.scan.fulfillment', { id: viewModel.resolved.fulfillmentId })}</p>
           <p>{t('pickup.scan.status', { status: viewModel.resolved.fulfillmentStatus })}</p>
           <p>
@@ -105,15 +101,15 @@ export function ScanScreenView({
                 : t('pickup.scan.paidNo'),
             })}
           </p>
-          <button
-            className="pickup-button"
+          <Button
+            surface="pickup"
             type="button"
             onClick={actions.openOrder}
             disabled={!viewModel.canOpenOrder}
           >
             {t('pickup.scan.openOrder')}
-          </button>
-        </section>
+          </Button>
+        </Card>
       ) : null}
     </main>
   );

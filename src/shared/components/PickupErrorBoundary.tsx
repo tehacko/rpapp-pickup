@@ -1,18 +1,30 @@
+/**
+ * Pickup staff PWA root error boundary — props aligned with monorepo
+ * `ErrorBoundaryContract` (see `docs/FRONTEND/ERROR_BOUNDARY_CONTRACT.md`).
+ *
+ * Staff/customer/kiosk/pickup apps use `fallback?: ReactNode` + `retryKey` remount.
+ * Admin uses a function fallback variant documented separately.
+ */
 import type { ErrorInfo, ReactNode } from 'react';
 import { Component } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Button } from 'pi-kiosk-shared/ui';
 import { captureBoundaryError } from 'pi-kiosk-shared/sentry';
+import { pickupLogger } from '../logging/pickupLogger.js';
 
-interface PickupErrorBoundaryState {
+/** Monorepo contract for staff/customer/kiosk/pickup error boundaries. */
+export interface ErrorBoundaryContract {
+  readonly children: ReactNode;
+  readonly fallback?: ReactNode;
+}
+
+export interface PickupErrorBoundaryState {
   hasError: boolean;
   error?: Error;
   retryKey: number;
 }
 
-interface PickupErrorBoundaryProps {
-  readonly children: ReactNode;
-  readonly fallback?: ReactNode;
-}
+export type PickupErrorBoundaryProps = ErrorBoundaryContract;
 
 function PickupErrorBoundaryFallback({
   onRetry,
@@ -21,13 +33,15 @@ function PickupErrorBoundaryFallback({
 }): JSX.Element {
   const { t } = useTranslation('pickup');
   return (
-    <div className="pickup-error-boundary">
-      <h1>{t('app.errorBoundary.title', { defaultValue: 'Something went wrong' })}</h1>
-      <p>{t('app.errorBoundary.message', { defaultValue: 'Please reload or try again.' })}</p>
-      <button className="pickup-button" type="button" onClick={onRetry}>
-        {t('app.errorBoundary.retry', { defaultValue: 'Try again' })}
-      </button>
-    </div>
+    <main className="pickup-shell" role="alert">
+      <div className="pickup-panel pickup-stack">
+        <h1>{t('app.errorBoundary.title', { defaultValue: 'Something went wrong' })}</h1>
+        <p>{t('app.errorBoundary.message', { defaultValue: 'Please reload or try again.' })}</p>
+        <Button surface="pickup" type="button" onClick={onRetry}>
+          {t('app.errorBoundary.retry', { defaultValue: 'Try again' })}
+        </Button>
+      </div>
+    </main>
   );
 }
 
@@ -48,6 +62,12 @@ export class PickupErrorBoundary extends Component<
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
+    pickupLogger.error('ErrorBoundary caught an error', error, {
+      module: 'ErrorBoundary',
+      feature: 'shell',
+      operation: 'componentDidCatch',
+      componentStack: errorInfo.componentStack,
+    });
     captureBoundaryError(error, errorInfo);
   }
 

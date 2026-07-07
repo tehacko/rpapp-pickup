@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { ScreenState } from '../../shared/ui/ScreenState.js';
 import { HoldReleasePanel } from '../../components/HoldReleasePanel.js';
 import { PartialConfirmPanel } from '../../components/PartialConfirmPanel.js';
 import { RefusePanel } from '../../components/RefusePanel.js';
@@ -27,7 +28,7 @@ export function OrderScreenView({
   if (screenState.kind === 'loading') {
     return (
       <main className="pickup-shell">
-        <p>{t('pickup.order.loading')}</p>
+        <ScreenState variant="loading" message={t('pickup.order.loading')} />
       </main>
     );
   }
@@ -57,10 +58,16 @@ export function OrderScreenView({
   if (screenState.kind === 'loadFailed' || viewModel === null) {
     return (
       <main className="pickup-shell">
-        <p>{t('pickup.order.loadFailed')}</p>
-        <Link className="pickup-link" to={`/${encodedTenant}/scan`}>
-          {t('pickup.order.backToScan')}
-        </Link>
+        <ScreenState variant="error" message={t('pickup.order.loadFailed')} />
+        <p>
+          <Link className="pickup-link" to={`/${encodedTenant}/scan`}>
+            {t('pickup.order.backToScan')}
+          </Link>
+          {' · '}
+          <Link className="pickup-link" to={`/${encodedTenant}/queue`}>
+            {t('pickup.order.queue')}
+          </Link>
+        </p>
       </main>
     );
   }

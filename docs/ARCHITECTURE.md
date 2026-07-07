@@ -110,5 +110,91 @@ StaffHubPage (thin shell in features/hub/)
 ## Shared dependencies
 
 - `pi-kiosk-shared`: rate-limit helpers, submit cooldown, barcode scanner (no React screen types in shared).
+- `pi-kiosk-shared/ui`: cross-surface atoms — **`Button`**, **`Card`**, **`FormField`** (FormField surface recipes pending `MFE-v3-S-05`), Turnstile widgets for login.
 - `src/api/pickupApi.ts`: HTTP transport; gateways wrap it for testability.
 - `src/components/*Panel.tsx`: reusable fulfillment UI blocks used by `OrderScreenView`.
+
+---
+
+## MFE alignment (monorepo screen template)
+
+**PR-ID:** `MFE-v3-D-06` · **FE-PR-13**  
+Pickup humble-object layering is promoted into the monorepo screen template for cross-surface discoverability:
+
+| Doc | Role |
+|-----|------|
+| [`rpapp-admin/docs/SCREEN_TEMPLATE.md`](../../rpapp-admin/docs/SCREEN_TEMPLATE.md) | Admin gold ref **plus** appended pickup section (layering table, contrast matrix, file naming) |
+| This file | Pickup-specific depth — ScreenState unions, polling, error conventions, gateway ports |
+| [`docs/FRONTEND/PRIMITIVE_OWNERSHIP.md`](../../docs/FRONTEND/PRIMITIVE_OWNERSHIP.md) | Atom ownership, `surface` matrix, import boundaries |
+| [`docs/STYLING.md`](STYLING.md) | CSS_EXCEPTION stack, token bridge, `.pickup-*` layout helpers |
+
+Admin agents implementing pickup-adjacent features (devices, pickup points) stay on admin patterns; **fulfillment operator UI** in `rpapp-pickup` follows the humble-object table at the top of this doc.
+
+---
+
+## Shared UI primitives — `surface="pickup"`
+
+**Added:** `MFE-v3-S-03` (`Button`, `Card`) · adopted in fulfillment views via `MFE-v3-D-04`
+
+Pickup is a **CSS_EXCEPTION** surface (plain CSS + `theme.css`, no Tailwind). Shared atoms render pickup styling through explicit `surface="pickup"` — the recipe lives in `shared/src/ui/Button/Button.tsx` and `Card/Card.tsx`, using semantic tokens (`--color-accent`, `--color-surface-*`, `--color-focus-ring`, `--radius-lg`).
+
+### Import and caller rules
+
+```tsx
+import { Button, Card } from 'pi-kiosk-shared/ui';
+```
+
+| Rule | Detail |
+|------|--------|
+| **Always pass `surface="pickup"`** | Default on `Button` / `Card` is `customer`; omitting `surface` breaks operator styling |
+| **Views only** | Import in `*ScreenView.tsx` (and future migrated panels); hooks stay free of JSX primitives |
+| **Layout helpers** | Pair atoms with `.pickup-shell`, `.pickup-stack`, `.pickup-label`, `.pickup-input` from `src/styles/app.css` |
+| **No admin bridge** | Unlike admin `surfacePrimitives.tsx`, pickup imports `pi-kiosk-shared/ui` directly |
+
+### `Button surface="pickup"`
+
+| Prop | Values | Notes |
+|------|--------|-------|
+| `intent` | `primary` (default), `secondary`, `ghost`, `danger`, `success` | Maps to pickup token recipes; touch-friendly heights |
+| `size` | `sm`, `md` (default), `lg`, `xl` | Operator defaults favor `md`+ |
+| `block` | `boolean` | Full-width CTA on narrow staff devices |
+| `type` | `button` \| `submit` | Always set explicitly on forms |
+
+**Reference implementations:** `ScanScreenView.tsx`, `QueueScreenView.tsx` — all CTAs use `Button surface="pickup"`.
+
+```tsx
+<Button surface="pickup" intent="secondary" type="button" onClick={actions.refresh}>
+  {t('pickup.queue.refresh')}
+</Button>
+<Button surface="pickup" type="submit" disabled={viewModel.isResolving}>
+  {t('pickup.scan.resolve')}
+</Button>
+```
+
+### `Card surface="pickup"`
+
+Use for grouped operator content (scan preview, resolve result, queue filters). Pass `className="pickup-stack"` for vertical rhythm.
+
+```tsx
+<Card surface="pickup" className="pickup-stack">
+  {/* panel content */}
+</Card>
+```
+
+### Legacy `.pickup-button` (migration)
+
+| Status | Location |
+|--------|----------|
+| **Migrated** | `ScanScreenView`, `QueueScreenView` — shared `Button` |
+| **Legacy CSS** | `src/styles/app.css` `.pickup-button`, `.pickup-button--secondary` |
+| **Still on legacy markup** | Order panels (`HoldReleasePanel`, `RefusePanel`, …), hub `Link` nav, barcode-assign, sell, login, `ScreenState` retry buttons |
+
+New work in `*ScreenView.tsx` **must** use `Button surface="pickup"`. Remaining `.pickup-button` call sites migrate in Track D (`MFE-v3-D-04` and follow-ups). For `react-router` navigation styled as buttons, use `Link` + `.pickup-link` or wrap with shared `Button` + `onClick` until a link variant lands.
+
+### What stays pickup-local
+
+| Concern | Owner | Not in `pi-kiosk-shared` |
+|---------|-------|--------------------------|
+| `ScreenState` React component | `src/shared/ui/ScreenState.tsx` | Per-app clone (GAP-5-03); shared package exports **types only** (`MFE-v3-S-06`) |
+| Fulfillment panels | `src/components/*Panel.tsx` | Feature-specific composition |
+| `.pickup-*` layout CSS | `src/styles/app.css` | Composition helpers, not atom duplicates |

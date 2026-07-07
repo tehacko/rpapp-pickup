@@ -52,6 +52,7 @@ export interface UseOrderScreenResult {
   readonly screenState: OrderScreenState;
   readonly viewModel: OrderPageViewModel | null;
   readonly actions: OrderScreenActions;
+  readonly rePinModal: JSX.Element | null;
 }
 
 export function useOrderScreen(
