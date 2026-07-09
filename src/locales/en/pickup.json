@@ -176,6 +176,10 @@
   "pickup.common.yes": "yes",
   "pickup.common.no": "no",
   "pickup.common.dash": "—",
+  "pickup.common.loading": "Loading…",
+  "pickup.common.error": "Something went wrong.",
+  "pickup.common.errorTitle": "Error",
+  "pickup.common.retry": "Try again",
   "pickup.sell.title": "Staff sell",
   "pickup.sell.backToHub": "Back to hub",
   "pickup.sell.disabled": "Staff selling is not enabled for this sales point.",
@@ -195,5 +199,8 @@
   "pickup.sell.checkoutSuccess": "Payment complete. Transaction #{{transactionId}}.",
   "pickup.sell.checkoutFailed": "Cash checkout failed.",
   "pickup.sell.cashDisabled": "Cash is not enabled for this sales point.",
-  "pickup.sell.dismiss": "Dismiss"
+  "pickup.sell.dismiss": "Dismiss",
+  "app.errorBoundary.title": "Something went wrong",
+  "app.errorBoundary.message": "Please reload the page or try again.",
+  "app.errorBoundary.retry": "Try again"
 }

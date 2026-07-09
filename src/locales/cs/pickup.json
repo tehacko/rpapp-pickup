@@ -176,6 +176,10 @@
   "pickup.common.yes": "ano",
   "pickup.common.no": "ne",
   "pickup.common.dash": "—",
+  "pickup.common.loading": "Načítání…",
+  "pickup.common.error": "Něco se pokazilo.",
+  "pickup.common.errorTitle": "Chyba",
+  "pickup.common.retry": "Zkusit znovu",
   "pickup.sell.title": "Prodej personálu",
   "pickup.sell.backToHub": "Zpět na hub",
   "pickup.sell.disabled": "Prodej personálu není pro tento prodejní bod zapnutý.",
@@ -195,5 +199,8 @@
   "pickup.sell.checkoutSuccess": "Platba dokončena. Transakce #{{transactionId}}.",
   "pickup.sell.checkoutFailed": "Hotovostní platba selhala.",
   "pickup.sell.cashDisabled": "Hotovost není pro tento prodejní bod povolena.",
-  "pickup.sell.dismiss": "Zavřít"
+  "pickup.sell.dismiss": "Zavřít",
+  "app.errorBoundary.title": "Něco se pokazilo",
+  "app.errorBoundary.message": "Obnovte stránku nebo to zkuste znovu.",
+  "app.errorBoundary.retry": "Zkusit znovu"
 }

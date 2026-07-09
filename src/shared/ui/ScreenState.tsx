@@ -12,20 +12,20 @@ export const ScreenState = memo<ScreenStateProps>((props) => {
   if (variant === 'loading') {
     return (
       <div className="pickup-screen-state pickup-screen-state--loading" role="status" aria-live="polite">
-        <p>{message ?? title ?? t('pickup.common.loading', { defaultValue: 'Loading…' })}</p>
+        <p>{message ?? title ?? t('pickup.common.loading')}</p>
       </div>
     );
   }
 
   if (variant === 'error') {
-    const errorMessage = error?.message ?? message ?? t('pickup.common.error', { defaultValue: 'Something went wrong' });
+    const errorMessage = error?.message ?? message ?? t('pickup.common.error');
     return (
       <div className="pickup-screen-state pickup-screen-state--error" role="alert">
-        {title ? <h2>{title}</h2> : <h2>{t('pickup.common.errorTitle', { defaultValue: 'Error' })}</h2>}
+        {title ? <h2>{title}</h2> : <h2>{t('pickup.common.errorTitle')}</h2>}
         <p>{errorMessage}</p>
         {onRetry ? (
           <button type="button" className="pickup-button" onClick={onRetry}>
-            {t('pickup.common.retry', { defaultValue: 'Try again' })}
+            {t('pickup.common.retry')}
           </button>
         ) : null}
       </div>

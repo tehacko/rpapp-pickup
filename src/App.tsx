@@ -1,5 +1,6 @@
 import { lazy, Suspense } from 'react';
 import { Route, Routes } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 
 const LoginPage = lazy(async () => {
   const mod = await import('./pages/LoginPage');
@@ -43,7 +44,8 @@ const SellPage = lazy(async () => {
 });
 
 function RouteFallback(): JSX.Element {
-  return <p className="pickup-shell">Loading…</p>;
+  const { t } = useTranslation('pickup');
+  return <p className="pickup-shell">{t('pickup.common.loading')}</p>;
 }
 
 export function App(): JSX.Element {

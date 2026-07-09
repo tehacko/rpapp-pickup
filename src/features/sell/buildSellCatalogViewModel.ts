@@ -22,7 +22,7 @@ export interface SellCatalogViewModel {
 }
 
 function formatPrice(price: number, currency: string): string {
-  return new Intl.NumberFormat('cs-CZ', {
+  return new Intl.NumberFormat(undefined, {
     style: 'currency',
     currency,
     minimumFractionDigits: 0,

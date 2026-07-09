@@ -1,7 +1,9 @@
-export const DEFAULT_TENANT_CODE =
-  typeof import.meta.env.VITE_DEFAULT_TENANT_CODE === 'string'
-    ? import.meta.env.VITE_DEFAULT_TENANT_CODE.trim()
-    : '';
+import { readViteMetaEnv } from '../shared/vite/readViteMetaEnv.js';
+
+const defaultTenantCode = readViteMetaEnv('VITE_DEFAULT_TENANT_CODE');
+export const DEFAULT_TENANT_CODE = typeof defaultTenantCode === 'string'
+  ? defaultTenantCode.trim()
+  : '';
 
 /** Legacy v1 localStorage key — cleared on sign-out; no longer written (FE-PR-26). */
 export function tokenStorageKey(tenantCode: string): string {

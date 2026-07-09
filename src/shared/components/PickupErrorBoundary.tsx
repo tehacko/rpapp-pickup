@@ -35,10 +35,10 @@ function PickupErrorBoundaryFallback({
   return (
     <main className="pickup-shell" role="alert">
       <div className="pickup-panel pickup-stack">
-        <h1>{t('app.errorBoundary.title', { defaultValue: 'Something went wrong' })}</h1>
-        <p>{t('app.errorBoundary.message', { defaultValue: 'Please reload or try again.' })}</p>
+        <h1>{t('app.errorBoundary.title')}</h1>
+        <p>{t('app.errorBoundary.message')}</p>
         <Button surface="pickup" type="button" onClick={onRetry}>
-          {t('app.errorBoundary.retry', { defaultValue: 'Try again' })}
+          {t('app.errorBoundary.retry')}
         </Button>
       </div>
     </main>

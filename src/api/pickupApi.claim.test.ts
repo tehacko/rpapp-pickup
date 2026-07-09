@@ -5,6 +5,10 @@ jest.mock('../lib/auth.js', () => ({
     Authorization: `Bearer ${accessToken}`,
     'Content-Type': 'application/json',
   }),
+  pickupFetchInit: (init?: RequestInit): RequestInit => ({
+    credentials: 'include',
+    ...init,
+  }),
 }));
 
 jest.mock('../lib/deviceStorage.js', () => ({

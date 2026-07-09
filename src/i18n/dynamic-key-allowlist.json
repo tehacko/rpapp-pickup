@@ -1,0 +1,9 @@
+{
+  "_notes": [
+    "PickupStaffRePinModal uses titleKey/descriptionKey props passed from callers with known i18n key prefixes."
+  ],
+  "patterns": [
+    "titleKey",
+    "descriptionKey"
+  ]
+}
