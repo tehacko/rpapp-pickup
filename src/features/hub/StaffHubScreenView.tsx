@@ -67,17 +67,17 @@ export function StaffHubScreenView({ viewModel, actions }: StaffHubScreenViewPro
       </section>
       <div className="pickup-stack">
         {viewModel.canScan ? (
-          <Link className="pickup-button" to={`/${encodedTenant}/scan`}>
+          <Link className="pickup-button pickup-touch-target" to={`/${encodedTenant}/scan`}>
             {t('pickup.hub.fulfillmentScan')}
           </Link>
         ) : null}
         {viewModel.canAssign ? (
-          <Link className="pickup-button" to={`/${encodedTenant}/barcode-assign`}>
+          <Link className="pickup-button pickup-touch-target" to={`/${encodedTenant}/barcode-assign`}>
             {t('pickup.hub.barcodeAssign')}
           </Link>
         ) : null}
         {viewModel.canSell ? (
-          <Link className="pickup-button" to={`/${encodedTenant}/sell`}>
+          <Link className="pickup-button pickup-touch-target" to={`/${encodedTenant}/sell`}>
             {t('pickup.hub.staffSell')}
           </Link>
         ) : null}

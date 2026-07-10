@@ -1,0 +1,35 @@
+/**
+ * rpapp-pickup responsive extensions (Wave 2 parity).
+ * Registry: docs/FRONTEND/RESPONSIVE_APP_EXTENSIONS.md
+ */
+
+.pickup-touch-target {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* phone-small tier — tighter shell padding below sm */
+@media not all and (--rp-sm-up) {
+  .pickup-shell {
+    padding: var(--spacing-8);
+  }
+}
+
+@media (--rp-md-up) {
+  .pickup-queue-shell {
+    max-width: 48rem;
+    margin-inline: auto;
+  }
+}
+
+@media (forced-colors: active) {
+  .pickup-touch-target,
+  .pickup-card {
+    border: 2px solid ButtonText;
+  }
+
+  :focus-visible {
+    outline: 3px solid Highlight;
+    outline-offset: 2px;
+  }
+}

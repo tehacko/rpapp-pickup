@@ -1,4 +1,6 @@
 @import 'pi-kiosk-shared/theme.css';
+@import 'pi-kiosk-shared/responsive.css';
+@import './pickup.extensions.css';
 
 /**
  * MFE-v3-D-02-EXCEPTION — CSS_EXCEPTION permanent path (ADR-FE-PICKUP-STYLING-001)
@@ -299,4 +301,22 @@ body {
 
 .pickup-panel + .pickup-panel {
   margin-top: var(--spacing-8);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@media (forced-colors: active) {
+  :focus-visible {
+    outline: 3px solid Highlight;
+    outline-offset: 2px;
+  }
 }

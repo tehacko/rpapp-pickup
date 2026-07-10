@@ -44,7 +44,7 @@ export function ScanScreenView({
           />
         ) : null}
         {viewModel.cameraStatus === 'running' ? null : (
-          <Button surface="pickup" intent="secondary" type="button" onClick={actions.startCamera}>
+          <Button surface="pickup" intent="secondary" type="button" className="pickup-touch-target" onClick={actions.startCamera}>
             {t('pickup.scan.startCamera')}
           </Button>
         )}
@@ -61,7 +61,7 @@ export function ScanScreenView({
             disabled={viewModel.isResolving}
           />
         </label>
-        <Button surface="pickup" type="submit" disabled={viewModel.isResolving}>
+        <Button surface="pickup" type="submit" className="pickup-touch-target" disabled={viewModel.isResolving}>
           {t('pickup.scan.resolve')}
         </Button>
       </form>
@@ -77,7 +77,7 @@ export function ScanScreenView({
             disabled={viewModel.isResolving}
           />
         </label>
-        <Button surface="pickup" type="submit" disabled={viewModel.isResolving}>
+        <Button surface="pickup" type="submit" className="pickup-touch-target" disabled={viewModel.isResolving}>
           {t('pickup.scan.resolveCode')}
         </Button>
       </form>
@@ -104,6 +104,7 @@ export function ScanScreenView({
           <Button
             surface="pickup"
             type="button"
+            className="pickup-touch-target"
             onClick={actions.openOrder}
             disabled={!viewModel.canOpenOrder}
           >

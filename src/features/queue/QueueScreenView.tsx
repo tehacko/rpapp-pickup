@@ -25,7 +25,7 @@ export function QueueScreenView({
 
   if (screenState.kind === 'loading') {
     return (
-      <main className="pickup-shell">
+      <main className="pickup-shell pickup-queue-shell">
         <h1>{t('pickup.queue.title')}</h1>
         <ScreenState variant="loading" message={t('pickup.queue.loading')} />
       </main>
@@ -34,7 +34,7 @@ export function QueueScreenView({
 
   if (screenState.kind === 'loadFailed' || viewModel === null) {
     return (
-      <main className="pickup-shell">
+      <main className="pickup-shell pickup-queue-shell">
         <h1>{t('pickup.queue.title')}</h1>
         <ScreenState
           variant="error"
@@ -51,7 +51,7 @@ export function QueueScreenView({
   }
 
   return (
-    <main className="pickup-shell">
+    <main className="pickup-shell pickup-queue-shell">
       <h1>{t('pickup.queue.title')}</h1>
       <p>
         <Link className="pickup-link" to={`/${encodedTenant}/scan`}>
@@ -63,7 +63,7 @@ export function QueueScreenView({
         {viewModel.showPickupPointTabs ? (
           <>
             <button
-              className={`pickup-tab${viewModel.activePickupPointId === 'all' ? ' pickup-tab--active' : ''}`}
+              className={`pickup-tab pickup-touch-target${viewModel.activePickupPointId === 'all' ? ' pickup-tab--active' : ''}`}
               type="button"
               onClick={() => actions.setActivePickupPointId('all')}
             >
@@ -72,7 +72,7 @@ export function QueueScreenView({
             {viewModel.tabs.map((tab) => (
               <button
                 key={String(tab.id)}
-                className={`pickup-tab${viewModel.activePickupPointId === tab.id ? ' pickup-tab--active' : ''}`}
+                className={`pickup-tab pickup-touch-target${viewModel.activePickupPointId === tab.id ? ' pickup-tab--active' : ''}`}
                 type="button"
                 onClick={() => actions.setActivePickupPointId(tab.id)}
               >
@@ -86,7 +86,7 @@ export function QueueScreenView({
       {viewModel.showOfflineRetryBanner ? (
         <div className="pickup-offline-banner" role="status" data-testid="queue-offline-banner">
           <p>{t('pickup.queue.offlineBanner')}</p>
-          <Button surface="pickup" intent="secondary" type="button" onClick={actions.refresh}>
+          <Button surface="pickup" intent="secondary" type="button" className="pickup-touch-target" onClick={actions.refresh}>
             {t('pickup.queue.retry')}
           </Button>
         </div>
@@ -121,6 +121,7 @@ export function QueueScreenView({
               surface="pickup"
               intent="secondary"
               type="button"
+              className="pickup-touch-target"
               onClick={() =>
                 navigate(`/${encodedTenant}/order/${item.fulfillmentId}`)
               }

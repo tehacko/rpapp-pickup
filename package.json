@@ -28,7 +28,10 @@
     "i18n:nonvisible": "node ../scripts/enterprise-hardening/i18n-app-nonvisible.mjs --app=rpapp-pickup",
     "i18n:convergence-gate": "node ../scripts/enterprise-hardening/i18n-convergence-gate.mjs --app=rpapp-pickup",
     "gate:pickup-boundary-check": "node ../scripts/enterprise-hardening/pickup-boundary-check.mjs",
-    "gate:async-state-compliance": "node ../scripts/enterprise-hardening/async-state-compliance.mjs"
+    "gate:async-state-compliance": "node ../scripts/enterprise-hardening/async-state-compliance.mjs",
+    "gate:responsive-contract-check": "node ../scripts/enterprise-hardening/responsive-contract-check.mjs",
+    "gate:responsive-breakpoint-drift": "node ../scripts/enterprise-hardening/responsive-breakpoint-drift.mjs",
+    "gate:viewport-policy-audit": "node ../scripts/enterprise-hardening/viewport-policy-audit.mjs"
   },
   "dependencies": {
     "@marsidev/react-turnstile": "^1.5.3",
@@ -37,7 +40,7 @@
     "@zxing/browser": "^0.1.5",
     "@zxing/library": "^0.21.3",
     "i18next": "^26.3.1",
-    "pi-kiosk-shared": "^2.2.3",
+    "pi-kiosk-shared": "file:../shared",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-i18next": "^17.0.8",
