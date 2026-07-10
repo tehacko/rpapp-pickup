@@ -19,16 +19,20 @@ async function stabilizeForScreenshot(page: Page): Promise<void> {
     content:
       '*, *::before, *::after { animation-duration: 0s !important; transition-duration: 0s !important; }',
   });
+  await page.evaluate(async () => {
+    await document.fonts.ready;
+  });
 }
 
 test.describe('Pickup scan responsive smoke', () => {
-  test.beforeEach(async ({ page, browserName }) => {
-    test.skip(browserName !== 'chromium', 'Chromium-only');
+  test.use({ reducedMotion: 'reduce' });
+
+  test.beforeEach(async ({ page }) => {
     await installPickupScanResponsiveMocks(page);
   });
 
   for (const viewport of VIEWPORTS) {
-    test(`scan screen visible at ${viewport.label}px`, async ({ page }) => {
+    test(`scan screen visible at ${viewport.label}px`, async ({ page, browserName }) => {
       await page.setViewportSize({ width: viewport.width, height: viewport.height });
       await loginAndOpenPickupScan(page);
 
@@ -41,7 +45,7 @@ test.describe('Pickup scan responsive smoke', () => {
       await resolveButton.scrollIntoViewIfNeeded();
       await expect(resolveButton).toBeVisible();
 
-      if (viewport.screenshot) {
+      if (viewport.screenshot && browserName === 'chromium') {
         const main = page.locator('main').first();
         await stabilizeForScreenshot(page);
         await expect(main).toHaveScreenshot(`pickup-scan-smoke-${viewport.label}.png`, {

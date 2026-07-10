@@ -37,6 +37,13 @@ export default defineConfig({
       },
     },
     {
+      name: 'phone-390-webkit',
+      use: {
+        ...devices['Desktop Safari'],
+        viewport: { width: 390, height: 844 },
+      },
+    },
+    {
       name: 'tablet-768',
       use: {
         ...devices['Desktop Chrome'],
