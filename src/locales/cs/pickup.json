@@ -1,4 +1,11 @@
 {
+  "shell": {
+    "language": {
+      "groupLabel": "Jazyk rozhraní",
+      "cs": "Čeština",
+      "en": "English"
+    }
+  },
   "pickup.login.title": "Přihlášení obsluhy vyzvednutí",
   "pickup.login.salesPointId": "ID platebního místa",
   "pickup.login.salesPointIdPlaceholder": "ID místa nebo superpickuper",

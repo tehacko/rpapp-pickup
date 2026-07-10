@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react';
 import { Route, Routes } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { LanguageToggle } from 'pi-kiosk-shared/ui';
 
 const LoginPage = lazy(async () => {
   const mod = await import('./pages/LoginPage');
@@ -50,8 +51,10 @@ function RouteFallback(): JSX.Element {
 
 export function App(): JSX.Element {
   return (
-    <Suspense fallback={<RouteFallback />}>
-      <Routes>
+    <>
+      <LanguageToggle surface="pickup" i18nNamespace="pickup" />
+      <Suspense fallback={<RouteFallback />}>
+        <Routes>
         <Route path="/" element={<RootPage />} />
         <Route path="/:tenantCode/login" element={<LoginPage />} />
         <Route path="/:tenantCode/hub" element={<StaffHubPage />} />
@@ -67,7 +70,8 @@ export function App(): JSX.Element {
         <Route path="/:tenantCode/sell" element={<SellPage />} />
         <Route path="/:tenantCode/order/:fulfillmentId" element={<OrderPage />} />
         <Route path="*" element={<RootPage />} />
-      </Routes>
-    </Suspense>
+        </Routes>
+      </Suspense>
+    </>
   );
 }

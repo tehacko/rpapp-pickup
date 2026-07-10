@@ -1,4 +1,11 @@
 {
+  "shell": {
+    "language": {
+      "groupLabel": "Interface language",
+      "cs": "Čeština",
+      "en": "English"
+    }
+  },
   "pickup.login.title": "Pickup staff login",
   "pickup.login.salesPointId": "Sales point ID",
   "pickup.login.salesPointIdPlaceholder": "sales point ID or superpickuper",
