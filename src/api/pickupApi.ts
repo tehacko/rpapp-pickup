@@ -165,6 +165,7 @@ export interface PickupStaffEntitlementSnapshot {
   readonly queueConfig: {
     readonly pushStrategy: 'poll' | 'sse';
     readonly devicesPerPointThreshold: number;
+    readonly degradedQueuePolling?: boolean;
   };
 }
 
@@ -340,7 +341,7 @@ export async function fetchQueue(
   tenantCode: string,
   accessToken: string,
   options?: FetchQueueOptions,
-): Promise<{ items: QueueItem[]; ok: boolean }> {
+): Promise<{ items: QueueItem[]; ok: boolean; httpStatus?: number }> {
   const params = new URLSearchParams();
   if (options?.pickupPointId !== undefined) {
     params.set('pickupPointId', String(options.pickupPointId));
@@ -354,7 +355,7 @@ export async function fetchQueue(
     if (res.status === 401) {
       noteUnauthorized(path);
     }
-    return { items: [], ok: false };
+    return { items: [], ok: false, httpStatus: res.status };
   }
   const body = (await res.json()) as { data?: { items?: QueueItem[] } };
   return { items: body.data?.items ?? [], ok: true };

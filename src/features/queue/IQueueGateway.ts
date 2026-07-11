@@ -4,6 +4,7 @@ import type { FetchQueueOptions } from '../../api/pickupApi.js';
 export interface QueueFetchResult {
   readonly items: readonly QueueItem[];
   readonly ok: boolean;
+  readonly httpStatus?: number;
 }
 
 export interface IQueueGateway {

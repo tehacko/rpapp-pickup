@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { computePollRetryDelayMs } from 'pi-kiosk-shared';
 import { usePickupEntitlement } from '../../hooks/usePickupEntitlement.js';
 import { useStaffToken, useTenantCode } from '../../hooks/useStaffToken.js';
 import { getPairedDevice } from '../../lib/deviceStorage.js';
@@ -11,12 +12,49 @@ import {
   type ActivePickupPointFilter,
   type QueuePageViewModel,
 } from './buildQueuePageViewModel.js';
-import type { IQueueGateway } from './IQueueGateway.js';
+import type { IQueueGateway, QueueFetchResult } from './IQueueGateway.js';
 import { queueGateway } from './queueGateway.js';
 import { resolveQueueScreenState, type QueueScreenState } from './queueScreenState.js';
 import { usePickupQueueSubscription } from './usePickupQueueSubscription.js';
 
-const QUEUE_POLL_INTERVAL_MS = 30_000;
+export const QUEUE_POLL_INTERVAL_MS = 30_000;
+export const QUEUE_POLL_DEGRADED_MIN_MS = 15_000;
+export const QUEUE_POLL_DEGRADED_MAX_MS = 30_000;
+const QUEUE_POLL_BACKOFF_BASE_MS = 2_000;
+const QUEUE_POLL_BACKOFF_MAX_MS = 120_000;
+
+export function resolveQueuePollIntervalMs(degradedQueuePolling: boolean): number {
+  if (!degradedQueuePolling) {
+    return QUEUE_POLL_INTERVAL_MS;
+  }
+  return (
+    QUEUE_POLL_DEGRADED_MIN_MS +
+    Math.floor(Math.random() * (QUEUE_POLL_DEGRADED_MAX_MS - QUEUE_POLL_DEGRADED_MIN_MS + 1))
+  );
+}
+
+function shouldBackoffQueuePoll(httpStatus: number | undefined): boolean {
+  return (
+    httpStatus === 429 ||
+    httpStatus === 503 ||
+    (httpStatus !== undefined && httpStatus >= 500)
+  );
+}
+
+export function resolveQueuePollRetryDelayMs(
+  attemptIndex: number,
+  httpStatus: number | undefined,
+  normalIntervalMs: number,
+): number {
+  if (!shouldBackoffQueuePoll(httpStatus)) {
+    return normalIntervalMs;
+  }
+  return computePollRetryDelayMs(attemptIndex, { status: httpStatus }, {
+    baseMs: QUEUE_POLL_BACKOFF_BASE_MS,
+    maxMs: QUEUE_POLL_BACKOFF_MAX_MS,
+    jitterRatio: 0,
+  });
+}
 
 function resolveServerPickupPointId(
   activePickupPointId: ActivePickupPointFilter,
@@ -45,6 +83,12 @@ export function useQueueScreen(gateway: IQueueGateway = queueGateway): UseQueueS
   const accessToken = useStaffToken();
   const { snapshot: entitlementSnapshot } = usePickupEntitlement(tenantCode);
   const queuePushStrategy = entitlementSnapshot?.queueConfig.pushStrategy ?? 'poll';
+  const degradedQueuePolling =
+    entitlementSnapshot?.queueConfig.degradedQueuePolling ?? false;
+  const pollIntervalMs = useMemo(
+    () => resolveQueuePollIntervalMs(degradedQueuePolling),
+    [degradedQueuePolling],
+  );
   const { t } = useTranslation();
   const isOnline = useOnlineStatus();
   const [items, setItems] = useState<QueueItem[]>([]);
@@ -85,9 +129,9 @@ export function useQueueScreen(gateway: IQueueGateway = queueGateway): UseQueueS
     setLoading(false);
   }, []);
 
-  const refreshQueue = useCallback(async (): Promise<void> => {
+  const refreshQueue = useCallback(async (): Promise<QueueFetchResult | null> => {
     if (!accessToken) {
-      return;
+      return null;
     }
     const pickupPointId = resolveServerPickupPointId(effectiveFilter);
     const result = await gateway.fetchQueue(
@@ -96,6 +140,7 @@ export function useQueueScreen(gateway: IQueueGateway = queueGateway): UseQueueS
       pickupPointId !== undefined ? { pickupPointId } : undefined,
     );
     applyQueueResult(result, false);
+    return result;
   }, [accessToken, effectiveFilter, applyQueueResult, gateway, tenantCode]);
 
   const serverPickupPointId = resolveServerPickupPointId(effectiveFilter);
@@ -140,13 +185,47 @@ export function useQueueScreen(gateway: IQueueGateway = queueGateway): UseQueueS
     if (!accessToken || queueTransport === 'sse') {
       return;
     }
-    const intervalId = window.setInterval(() => {
-      void refreshQueue();
-    }, QUEUE_POLL_INTERVAL_MS);
-    return () => {
-      window.clearInterval(intervalId);
+    let cancelled = false;
+    let pollAttempt = 0;
+    let timeoutId: number | undefined;
+
+    const schedulePoll = (delayMs: number): void => {
+      if (cancelled) {
+        return;
+      }
+      timeoutId = window.setTimeout(() => {
+        void executePoll();
+      }, delayMs);
     };
-  }, [accessToken, queueTransport, refreshQueue]);
+
+    const executePoll = async (): Promise<void> => {
+      const result = await refreshQueue();
+      if (cancelled || result === null) {
+        return;
+      }
+      let nextDelayMs = pollIntervalMs;
+      if (!result.ok && shouldBackoffQueuePoll(result.httpStatus)) {
+        nextDelayMs = resolveQueuePollRetryDelayMs(
+          pollAttempt,
+          result.httpStatus,
+          pollIntervalMs,
+        );
+        pollAttempt += 1;
+      } else if (result.ok) {
+        pollAttempt = 0;
+      }
+      schedulePoll(nextDelayMs);
+    };
+
+    schedulePoll(pollIntervalMs);
+
+    return () => {
+      cancelled = true;
+      if (timeoutId !== undefined) {
+        window.clearTimeout(timeoutId);
+      }
+    };
+  }, [accessToken, pollIntervalMs, queueTransport, refreshQueue]);
 
   const screenState = useMemo(
     () => resolveQueueScreenState(loading, loadFailed, items),
