@@ -8,6 +8,8 @@ import { ReprintPanel } from '../../components/ReprintPanel.js';
 import type { OrderPageViewModel } from './buildOrderPageViewModel.js';
 import type { OrderScreenActions } from './useOrderScreen.js';
 import type { OrderScreenState } from './orderScreenState.js';
+import { PromoDiscountLine } from './PromoDiscountLine.js';
+import { usePickupEntitlement } from '../../hooks/usePickupEntitlement.js';
 
 export interface OrderScreenViewProps {
   readonly screenState: OrderScreenState;
@@ -23,6 +25,8 @@ export function OrderScreenView({
   tenantCode,
 }: OrderScreenViewProps): JSX.Element {
   const { t } = useTranslation();
+  const entitlement = usePickupEntitlement(tenantCode);
+  const promotionsEnabled = entitlement.snapshot?.promotionsProgram === true;
   const encodedTenant = encodeURIComponent(tenantCode);
 
   if (screenState.kind === 'loading') {
@@ -92,6 +96,11 @@ export function OrderScreenView({
           value: order.paymentRequired ? t('pickup.common.yes') : t('pickup.common.no'),
         })}
       </p>
+
+      <PromoDiscountLine
+        promotionsEnabled={promotionsEnabled}
+        appliedDiscount={order.promotions?.appliedDiscount}
+      />
 
       <PartialConfirmPanel
         lines={order.lines}

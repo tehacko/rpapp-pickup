@@ -26,6 +26,13 @@ export interface ResolveResponse {
   heldAt: string | null;
   holdReason: string | null;
   lines: FulfillmentLine[];
+  promotions?: {
+    readonly appliedDiscount: {
+      readonly cartDiscountAmount: number;
+      readonly currency: 'CZK';
+      readonly source: 'PROMO';
+    } | null;
+  };
 }
 
 export interface QueueItem {

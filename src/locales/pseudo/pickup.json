@@ -133,6 +133,7 @@
   "pickup.order.handoff": "[!! Handoff:  !!]{{mode}}",
   "pickup.order.pickupPoint": "[!! Pickup point:  !!]{{name}}",
   "pickup.order.paymentRequired": "[!! Payment required:  !!]{{value}}",
+  "pickup.order.promoDiscount": "[!! Promo discount applied:  !!]{{amount}} {{currency}}[!!  (read-only) !!]",
   "pickup.order.loading": "[!! Loading order… !!]",
   "pickup.order.loadFailed": "[!! Unable to load order. Return to scan or queue. !!]",
   "pickup.order.claimConflictTitle": "[!! Order in use !!]",

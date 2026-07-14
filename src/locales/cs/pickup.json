@@ -133,6 +133,7 @@
   "pickup.order.handoff": "Předání: {{mode}}",
   "pickup.order.pickupPoint": "Odběrné místo: {{name}}",
   "pickup.order.paymentRequired": "Vyžadována platba: {{value}}",
+  "pickup.order.promoDiscount": "Promo sleva uplatněna: {{amount}} {{currency}} (jen pro čtení)",
   "pickup.order.loading": "Načítání objednávky…",
   "pickup.order.loadFailed": "Objednávku se nepodařilo načíst. Vraťte se ke skenování nebo do fronty.",
   "pickup.order.claimConflictTitle": "Objednávka je obsazená",

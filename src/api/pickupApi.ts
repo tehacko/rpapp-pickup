@@ -161,6 +161,7 @@ export interface PickupStaffEntitlementSnapshot {
   readonly staffPickupScan: boolean;
   readonly assignBarcode: boolean;
   readonly orderPickupInfrastructure: boolean;
+  readonly promotionsProgram: boolean;
   readonly deviceFlags: PickupStaffDeviceFlags;
   readonly queueConfig: {
     readonly pushStrategy: 'poll' | 'sse';
