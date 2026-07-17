@@ -21,7 +21,7 @@ export function PromoDiscountLine(input: {
   }
 
   return (
-    <p className="pickup-promo-discount" data-testid="pickup-promo-discount">
+    <p className="text-sm font-medium text-[var(--color-success)]" data-testid="pickup-promo-discount">
       {t('pickup.order.promoDiscount', {
         amount: input.appliedDiscount.cartDiscountAmount.toFixed(2),
         currency: input.appliedDiscount.currency,

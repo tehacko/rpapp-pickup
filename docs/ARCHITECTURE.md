@@ -2,6 +2,19 @@
 
 Pickup staff PWA for order fulfillment (scan, queue, confirm, hold, refuse).
 
+## App shell + routing (media PWA)
+
+| Piece | Path | Role |
+|-------|------|------|
+| **PickupAppShell** | `src/shared/ui/PickupAppShell.tsx` | Auth guard (no session → `/:tenantCode/login`); compact bottom nav + More; md+ side nav (64/224); content column max **720px**; measures `--pickup-bottom-chrome` |
+| **App routes** | `src/App.tsx` | Authenticated routes nested under shell; `login` + `device-pairing` **outside** shell |
+| **RootPage** | `src/pages/RootPage.tsx` | Last-tenant → hub (shell guard → login) / `DEFAULT_TENANT` → login / else tenant hint |
+| **PWA** | VitePWA + `src/app/pwa/*` | Online-first installable shell; `runtimeCaching: []`; BroadcastChannel `rpapp-pickup-pwa-reload`; shortcuts hub/scan/queue |
+
+**Nav rule:** Screens must not invent a second nav — chrome is shell-owned only. Sell tab IFF `sellingEnabled === true` (never a `staff_sell` entitlement myth).
+
+**Styling:** **ADOPT_TAILWIND** — see [`STYLING.md`](./STYLING.md) and [`../../docs/FRONTEND/PICKUP_STYLING_ADR.md`](../../docs/FRONTEND/PICKUP_STYLING_ADR.md).
+
 ## Humble object (ScreenState + ViewModel)
 
 Fulfillment screens follow a **pickup-first humble object** split:
@@ -126,7 +139,7 @@ Pickup humble-object layering is promoted into the monorepo screen template for 
 | [`rpapp-admin/docs/SCREEN_TEMPLATE.md`](../../rpapp-admin/docs/SCREEN_TEMPLATE.md) | Admin gold ref **plus** appended pickup section (layering table, contrast matrix, file naming) |
 | This file | Pickup-specific depth — ScreenState unions, polling, error conventions, gateway ports |
 | [`docs/FRONTEND/PRIMITIVE_OWNERSHIP.md`](../../docs/FRONTEND/PRIMITIVE_OWNERSHIP.md) | Atom ownership, `surface` matrix, import boundaries |
-| [`docs/STYLING.md`](STYLING.md) | CSS_EXCEPTION stack, token bridge, `.pickup-*` layout helpers |
+| [`docs/STYLING.md`](STYLING.md) | **ADOPT_TAILWIND** stack, token bridge, legacy `.pickup-*` until screen migration |
 
 Admin agents implementing pickup-adjacent features (devices, pickup points) stay on admin patterns; **fulfillment operator UI** in `rpapp-pickup` follows the humble-object table at the top of this doc.
 
@@ -136,7 +149,7 @@ Admin agents implementing pickup-adjacent features (devices, pickup points) stay
 
 **Added:** `MFE-v3-S-03` (`Button`, `Card`) · adopted in fulfillment views via `MFE-v3-D-04`
 
-Pickup is a **CSS_EXCEPTION** surface (plain CSS + `theme.css`, no Tailwind). Shared atoms render pickup styling through explicit `surface="pickup"` — the recipe lives in `shared/src/ui/Button/Button.tsx` and `Card/Card.tsx`, using semantic tokens (`--color-accent`, `--color-surface-*`, `--color-focus-ring`, `--radius-lg`).
+Pickup is an **ADOPT_TAILWIND** surface (Tailwind v4 + `theme.css`; CSS_EXCEPTION superseded). Shared atoms render pickup styling through explicit `surface="pickup"` — the recipe lives in `shared/src/ui/Button/Button.tsx` and `Card/Card.tsx`, using semantic tokens (`--color-accent`, `--color-surface-*`, `--color-focus-ring`, `--radius-lg`). Composition helpers (`.pickup-shell`, `.pickup-stack`, `.pickup-link`, `.pickup-table`, …) remain in `src/styles/app.css` until full utility migration; **`.pickup-button` CSS was removed** — use shared `Button surface="pickup"`.
 
 ### Import and caller rules
 
@@ -181,15 +194,9 @@ Use for grouped operator content (scan preview, resolve result, queue filters). 
 </Card>
 ```
 
-### Legacy `.pickup-button` (migration)
+### Buttons (no `.pickup-button`)
 
-| Status | Location |
-|--------|----------|
-| **Migrated** | `ScanScreenView`, `QueueScreenView` — shared `Button` |
-| **Legacy CSS** | `src/styles/app.css` `.pickup-button`, `.pickup-button--secondary` |
-| **Still on legacy markup** | Order panels (`HoldReleasePanel`, `RefusePanel`, …), hub `Link` nav, barcode-assign, sell, login, `ScreenState` retry buttons |
-
-New work in `*ScreenView.tsx` **must** use `Button surface="pickup"`. Remaining `.pickup-button` call sites migrate in Track D (`MFE-v3-D-04` and follow-ups). For `react-router` navigation styled as buttons, use `Link` + `.pickup-link` or wrap with shared `Button` + `onClick` until a link variant lands.
+`.pickup-button` / `.pickup-button--secondary` **no longer exist** in `src/styles/app.css`. All CTAs use `Button surface="pickup"`. For `react-router` navigation styled as actions, use `Link` + `.pickup-link` or shared `Button` + `onClick`.
 
 ### What stays pickup-local
 

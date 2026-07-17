@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Button, Card } from 'pi-kiosk-shared/ui';
+import { Button, Card } from '../../shared/ui/surfacePrimitives.js';
+import { PickupStickyCta } from '../../shared/ui/PickupStickyCta.js';
 import { ScreenState } from '../../shared/ui/ScreenState.js';
 import type { ScanPageViewModel } from './buildScanPageViewModel.js';
 import type { ScanScreenActions } from './useScanScreen.js';
@@ -23,19 +24,30 @@ export function ScanScreenView({
 }: ScanScreenViewProps): JSX.Element {
   const { t } = useTranslation();
   const encodedTenant = encodeURIComponent(tenantCode);
+  const showOpenOrderCta = viewModel.resolved !== null;
 
   return (
-    <main className="pickup-shell">
+    <div
+      className="mx-auto w-full max-w-[720px] px-4 py-6 pb-[calc(var(--pickup-sticky-cta-clearance,5.5rem)+var(--pickup-bottom-chrome,0px)+var(--keyboard-inset,0px))]"
+      {...(viewModel.cameraStatus === 'running'
+        ? { 'data-pickup-scan-active': 'true' as const }
+        : {})}
+    >
       <h1>{t('pickup.scan.title')}</h1>
       <p>{t('pickup.scan.hint')}</p>
       <p>
-        <Link className="pickup-link" to={`/${encodedTenant}/queue`}>
+        <Link className="text-[var(--color-accent)]" to={`/${encodedTenant}/queue`}>
           {t('pickup.scan.openQueue')}
         </Link>
       </p>
 
-      <Card surface="pickup" className="pickup-stack">
-        <video ref={videoRef} className="pickup-scan-video" muted playsInline />
+      <Card className="flex flex-col gap-3">
+        <video
+          ref={videoRef}
+          className="w-full max-h-[280px] rounded-[var(--radius-xl)] bg-[var(--color-on-surface)] object-cover"
+          muted
+          playsInline
+        />
         {viewModel.cameraError ? (
           <ScreenState
             variant="error"
@@ -44,40 +56,46 @@ export function ScanScreenView({
           />
         ) : null}
         {viewModel.cameraStatus === 'running' ? null : (
-          <Button surface="pickup" intent="secondary" type="button" className="pickup-touch-target" onClick={actions.startCamera}>
+          <Button intent="secondary" type="button" className="min-h-11" onClick={actions.startCamera}>
             {t('pickup.scan.startCamera')}
           </Button>
         )}
       </Card>
 
-      <form className="pickup-stack" onSubmit={actions.resolveToken}>
-        <label className="pickup-label" htmlFor="pickup-scan-token">
+      <form className="flex flex-col gap-3" onSubmit={actions.resolveToken}>
+        <label
+          className="flex flex-col gap-1 text-sm font-medium text-[var(--color-on-surface)]"
+          htmlFor="pickup-scan-token"
+        >
           {t('pickup.scan.tokenLabel')}
           <input
             id="pickup-scan-token"
-            className="pickup-input"
+            className="min-h-11 w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-[var(--color-on-surface)]"
             value={viewModel.scanToken}
             onChange={(event) => actions.setScanToken(event.target.value)}
             disabled={viewModel.isResolving}
           />
         </label>
-        <Button surface="pickup" type="submit" className="pickup-touch-target" disabled={viewModel.isResolving}>
+        <Button type="submit" className="min-h-11" disabled={viewModel.isResolving}>
           {t('pickup.scan.resolve')}
         </Button>
       </form>
 
-      <form className="pickup-stack" onSubmit={actions.resolveShortCode}>
-        <label className="pickup-label" htmlFor="pickup-short-code">
+      <form className="flex flex-col gap-3" onSubmit={actions.resolveShortCode}>
+        <label
+          className="flex flex-col gap-1 text-sm font-medium text-[var(--color-on-surface)]"
+          htmlFor="pickup-short-code"
+        >
           {t('pickup.scan.shortCodeLabel')}
           <input
             id="pickup-short-code"
-            className="pickup-input"
+            className="min-h-11 w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-[var(--color-on-surface)]"
             value={viewModel.shortCode}
             onChange={(event) => actions.setShortCode(event.target.value)}
             disabled={viewModel.isResolving}
           />
         </label>
-        <Button surface="pickup" type="submit" className="pickup-touch-target" disabled={viewModel.isResolving}>
+        <Button type="submit" className="min-h-11" disabled={viewModel.isResolving}>
           {t('pickup.scan.resolveCode')}
         </Button>
       </form>
@@ -91,7 +109,7 @@ export function ScanScreenView({
       ) : null}
 
       {viewModel.resolved ? (
-        <Card surface="pickup" className="pickup-stack">
+        <Card className="flex flex-col gap-3">
           <p>{t('pickup.scan.fulfillment', { id: viewModel.resolved.fulfillmentId })}</p>
           <p>{t('pickup.scan.status', { status: viewModel.resolved.fulfillmentStatus })}</p>
           <p>
@@ -101,17 +119,21 @@ export function ScanScreenView({
                 : t('pickup.scan.paidNo'),
             })}
           </p>
+        </Card>
+      ) : null}
+
+      {showOpenOrderCta ? (
+        <PickupStickyCta>
           <Button
-            surface="pickup"
             type="button"
-            className="pickup-touch-target"
+            className="min-h-11"
             onClick={actions.openOrder}
             disabled={!viewModel.canOpenOrder}
           >
             {t('pickup.scan.openOrder')}
           </Button>
-        </Card>
+        </PickupStickyCta>
       ) : null}
-    </main>
+    </div>
   );
 }

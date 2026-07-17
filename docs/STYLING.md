@@ -1,72 +1,59 @@
 # Pickup app styling
 
-**PR-ID:** `MFE-v3-D-02-EXCEPTION` (implementation) · decision `MFE-v3-D-DECIDE-01`  
-**Status:** Active — **CSS_EXCEPTION** (signed 2026-07-06)  
+**PR-ID:** `admin-pickup-media-pwa` Phase 7b (re-sign) · prior `MFE-v3-D-02-EXCEPTION` superseded  
+**Status:** Active — **ADOPT_TAILWIND** (signed 2026-07-17)  
 **SSOT:** [`../../docs/FRONTEND/PICKUP_STYLING_ADR.md`](../../docs/FRONTEND/PICKUP_STYLING_ADR.md)  
 **Related:** [`../../docs/FRONTEND/ADR-PICKUP-TAILWIND-ADOPT.md`](../../docs/FRONTEND/ADR-PICKUP-TAILWIND-ADOPT.md), [`../../docs/FRONTEND/PRIMITIVE_OWNERSHIP.md`](../../docs/FRONTEND/PRIMITIVE_OWNERSHIP.md)
 
 ---
 
-## Stack summary (permanent — no Tailwind)
+## Stack summary (ADOPT_TAILWIND)
 
 | Layer | Path | Purpose |
 |-------|------|---------|
+| Tailwind entry | `src/styles/tailwind.css` | `@import "tailwindcss"` + theme + responsive + extensions; customer-gold `@source` / `@theme` |
 | Shared theme | `pi-kiosk-shared/theme.css` | Semantic tokens (color, surface, radius, motion) |
-| Token bridge | `src/styles/app.css` `:root` | Mirrors shared `@theme` for plain CSS (no Tailwind processor) |
-| Layout tokens | `src/styles/app.css` `:root` | Spacing, touch targets, pickup font stack |
-| Composition | `src/styles/app.css` `.pickup-*` | Shell, stack, forms, tables, tabs |
+| Responsive | `pi-kiosk-shared/responsive.css` | Breakpoint SSOT + custom media |
+| Extensions | `src/styles/pickup.extensions.css` | Shell / safe-area / bottom-chrome / table-scroll |
+| Legacy composition | `src/styles/app.css` | Remaining `.pickup-*` until Phase 5b screen migration |
 | Shared primitives | `pi-kiosk-shared/ui` | `Button`, `Card`, `FormField` with `surface="pickup"` |
+| Secondary overlays | `src/shared/ui/` | Thin Radix Confirm / Alert / Toast wrappers (**SECONDARY** only) |
 
-Import order: `@import 'pi-kiosk-shared/theme.css'` **first** in `app.css`, then local `:root` bridge and helpers.
+Import order: `main.tsx` loads `tailwind.css` then `app.css`.
 
 ---
 
 ## Decision
 
-`rpapp-pickup` is a **CSS_EXCEPTION** surface per ADR-FE-PICKUP-STYLING-001. Tailwind v4 is **not** adopted in this package. Customer and kiosk use Tailwind + `@source`; pickup stays on plain CSS for a minimal operator surface.
+`rpapp-pickup` **adopts Tailwind v4** per ADR-FE-PICKUP-STYLING-001 (re-signed **ADOPT_TAILWIND**). CSS_EXCEPTION is **superseded**. Customer/kiosk patterns (Vite plugin, `@source`, `@theme` breakpoint mirror) apply.
 
-Full contract, verification commands, and revisit criteria: `PICKUP_STYLING_ADR.md`.
+Full contract and verification: `PICKUP_STYLING_ADR.md`.
 
 ---
 
 ## Token usage rules
 
-1. **Semantic colors / surfaces** — use `var(--color-*)` from the `:root` bridge (synced to `shared/src/tokens/theme.css`).
-2. **Layout** — use pickup-local `--spacing-*`, `--touch-target-min`, `--font-*` in `:root`.
-3. **Brand accents** — `--color-accent` resolves via `--brand-consumer-accent` from shared `brand-bridge.css`.
-4. **Dark mode** — `prefers-color-scheme: dark` block in `app.css` (DECISION-2 hybrid); no `.dark` class toggle in pickup.
+1. **Semantic colors / surfaces** — prefer shared theme tokens / Tailwind theme bridge (`var(--color-*)`).
+2. **Layout** — prefer Tailwind utilities + shell extension classes; keep `--touch-target-min` (44px) on operator actions.
+3. **Brand accents** — `--color-accent` via `--brand-consumer-accent`.
+4. **Dark mode** — C-Hybrid / `.dark` variant per `@custom-variant` in `tailwind.css`.
 
 ### Pickup-only resolution
 
-| Use case | Token | Not |
-|----------|-------|-----|
-| Page background | `var(--color-surface-muted)` | Hardcoded `#fff` / `white` |
-| Card / panel | `var(--color-surface-elevated)` | Raw hex backgrounds |
-| Primary CTA | `var(--color-accent)` | Inline gradient hex |
-| Operator touch target | `var(--touch-target-min)` (44px) | Sub-44px tap areas |
-| Focus ring | `var(--color-focus-ring)` | Browser default only |
+| Use case | Prefer | Not |
+|----------|--------|-----|
+| Page background | `bg-[var(--color-surface-muted)]` / token utilities | Hardcoded `#fff` |
+| Primary CTA | Shared `Button surface="pickup"` | Reintroduce `.pickup-button` CSS (removed) |
+| Operator touch target | ≥44px | Sub-44px tap areas |
+| Shell chrome | `PickupAppShell` + extensions | Inventing a second nav |
 
 ---
 
-## Component classes
+## Migration (Phase 5b)
 
-- `.pickup-*` classes are **layout and composition helpers** (shell, stack, table, tabs, forms).
-- Use BEM modifiers for variants (e.g. `.pickup-button--secondary`, `.pickup-tab--active`).
-- Do **not** duplicate shared `:root` color/surface/radius tokens in pickup CSS.
-- Prefer shared primitives (`Button`, `Card`) with `surface="pickup"` for interactive controls where available.
-
----
-
-## New work (2026+)
-
-```
-✅ Extend .pickup-* helpers in app.css
-✅ Use shared primitives from pi-kiosk-shared/ui
-✅ Token/visual deltas via theme.css + :root bridge sync
-❌ tailwindcss / @tailwindcss/vite / postcss.config.mjs
-❌ Utility-class strings in TSX (flex, gap-4, text-sm)
-❌ New CSS entrypoints beyond app.css
-```
+- **Allowed temporarily:** `.pickup-shell` (and other legacy helpers) until that screen checklist row is done — asserted by `gate:pickup-boundary-check`.
+- **Forbidden:** reintroducing `.pickup-button` class definitions (CSS deleted); imports from `rpapp-admin/`.
+- **Allowed:** Tailwind utility class strings in `rpapp-pickup/src/**/*.tsx`.
 
 ---
 
@@ -74,7 +61,7 @@ Full contract, verification commands, and revisit criteria: `PICKUP_STYLING_ADR.
 
 | App | Styling stack |
 |-----|---------------|
-| `rpapp-admin` | CSS Modules + local tv 3.2 components |
+| `rpapp-admin` | CSS Modules + tokenized Tailwind shell |
 | `rpapp-kiosk` | Tailwind v4 + `@source` shared UI |
 | `rpapp-customer` | Tailwind v4 + `@source` shared UI |
-| **`rpapp-pickup`** | **Plain CSS + `theme.css` (CSS_EXCEPTION)** |
+| **`rpapp-pickup`** | **Tailwind v4 + `@source` (ADOPT_TAILWIND)** + legacy `.pickup-*` until migrated |

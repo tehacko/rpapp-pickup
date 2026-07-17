@@ -1,6 +1,7 @@
 import { FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { Button, Card } from '../../shared/ui/surfacePrimitives.js';
 import { ScreenState } from '../../shared/ui/ScreenState.js';
 import type { BarcodeAssignDetailViewModel } from './buildBarcodeAssignDetailViewModel.js';
 import type { BarcodeAssignDetailScreenActions } from './useBarcodeAssignDetailScreen.js';
@@ -20,64 +21,65 @@ export function BarcodeAssignDetailScreenView({
   const encodedTenant = encodeURIComponent(viewModel.tenantCode);
 
   return (
-    <main className="pickup-shell">
+    <div className="mx-auto w-full max-w-[720px] px-4 py-6">
       <h1>{t('pickup.barcodeAssign.detailTitle', { productId: viewModel.productId })}</h1>
       {viewModel.selectedVariantLabel ? (
-        <p className="pickup-message">
+        <p className="text-sm text-[var(--color-on-surface-muted)]">
           {t('pickup.barcodeAssign.variantSelected', { name: viewModel.selectedVariantLabel })}
         </p>
       ) : null}
       <p>
-        <Link className="pickup-link" to={`/${encodedTenant}/barcode-assign`}>
+        <Link className="text-[var(--color-accent)] underline" to={`/${encodedTenant}/barcode-assign`}>
           {t('pickup.barcodeAssign.backToList')}
         </Link>
       </p>
 
       {viewModel.needsVariantPicker ? (
-        <section className="pickup-panel pickup-stack">
-          <h2 className="pickup-subtitle">{t('pickup.barcodeAssign.chooseVariant')}</h2>
+        <Card className="flex flex-col gap-3">
+          <h2>{t('pickup.barcodeAssign.chooseVariant')}</h2>
           {viewModel.catalogLoading ? (
             <ScreenState variant="loading" message={t('pickup.barcodeAssign.loading')} />
           ) : null}
-          <ul className="pickup-stack">
+          <ul className="flex flex-col gap-3">
             {viewModel.variantRows.map((item) => (
               <li key={item.variantId}>
-                <button
-                  className="pickup-button pickup-button--secondary"
+                <Button
+                  intent="secondary"
                   type="button"
                   disabled={item.disabled}
                   onClick={() => actions.openVariant(item.variantId)}
                 >
                   {item.label}
                   {item.barcode ? ` — ${item.barcode}` : ''}
-                </button>
+                </Button>
               </li>
             ))}
           </ul>
-        </section>
+        </Card>
       ) : null}
 
       {!viewModel.needsVariantPicker ? (
         <>
-          <section className="pickup-panel pickup-stack">
-            <video ref={videoRef} className="pickup-scan-video" muted playsInline />
+          <Card className="flex flex-col gap-3">
+            <video
+              ref={videoRef}
+              className="max-h-[280px] w-full rounded-[var(--radius-xl)] bg-[var(--color-on-surface)] object-cover"
+              muted
+              playsInline
+            />
             {viewModel.cameraEnabled ? null : (
-              <button
-                className="pickup-button pickup-button--secondary"
-                type="button"
-                onClick={actions.startCamera}
-              >
+              <Button intent="secondary" type="button" onClick={actions.startCamera}>
                 {t('pickup.scan.startCamera')}
-              </button>
+              </Button>
             )}
-          </section>
+          </Card>
 
-          <form className="pickup-stack" onSubmit={(event: FormEvent) => actions.save(event)}>
-            <label className="pickup-label" htmlFor="pickup-barcode-code">
+          <form className="flex flex-col gap-3" onSubmit={(event: FormEvent) => actions.save(event)}>
+            <label className="flex flex-col gap-1 text-sm font-medium text-[var(--color-on-surface)]" htmlFor="pickup-barcode-code">
               {t('pickup.barcodeAssign.codeLabel')}
               <input
                 id="pickup-barcode-code"
-                className="pickup-input"
+                className="min-h-11 w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-[var(--color-on-surface)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus-ring)]"
                 value={viewModel.draftCode}
                 onChange={(event) => actions.setDraftCode(event.target.value)}
               />
@@ -89,60 +91,48 @@ export function BarcodeAssignDetailScreenView({
               <p>{t('pickup.barcodeAssign.canonical', { value: viewModel.checkResult.canonical })}</p>
             ) : null}
             {viewModel.conflictProductName ? (
-              <p className="pickup-message pickup-message--warn" role="alert">
+              <p className="text-sm text-[var(--color-on-surface-muted)]" role="alert">
                 {t('pickup.barcodeAssign.conflictWarning', { name: viewModel.conflictProductName })}
               </p>
             ) : null}
             {viewModel.confirmOverwrite ? (
-              <p className="pickup-message pickup-message--warn">{t('pickup.barcodeAssign.confirmOverwrite')}</p>
+              <p className="text-sm text-[var(--color-on-surface-muted)]">{t('pickup.barcodeAssign.confirmOverwrite')}</p>
             ) : null}
-            <button className="pickup-button" type="submit" disabled={!viewModel.canSave || viewModel.isSaving}>
+            <Button type="submit" disabled={!viewModel.canSave || viewModel.isSaving}>
               {t('pickup.barcodeAssign.save')}
-            </button>
+            </Button>
           </form>
 
           {viewModel.saveError ? (
-            <p className="pickup-message pickup-message--error">{viewModel.saveError}</p>
+            <p className="text-sm text-red-600">{viewModel.saveError}</p>
           ) : null}
 
           {viewModel.currentBarcode ? (
-            <section className="pickup-panel pickup-stack">
+            <Card className="flex flex-col gap-3">
               <p>{t('pickup.barcodeAssign.current', { value: viewModel.currentBarcode })}</p>
               <img src={viewModel.artifactLinearUrl} alt={t('pickup.barcodeAssign.artifactLinear')} />
               <img src={viewModel.artifactQrUrl} alt={t('pickup.barcodeAssign.artifactQr')} />
               {viewModel.confirmClear ? (
-                <div className="pickup-stack">
+                <div className="flex flex-col gap-3">
                   <p>{t('pickup.barcodeAssign.clearConfirm')}</p>
-                  <div className="pickup-row">
-                    <button
-                      className="pickup-button pickup-button--secondary"
-                      type="button"
-                      onClick={actions.confirmClear}
-                    >
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button intent="secondary" type="button" onClick={actions.confirmClear}>
                       {t('pickup.barcodeAssign.clearConfirmAction')}
-                    </button>
-                    <button
-                      className="pickup-button pickup-button--secondary"
-                      type="button"
-                      onClick={actions.cancelClear}
-                    >
+                    </Button>
+                    <Button intent="secondary" type="button" onClick={actions.cancelClear}>
                       {t('pickup.barcodeAssign.clearCancelAction')}
-                    </button>
+                    </Button>
                   </div>
                 </div>
               ) : (
-                <button
-                  className="pickup-button pickup-button--secondary"
-                  type="button"
-                  onClick={actions.requestClear}
-                >
+                <Button intent="secondary" type="button" onClick={actions.requestClear}>
                   {t('pickup.barcodeAssign.clear')}
-                </button>
+                </Button>
               )}
-            </section>
+            </Card>
           ) : null}
         </>
       ) : null}
-    </main>
+    </div>
   );
 }

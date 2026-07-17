@@ -1,5 +1,6 @@
-import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { Button } from '../../shared/ui/surfacePrimitives.js';
+import { PickupStickyCta } from '../../shared/ui/PickupStickyCta.js';
 import { ScreenState } from '../../shared/ui/ScreenState.js';
 import type { SellScreenActions, UseSellScreenResult } from './useSellScreen.js';
 
@@ -21,25 +22,28 @@ export function SellScreenView({
   actions,
 }: SellScreenViewProps): JSX.Element {
   const { t } = useTranslation();
-  const encodedTenant = encodeURIComponent(catalogViewModel.tenantCode);
+  const showCheckoutCta = catalogViewModel.sellingEnabled;
 
   return (
-    <main className="pickup-shell">
+    <div
+      className="mx-auto w-full max-w-[720px] px-4 py-6 pb-[calc(var(--pickup-sticky-cta-clearance,5.5rem)+var(--pickup-bottom-chrome,0px)+var(--keyboard-inset,0px))]"
+      {...(checkoutLoading ? { 'data-pickup-critical-flow': 'true' as const } : {})}
+    >
       <h1>{t('pickup.sell.title')}</h1>
-      <p>
-        <Link className="pickup-link" to={`/${encodedTenant}/hub`}>
-          {t('pickup.sell.backToHub')}
-        </Link>
-      </p>
       {!catalogViewModel.sellingEnabled ? (
-        <p className="pickup-message pickup-message--warn">{t('pickup.sell.disabled')}</p>
+        <p className="m-0 rounded-lg bg-[var(--color-surface-elevated)] p-3 text-[var(--color-warning)] shadow-[var(--shadow-card)]">
+          {t('pickup.sell.disabled')}
+        </p>
       ) : (
         <>
-          <label className="pickup-label" htmlFor="pickup-sell-search">
+          <label
+            className="flex flex-col gap-1 text-sm font-medium text-[var(--color-on-surface)]"
+            htmlFor="pickup-sell-search"
+          >
             {t('pickup.sell.searchLabel')}
             <input
               id="pickup-sell-search"
-              className="pickup-input"
+              className="min-h-11 w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-[var(--color-on-surface)]"
               value={catalogViewModel.query}
               onChange={(event) => actions.setQuery(event.target.value)}
             />
@@ -48,53 +52,56 @@ export function SellScreenView({
             <ScreenState variant="loading" message={t('pickup.sell.loading')} />
           ) : null}
           {catalogViewModel.errorMessage ? (
-            <p className="pickup-message pickup-message--error">{catalogViewModel.errorMessage}</p>
+            <p className="m-0 rounded-lg bg-[var(--color-surface-elevated)] p-3 text-[var(--color-danger)] shadow-[var(--shadow-card)]">
+              {catalogViewModel.errorMessage}
+            </p>
           ) : null}
-          <section className="pickup-stack" aria-labelledby="pickup-sell-catalog-heading">
+          <section className="flex flex-col gap-3" aria-labelledby="pickup-sell-catalog-heading">
             <h2 id="pickup-sell-catalog-heading">{t('pickup.sell.catalogTitle')}</h2>
-            <ul className="pickup-stack">
+            <ul className="flex flex-col gap-3">
               {catalogViewModel.rows.map((row) => (
                 <li key={row.key}>
-                  <button
-                    className="pickup-button pickup-button--secondary"
+                  <Button
+                    intent="secondary"
                     type="button"
+                    className="min-h-11"
                     disabled={row.disabled}
                     onClick={() => actions.addItem(row.productId, row.variantId)}
                   >
                     {row.label} — {row.priceLabel}
                     {row.showOutOfStock ? ` (${t('pickup.sell.outOfStock')})` : ''}
-                  </button>
+                  </Button>
                 </li>
               ))}
             </ul>
           </section>
-          <section className="pickup-stack" aria-labelledby="pickup-sell-cart-heading">
+          <section className="flex flex-col gap-3" aria-labelledby="pickup-sell-cart-heading">
             <h2 id="pickup-sell-cart-heading">{t('pickup.sell.cartTitle')}</h2>
             {cartViewModel.isEmpty ? <p>{t('pickup.sell.cartEmpty')}</p> : null}
-            <ul className="pickup-stack">
+            <ul className="flex flex-col gap-3">
               {cartViewModel.lines.map((line) => (
                 <li key={line.key}>
                   <span>{line.label}</span>
                   <span> × {line.quantity}</span>
                   <span> — {line.lineTotalLabel}</span>
-                  <div className="pickup-stack">
+                  <div className="flex flex-col gap-3">
                     <button
                       type="button"
-                      className="pickup-link"
+                      className="text-[var(--color-accent)]"
                       onClick={() => actions.decrementLine(line.key)}
                     >
                       {t('pickup.sell.decrement')}
                     </button>
                     <button
                       type="button"
-                      className="pickup-link"
+                      className="text-[var(--color-accent)]"
                       onClick={() => actions.incrementLine(line.key)}
                     >
                       {t('pickup.sell.increment')}
                     </button>
                     <button
                       type="button"
-                      className="pickup-link"
+                      className="text-[var(--color-accent)]"
                       onClick={() => actions.removeLine(line.key)}
                     >
                       {t('pickup.sell.remove')}
@@ -111,33 +118,50 @@ export function SellScreenView({
                 })}
               </p>
             ) : null}
-            <button
-              type="button"
-              className="pickup-button"
-              disabled={!cartViewModel.canCheckout || checkoutLoading}
-              onClick={actions.checkoutCash}
-            >
-              {checkoutLoading ? t('pickup.sell.checkoutLoading') : t('pickup.sell.checkoutCash')}
-            </button>
             {!cartViewModel.cashEnabled ? (
-              <p className="pickup-message pickup-message--warn">{t('pickup.sell.cashDisabled')}</p>
+              <p className="m-0 rounded-lg bg-[var(--color-surface-elevated)] p-3 text-[var(--color-warning)] shadow-[var(--shadow-card)]">
+                {t('pickup.sell.cashDisabled')}
+              </p>
             ) : null}
           </section>
           {checkoutMessage ? (
-            <p className="pickup-message" role="status">
+            <p
+              className="m-0 rounded-lg bg-[var(--color-surface-elevated)] p-3 shadow-[var(--shadow-card)]"
+              role="status"
+            >
               {checkoutMessage}
-              <button type="button" className="pickup-link" onClick={actions.dismissCheckoutMessage}>
+              <button
+                type="button"
+                className="text-[var(--color-accent)]"
+                onClick={actions.dismissCheckoutMessage}
+              >
                 {t('pickup.sell.dismiss')}
               </button>
             </p>
           ) : null}
           {checkoutError ? (
-            <p className="pickup-message pickup-message--error" role="alert">
+            <p
+              className="m-0 rounded-lg bg-[var(--color-surface-elevated)] p-3 text-[var(--color-danger)] shadow-[var(--shadow-card)]"
+              role="alert"
+            >
               {checkoutError}
             </p>
           ) : null}
         </>
       )}
-    </main>
+
+      {showCheckoutCta ? (
+        <PickupStickyCta>
+          <Button
+            type="button"
+            className="min-h-11"
+            disabled={!cartViewModel.canCheckout || checkoutLoading}
+            onClick={actions.checkoutCash}
+          >
+            {checkoutLoading ? t('pickup.sell.checkoutLoading') : t('pickup.sell.checkoutCash')}
+          </Button>
+        </PickupStickyCta>
+      ) : null}
+    </div>
   );
 }

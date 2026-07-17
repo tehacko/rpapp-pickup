@@ -29,11 +29,26 @@ const scanOnlyEntitlement = {
   },
 };
 
+/** Full shell entitlement — scan + barcode More destination. */
+const shellNavEntitlement = {
+  revision: 1,
+  staffPickupScan: true,
+  assignBarcode: true,
+  orderPickupInfrastructure: true,
+  deviceFlags: {
+    registryEnabled: true,
+    softClaimEnabled: false,
+  },
+};
+
 function pickupSessionCookie(token: string): string {
   return `pickup_staff_session=${encodeURIComponent(token)}; Path=/api; HttpOnly`;
 }
 
-export async function installPickupScanResponsiveMocks(page: Page): Promise<void> {
+async function installCommonPickupAuthRoutes(
+  page: Page,
+  entitlement: typeof scanOnlyEntitlement,
+): Promise<void> {
   await mockTurnstileDisabled(page);
 
   await page.addInitScript(
@@ -53,7 +68,7 @@ export async function installPickupScanResponsiveMocks(page: Page): Promise<void
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify({ success: true, data: scanOnlyEntitlement }),
+      body: JSON.stringify({ success: true, data: entitlement }),
     });
   });
 
@@ -89,6 +104,22 @@ export async function installPickupScanResponsiveMocks(page: Page): Promise<void
       }),
     });
   });
+
+  await page.route(`**/api/${TENANT}/v1/pickup/staff/sell/config**`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ success: true, data: { sellingEnabled: false } }),
+    });
+  });
+}
+
+export async function installPickupScanResponsiveMocks(page: Page): Promise<void> {
+  await installCommonPickupAuthRoutes(page, scanOnlyEntitlement);
+}
+
+export async function installPickupShellNavMocks(page: Page): Promise<void> {
+  await installCommonPickupAuthRoutes(page, shellNavEntitlement);
 }
 
 export async function loginAndOpenPickupScan(page: Page): Promise<void> {
@@ -97,3 +128,23 @@ export async function loginAndOpenPickupScan(page: Page): Promise<void> {
     timeout: 15_000,
   });
 }
+
+export async function loginAndOpenPickupHub(page: Page): Promise<void> {
+  await page.goto(`/${TENANT}/hub`, { waitUntil: 'domcontentloaded' });
+  await expect(page.getByTestId('pickup-bottom-nav').or(page.getByTestId('pickup-side-nav'))).toBeVisible({
+    timeout: 15_000,
+  });
+}
+
+export async function assertNoPageHorizontalOverflow(
+  page: Page,
+  tolerancePx = 2,
+): Promise<void> {
+  const overflowOk = await page.evaluate((tolerance) => {
+    const root = document.documentElement;
+    return root.scrollWidth <= root.clientWidth + tolerance;
+  }, tolerancePx);
+  expect(overflowOk).toBe(true);
+}
+
+export { TENANT as PICKUP_RESPONSIVE_TENANT };

@@ -58,6 +58,14 @@ export default defineConfig({
         viewport: { width: 844, height: 390 },
       },
     },
+    {
+      name: 'pickup-zoom-200',
+      testMatch: '**/e2e/responsive/pickup-zoom-200-chrome.spec.ts',
+      use: {
+        ...devices['Desktop Chrome'],
+        viewport: { width: 390, height: 844 },
+      },
+    },
   ],
   webServer: integrationEnabled
     ? [

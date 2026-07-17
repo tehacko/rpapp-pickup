@@ -14,8 +14,6 @@ export interface OrderPageUiState {
   readonly partialSelected: Record<number, boolean>;
   readonly refuseQty: Record<number, number>;
   readonly refuseSelected: Record<number, boolean>;
-  readonly message: string | null;
-  readonly messageKind: 'success' | 'error';
   readonly isCoolingDown: boolean;
 }
 
@@ -31,8 +29,6 @@ export interface OrderPageViewModel {
   readonly partialSelected: Record<number, boolean>;
   readonly refuseQty: Record<number, number>;
   readonly refuseSelected: Record<number, boolean>;
-  readonly message: string | null;
-  readonly messageKind: 'success' | 'error';
   readonly isCoolingDown: boolean;
 }
 
@@ -68,8 +64,6 @@ export function buildOrderPageViewModel(
     partialSelected: ui.partialSelected,
     refuseQty: ui.refuseQty,
     refuseSelected: ui.refuseSelected,
-    message: ui.message,
-    messageKind: ui.messageKind,
     isCoolingDown: ui.isCoolingDown,
   };
 }

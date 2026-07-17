@@ -1,19 +1,13 @@
-@import 'pi-kiosk-shared/theme.css';
-@import 'pi-kiosk-shared/responsive.css';
-@import './pickup.extensions.css';
-
 /**
- * MFE-v3-D-02-EXCEPTION — CSS_EXCEPTION permanent path (ADR-FE-PICKUP-STYLING-001)
- *
- * Single CSS entry imported from main.tsx — no tailwind.css / PostCSS pipeline.
- * SSOT: rpappp/docs/FRONTEND/PICKUP_STYLING_ADR.md
+ * Pickup composition CSS (legacy .pickup-* helpers).
+ * Theme / responsive / extensions + Tailwind v4 bootstrap live in tailwind.css
+ * (Phase 4b ADOPT_TAILWIND). Full BEM→utility migration is Phase 5b.
  *
  * Sections:
- *  1. Shared theme import (above)
- *  2. @theme bridge — :root mirrors shared/src/tokens/theme.css @theme (sync on S-2)
- *  3. Dark mode — prefers-color-scheme (DECISION-2 hybrid)
- *  4. Layout tokens — spacing, touch, typography (pickup-local only)
- *  5. .pickup-* composition helpers
+ *  1. @theme bridge — :root mirrors shared/src/tokens/theme.css @theme (sync on S-2)
+ *  2. Dark mode — prefers-color-scheme (DECISION-2 hybrid)
+ *  3. Layout tokens — spacing, touch, typography (pickup-local only)
+ *  4. .pickup-* composition helpers
  */
 :root {
   --color-surface: #ffffff;
@@ -161,38 +155,9 @@ body {
 }
 
 .pickup-input:focus-visible,
-.pickup-button:focus-visible,
 .pickup-tab:focus-visible {
   outline: 2px solid var(--color-focus-ring);
   outline-offset: 2px;
-}
-
-.pickup-button {
-  min-height: var(--touch-target-min);
-  padding: var(--spacing-4) var(--spacing-10);
-  border: none;
-  border-radius: var(--radius-lg);
-  background: linear-gradient(
-    135deg,
-    var(--color-accent) 0%,
-    var(--color-accent) 100%
-  );
-  color: var(--color-accent-foreground);
-  font: inherit;
-  font-weight: var(--font-weight-medium);
-  cursor: pointer;
-  transition: opacity var(--transition-fast);
-}
-
-.pickup-button:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-}
-
-.pickup-button--secondary {
-  background: var(--color-surface);
-  color: var(--color-on-surface);
-  border: 1px solid var(--color-border);
 }
 
 .pickup-tabs {

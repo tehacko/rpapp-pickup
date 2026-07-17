@@ -16,6 +16,7 @@ import {
 } from '../../lib/deviceStorage.js';
 import { useStaffToken, useTenantCode } from '../../hooks/useStaffToken.js';
 import { usePickupStaffRePin } from '../../shared/security/usePickupStaffRePin.js';
+import { Button } from '../../shared/ui/surfacePrimitives.js';
 
 export function DevicePairingPage(): JSX.Element {
   const tenantCode = useTenantCode();
@@ -94,35 +95,36 @@ export function DevicePairingPage(): JSX.Element {
   }
 
   return (
-    <main className="pickup-shell">
+    // Landmark: device-pairing is a sibling of PickupAppShell — sole <main> is OK here.
+    <main className="mx-auto w-full max-w-[720px] px-4 py-6">
       <h1>{t('pickup.device.title')}</h1>
-      <p>{t('pickup.device.lead')}</p>
+      <p className="text-sm text-[var(--color-on-surface-muted)]">{t('pickup.device.lead')}</p>
       <p>
-        <Link className="pickup-link" to={`/${encodeURIComponent(tenantCode)}/hub`}>
+        <Link className="text-[var(--color-accent)] underline" to={`/${encodeURIComponent(tenantCode)}/hub`}>
           {t('pickup.device.backToHub')}
         </Link>
       </p>
 
       {pairedDevice !== null ? (
-        <section className="pickup-stack" aria-labelledby="pickup-device-status-heading">
+        <section className="flex flex-col gap-3" aria-labelledby="pickup-device-status-heading">
           <h2 id="pickup-device-status-heading">{t('pickup.device.pairedTitle')}</h2>
           <p>{t('pickup.device.pairedLabel', { label: pairedDevice.deviceLabel })}</p>
           <p>{t('pickup.device.pairedCode', { code: pairedDevice.deviceCode })}</p>
-          <button type="button" className="pickup-link" onClick={onUnpair}>
+          <button type="button" className="text-[var(--color-accent)] underline" onClick={onUnpair}>
             {t('pickup.device.unpair')}
           </button>
         </section>
       ) : null}
 
-      <section className="pickup-stack" aria-labelledby="pickup-device-pair-heading">
+      <section className="flex flex-col gap-3" aria-labelledby="pickup-device-pair-heading">
         <h2 id="pickup-device-pair-heading">{t('pickup.device.pairTitle')}</h2>
-        <p>{t('pickup.device.pairHint')}</p>
-        <form className="pickup-stack" onSubmit={(event) => void onSubmit(event)}>
-          <label className="pickup-label" htmlFor="pickup-pairing-code">
+        <p className="text-sm text-[var(--color-on-surface-muted)]">{t('pickup.device.pairHint')}</p>
+        <form className="flex flex-col gap-3" onSubmit={(event) => void onSubmit(event)}>
+          <label className="flex flex-col gap-1 text-sm font-medium text-[var(--color-on-surface)]" htmlFor="pickup-pairing-code">
             {t('pickup.device.pairingCode')}
             <input
               id="pickup-pairing-code"
-              className="pickup-input"
+              className="min-h-11 w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-[var(--color-on-surface)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus-ring)]"
               value={pairingCode}
               onChange={(event) => setPairingCode(event.target.value)}
               disabled={submitCooldown.isCoolingDown}
@@ -130,23 +132,22 @@ export function DevicePairingPage(): JSX.Element {
               autoComplete="off"
             />
           </label>
-          <button
-            className="pickup-button"
+          <Button
             type="submit"
             disabled={isSubmitting || submitCooldown.isCoolingDown || pairingCode.trim().length === 0}
           >
             {t('pickup.device.pairSubmit')}
-          </button>
+          </Button>
         </form>
       </section>
 
       {cooldownMessage ? (
-        <p className="pickup-message pickup-message--error" role="alert">
+        <p className="text-sm text-red-600" role="alert">
           {cooldownMessage}
         </p>
       ) : null}
       {error && !cooldownMessage ? (
-        <p className="pickup-message pickup-message--error" role="alert">
+        <p className="text-sm text-red-600" role="alert">
           {error}
         </p>
       ) : null}

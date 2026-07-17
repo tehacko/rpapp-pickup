@@ -1,7 +1,7 @@
 import { lazy, Suspense } from 'react';
 import { Route, Routes } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { LanguageToggle } from 'pi-kiosk-shared/ui';
+import { PickupAppShell } from './shared/ui/PickupAppShell.js';
 
 const LoginPage = lazy(async () => {
   const mod = await import('./pages/LoginPage');
@@ -46,32 +46,33 @@ const SellPage = lazy(async () => {
 
 function RouteFallback(): JSX.Element {
   const { t } = useTranslation('pickup');
-  return <p className="pickup-shell">{t('pickup.common.loading')}</p>;
+  return <p className="mx-auto w-full max-w-[720px] px-4 py-6">{t('pickup.common.loading')}</p>;
 }
 
 export function App(): JSX.Element {
   return (
-    <>
-      <LanguageToggle surface="pickup" i18nNamespace="pickup" />
-      <Suspense fallback={<RouteFallback />}>
-        <Routes>
+    <Suspense fallback={<RouteFallback />}>
+      <Routes>
         <Route path="/" element={<RootPage />} />
         <Route path="/:tenantCode/login" element={<LoginPage />} />
-        <Route path="/:tenantCode/hub" element={<StaffHubPage />} />
         <Route path="/:tenantCode/device-pairing" element={<DevicePairingPage />} />
-        <Route path="/:tenantCode/scan" element={<ScanPage />} />
-        <Route path="/:tenantCode/barcode-assign" element={<BarcodeAssignPage />} />
-        <Route
-          path="/:tenantCode/barcode-assign/:productId/variants/:variantId"
-          element={<BarcodeAssignDetailPage />}
-        />
-        <Route path="/:tenantCode/barcode-assign/:productId" element={<BarcodeAssignDetailPage />} />
-        <Route path="/:tenantCode/queue" element={<QueuePage />} />
-        <Route path="/:tenantCode/sell" element={<SellPage />} />
-        <Route path="/:tenantCode/order/:fulfillmentId" element={<OrderPage />} />
+
+        <Route path="/:tenantCode" element={<PickupAppShell />}>
+          <Route path="hub" element={<StaffHubPage />} />
+          <Route path="scan" element={<ScanPage />} />
+          <Route path="barcode-assign" element={<BarcodeAssignPage />} />
+          <Route
+            path="barcode-assign/:productId/variants/:variantId"
+            element={<BarcodeAssignDetailPage />}
+          />
+          <Route path="barcode-assign/:productId" element={<BarcodeAssignDetailPage />} />
+          <Route path="queue" element={<QueuePage />} />
+          <Route path="sell" element={<SellPage />} />
+          <Route path="order/:fulfillmentId" element={<OrderPage />} />
+        </Route>
+
         <Route path="*" element={<RootPage />} />
-        </Routes>
-      </Suspense>
-    </>
+      </Routes>
+    </Suspense>
   );
 }

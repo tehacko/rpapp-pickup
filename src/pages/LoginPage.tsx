@@ -8,10 +8,12 @@ import {
   useSubmitCooldown,
 } from 'pi-kiosk-shared';
 import { TurnstileExecuteWidget, useTurnstileExecute } from 'pi-kiosk-shared/ui';
+import { Button } from '../shared/ui/surfacePrimitives.js';
 import { fetchSalesPointById, loginPickupStaff, PickupApiError } from '../api/pickupApi';
 import { resolvePostLoginPath } from '../features/hub/pickupStaffFunctions';
 import { usePickupEntitlement } from '../hooks/usePickupEntitlement';
 import { isDevicePaired, setPairedDevice } from '../lib/deviceStorage.js';
+import { rememberPickupLastTenant } from '../lib/pickupLastTenant.js';
 import { usePickupStaffSession } from '../shared/session/PickupStaffSessionProvider.js';
 import { useTenantCode } from '../hooks/useStaffToken';
 
@@ -109,6 +111,7 @@ export function LoginPage(): JSX.Element {
       }
       turnstile.resetTurnstile();
       await establishSession(tenantCode);
+      rememberPickupLastTenant(tenantCode);
       const trimmedDeviceCode = deviceCode.trim().toUpperCase();
       if (showDeviceCodeField && trimmedDeviceCode.length > 0) {
         setPairedDevice(tenantCode, {
@@ -139,11 +142,12 @@ export function LoginPage(): JSX.Element {
   }
 
   return (
-    <main className="pickup-shell">
+    // Landmark: login is outside PickupAppShell — this page may own the sole <main>.
+    <main className="mx-auto w-full max-w-[720px] px-4 py-6">
       <h1>{t('pickup.login.title')}</h1>
       {entitlementLoading ? <p role="status">{t('pickup.login.entitlementLoading')}</p> : null}
       {!entitlementLoading && !isLoginAllowed ? (
-        <p className="pickup-message pickup-message--error" role="alert">
+        <p className="text-sm text-red-600" role="alert">
           {t('pickup.login.entitlementDenied', {
             block: denialReason ?? 'staff_pickup_scan',
           })}
@@ -151,24 +155,26 @@ export function LoginPage(): JSX.Element {
       ) : null}
       {displayPmLoading ? <p>{t('pickup.login.pmLoading')}</p> : null}
       {displayPmName ? <p>{t('pickup.login.pmName', { name: displayPmName })}</p> : null}
-      {isSuperPickuperLogin ? <p>{t('pickup.login.superPickuperHint')}</p> : null}
-      <form className="pickup-stack" onSubmit={(event) => void onSubmit(event)}>
-        <label className="pickup-label" htmlFor="pickup-sales-point-id">
+      {isSuperPickuperLogin ? (
+        <p className="text-sm text-[var(--color-on-surface-muted)]">{t('pickup.login.superPickuperHint')}</p>
+      ) : null}
+      <form className="flex flex-col gap-3" onSubmit={(event) => void onSubmit(event)}>
+        <label className="flex flex-col gap-1 text-sm font-medium text-[var(--color-on-surface)]" htmlFor="pickup-sales-point-id">
           {t('pickup.login.salesPointId')}
           <input
             id="pickup-sales-point-id"
-            className="pickup-input"
+            className="min-h-11 w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-[var(--color-on-surface)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus-ring)]"
             value={salesPointId}
             onChange={(event) => setSalesPointId(event.target.value)}
             disabled={submitCooldown.isCoolingDown}
             placeholder={t('pickup.login.salesPointIdPlaceholder')}
           />
         </label>
-        <label className="pickup-label" htmlFor="pickup-pin">
+        <label className="flex flex-col gap-1 text-sm font-medium text-[var(--color-on-surface)]" htmlFor="pickup-pin">
           {t('pickup.login.pin')}
           <input
             id="pickup-pin"
-            className="pickup-input"
+            className="min-h-11 w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-[var(--color-on-surface)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus-ring)]"
             value={pin}
             type="password"
             onChange={(event) => setPin(event.target.value)}
@@ -177,11 +183,11 @@ export function LoginPage(): JSX.Element {
           />
         </label>
         {showDeviceCodeField ? (
-          <label className="pickup-label" htmlFor="pickup-device-code">
+          <label className="flex flex-col gap-1 text-sm font-medium text-[var(--color-on-surface)]" htmlFor="pickup-device-code">
             {t('pickup.login.deviceCode')}
             <input
               id="pickup-device-code"
-              className="pickup-input"
+              className="min-h-11 w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-[var(--color-on-surface)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus-ring)]"
               value={deviceCode}
               onChange={(event) => setDeviceCode(event.target.value)}
               disabled={submitCooldown.isCoolingDown}
@@ -192,24 +198,24 @@ export function LoginPage(): JSX.Element {
         ) : null}
         <TurnstileExecuteWidget
           turnstile={turnstile}
-          className="pickup-turnstile"
+          className="w-full"
           testId="pickup-turnstile-execute-field"
         />
-        <button
-          className="pickup-button"
+        <Button
           type="submit"
+          block
           disabled={isSubmitting || submitCooldown.isCoolingDown || !isLoginAllowed}
         >
           {t('pickup.login.submit')}
-        </button>
+        </Button>
       </form>
       {cooldownMessage ? (
-        <p className="pickup-message pickup-message--error" role="alert">
+        <p className="text-sm text-red-600" role="alert">
           {cooldownMessage}
         </p>
       ) : null}
       {error && !cooldownMessage ? (
-        <p className="pickup-message pickup-message--error">{error}</p>
+        <p className="text-sm text-red-600">{error}</p>
       ) : null}
     </main>
   );

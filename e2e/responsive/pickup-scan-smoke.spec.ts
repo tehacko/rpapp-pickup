@@ -1,17 +1,18 @@
 /**
  * Pickup scan responsive smoke (RESP-W3-PICKUP).
- * Scan screen at phone-small, phone, and tablet widths.
+ * Scan screen at phone-small, phone, and tablet widths + chrome AC.
  */
 import { test, expect, type Page } from '@playwright/test';
 import {
+  assertNoPageHorizontalOverflow,
   installPickupScanResponsiveMocks,
   loginAndOpenPickupScan,
 } from '../helpers/pickupResponsiveMocks.js';
 
 const VIEWPORTS = [
-  { label: '320', width: 320, height: 568, screenshot: false },
-  { label: '390', width: 390, height: 844, screenshot: true },
-  { label: '768', width: 768, height: 1024, screenshot: false },
+  { label: '320', width: 320, height: 568, screenshot: false, expectBottom: true },
+  { label: '390', width: 390, height: 844, screenshot: true, expectBottom: true },
+  { label: '768', width: 768, height: 1024, screenshot: false, expectBottom: false },
 ] as const;
 
 async function stabilizeForScreenshot(page: Page): Promise<void> {
@@ -36,10 +37,15 @@ test.describe('Pickup scan responsive smoke', () => {
       await page.setViewportSize({ width: viewport.width, height: viewport.height });
       await loginAndOpenPickupScan(page);
 
-      const overflowX = await page.evaluate(
-        () => document.documentElement.scrollWidth <= window.innerWidth + 2,
-      );
-      expect(overflowX).toBe(true);
+      await assertNoPageHorizontalOverflow(page);
+
+      if (viewport.expectBottom) {
+        await expect(page.getByTestId('pickup-bottom-nav')).toBeVisible();
+        await expect(page.getByTestId('pickup-side-nav')).toHaveCount(0);
+      } else {
+        await expect(page.getByTestId('pickup-side-nav')).toBeVisible();
+        await expect(page.getByTestId('pickup-bottom-nav')).toHaveCount(0);
+      }
 
       const resolveButton = page.getByRole('button', { name: /Resolve code|Vyhledat kód/i });
       await resolveButton.scrollIntoViewIfNeeded();

@@ -22,9 +22,9 @@ export function BarcodeAssignDetailPage(): JSX.Element {
 
   if (entitlementLoading) {
     return (
-      <main className="pickup-shell">
+      <div className="mx-auto w-full max-w-[720px] px-4 py-6">
         <p role="status">{t('pickup.login.entitlementLoading')}</p>
-      </main>
+      </div>
     );
   }
 

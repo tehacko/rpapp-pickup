@@ -1,5 +1,5 @@
-import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { Button } from '../../shared/ui/surfacePrimitives.js';
 import { ScreenState } from '../../shared/ui/ScreenState.js';
 import type { BarcodeAssignCatalogViewModel } from './buildBarcodeAssignViewModel.js';
 import type { BarcodeAssignScreenActions } from './useBarcodeAssignScreen.js';
@@ -14,21 +14,15 @@ export function BarcodeAssignScreenView({
   actions,
 }: BarcodeAssignScreenViewProps): JSX.Element {
   const { t } = useTranslation();
-  const encodedTenant = encodeURIComponent(viewModel.tenantCode);
 
   return (
-    <main className="pickup-shell">
+    <div className="mx-auto w-full max-w-[720px] px-4 py-6">
       <h1>{t('pickup.barcodeAssign.title')}</h1>
-      <p>
-        <Link className="pickup-link" to={`/${encodedTenant}/hub`}>
-          {t('pickup.barcodeAssign.backToHub')}
-        </Link>
-      </p>
-      <label className="pickup-label" htmlFor="pickup-barcode-search">
+      <label className="flex flex-col gap-1 text-sm font-medium text-[var(--color-on-surface)]" htmlFor="pickup-barcode-search">
         {t('pickup.barcodeAssign.searchLabel')}
         <input
           id="pickup-barcode-search"
-          className="pickup-input"
+          className="min-h-11 w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-[var(--color-on-surface)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus-ring)]"
           value={viewModel.query}
           onChange={(event) => actions.setQuery(event.target.value)}
         />
@@ -37,30 +31,30 @@ export function BarcodeAssignScreenView({
         <ScreenState variant="loading" message={t('pickup.barcodeAssign.loading')} />
       ) : null}
       {viewModel.errorMessage ? (
-        <p className="pickup-message pickup-message--error">{viewModel.errorMessage}</p>
+        <p className="text-sm text-red-600">{viewModel.errorMessage}</p>
       ) : null}
-      <ul className="pickup-stack">
+      <ul className="flex flex-col gap-3">
         {viewModel.rows.map((row) => (
           <li key={row.key}>
             {row.showInactiveBanner ? (
-              <p className="pickup-message pickup-message--warn">{t('pickup.barcodeAssign.inactiveBanner')}</p>
+              <p className="text-sm text-[var(--color-on-surface-muted)]">{t('pickup.barcodeAssign.inactiveBanner')}</p>
             ) : null}
             {row.showArchivedRow ? (
-              <p className="pickup-message" title={t('pickup.barcodeAssign.archivedTooltip')}>
+              <p className="text-sm text-[var(--color-on-surface-muted)]" title={t('pickup.barcodeAssign.archivedTooltip')}>
                 {t('pickup.barcodeAssign.archivedRow')}
               </p>
             ) : null}
-            <button
-              className="pickup-button pickup-button--secondary"
+            <Button
+              intent="secondary"
               type="button"
               disabled={row.disabled}
               onClick={() => actions.openRow(row.productId, row.variantId)}
             >
               {row.label}
-            </button>
+            </Button>
           </li>
         ))}
       </ul>
-    </main>
+    </div>
   );
 }

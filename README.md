@@ -35,6 +35,9 @@ Requires `up-backend` on port **3015**. Leave API base empty in local Vite proxy
 | --- | --- |
 | `npm run dev` | Vite on port 3005 |
 | `npm run build` | Type-check + production build |
+| `npm start` | Production static host — `node start.js` (Railway start command) |
+| `npm run gate:pwa-installable` | Assert dist manifest / SW / apple meta |
+| `npm run smoke:pwa-headers` | Spawn start.js on :4180 and assert Cache-Control headers |
 | `npm run lint` | ESLint `--max-warnings 0` |
 | `npm run type-check` | `tsc --noEmit` |
 | `npm test` | Jest |

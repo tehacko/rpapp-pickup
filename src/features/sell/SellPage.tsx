@@ -23,9 +23,9 @@ export function SellPage(): JSX.Element {
 
   if (!configLoaded) {
     return (
-      <main className="pickup-shell">
+      <div className="mx-auto w-full max-w-[720px] px-4 py-6">
         <ScreenState variant="loading" />
-      </main>
+      </div>
     );
   }
 

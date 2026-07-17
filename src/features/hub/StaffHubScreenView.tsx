@@ -4,6 +4,16 @@ import { ScreenState } from '../../shared/ui/ScreenState.js';
 import type { StaffHubViewModel } from './buildStaffHubViewModel.js';
 import type { StaffHubScreenActions } from './useStaffHubScreen.js';
 
+const SHELL = 'mx-auto w-full max-w-[720px] px-4 py-6';
+const STACK = 'flex flex-col gap-3';
+const LABEL = 'flex flex-col gap-1 text-sm font-medium text-[var(--color-on-surface)]';
+const INPUT =
+  'min-h-11 w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-[var(--color-on-surface)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus-ring)]';
+const BUTTON_LINK =
+  'inline-flex min-h-11 items-center justify-center rounded-lg bg-[var(--color-accent)] px-4 font-medium text-[var(--color-accent-foreground)]';
+const LINK = 'text-[var(--color-accent)] underline';
+const HINT = 'text-sm text-[var(--color-on-surface-muted)]';
+
 export interface StaffHubScreenViewProps {
   readonly viewModel: StaffHubViewModel;
   readonly actions: StaffHubScreenActions;
@@ -14,20 +24,20 @@ export function StaffHubScreenView({ viewModel, actions }: StaffHubScreenViewPro
   const encodedTenant = encodeURIComponent(viewModel.tenantCode);
 
   return (
-    <main className="pickup-shell">
+    <div className={SHELL}>
       <h1>{t('pickup.hub.title')}</h1>
       <p>{t('pickup.hub.lead')}</p>
       {viewModel.showPickupPointSwitcher ? (
-        <section className="pickup-stack" aria-labelledby="pickup-hub-point-heading">
+        <section className={STACK} aria-labelledby="pickup-hub-point-heading">
           <h2 id="pickup-hub-point-heading">{t('pickup.hub.pickupPointTitle')}</h2>
           {viewModel.pickupPointsLoading ? (
             <ScreenState variant="loading" message={t('pickup.hub.pickupPointsLoading')} />
           ) : (
-            <label className="pickup-label" htmlFor="pickup-hub-active-point">
+            <label className={LABEL} htmlFor="pickup-hub-active-point">
               {t('pickup.hub.pickupPointLabel')}
               <select
                 id="pickup-hub-active-point"
-                className="pickup-input"
+                className={INPUT}
                 data-testid="hub-pickup-point-switcher"
                 value={viewModel.activePickupPointId ?? ''}
                 onChange={(event) => {
@@ -45,10 +55,10 @@ export function StaffHubScreenView({ viewModel, actions }: StaffHubScreenViewPro
               </select>
             </label>
           )}
-          <p className="pickup-hint">{t('pickup.hub.pickupPointHint')}</p>
+          <p className={HINT}>{t('pickup.hub.pickupPointHint')}</p>
         </section>
       ) : null}
-      <section className="pickup-stack" aria-labelledby="pickup-hub-device-heading">
+      <section className={STACK} aria-labelledby="pickup-hub-device-heading">
         <h2 id="pickup-hub-device-heading">{t('pickup.hub.deviceTitle')}</h2>
         {viewModel.showDeviceRegistry ? (
           <>
@@ -57,7 +67,7 @@ export function StaffHubScreenView({ viewModel, actions }: StaffHubScreenViewPro
             ) : (
               <p>{t('pickup.hub.deviceNotPaired')}</p>
             )}
-            <Link className="pickup-link" to={`/${encodedTenant}/device-pairing`}>
+            <Link className={LINK} to={`/${encodedTenant}/device-pairing`}>
               {viewModel.pairedDeviceLabel ? t('pickup.hub.deviceManage') : t('pickup.hub.devicePair')}
             </Link>
           </>
@@ -65,35 +75,31 @@ export function StaffHubScreenView({ viewModel, actions }: StaffHubScreenViewPro
           <p>{t('pickup.hub.deviceRegistryDisabled')}</p>
         )}
       </section>
-      <div className="pickup-stack">
+      <div className={STACK}>
         {viewModel.canScan ? (
-          <Link className="pickup-button pickup-touch-target" to={`/${encodedTenant}/scan`}>
+          <Link className={BUTTON_LINK} to={`/${encodedTenant}/scan`}>
             {t('pickup.hub.fulfillmentScan')}
           </Link>
         ) : null}
         {viewModel.canAssign ? (
-          <Link className="pickup-button pickup-touch-target" to={`/${encodedTenant}/barcode-assign`}>
+          <Link className={BUTTON_LINK} to={`/${encodedTenant}/barcode-assign`}>
             {t('pickup.hub.barcodeAssign')}
           </Link>
         ) : null}
         {viewModel.canSell ? (
-          <Link className="pickup-button pickup-touch-target" to={`/${encodedTenant}/sell`}>
+          <Link className={BUTTON_LINK} to={`/${encodedTenant}/sell`}>
             {t('pickup.hub.staffSell')}
           </Link>
         ) : null}
         {viewModel.canScan ? (
-          <Link className="pickup-link" to={`/${encodedTenant}/queue`}>
+          <Link className={LINK} to={`/${encodedTenant}/queue`}>
             {t('pickup.scan.openQueue')}
           </Link>
         ) : null}
       </div>
-      <button
-        type="button"
-        className="pickup-link pickup-link--sign-out"
-        onClick={actions.signOut}
-      >
+      <button type="button" className={LINK} onClick={actions.signOut}>
         {t('pickup.hub.signOut')}
       </button>
-    </main>
+    </div>
   );
 }

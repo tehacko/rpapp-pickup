@@ -1,5 +1,7 @@
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { FulfillmentLine } from '../types';
+import { Button, Card, FormField } from '../shared/ui/surfacePrimitives.js';
 
 interface PartialConfirmPanelProps {
   lines: FulfillmentLine[];
@@ -31,107 +33,157 @@ export function PartialConfirmPanel({
   onConfirmPartial,
 }: PartialConfirmPanelProps): JSX.Element {
   const { t } = useTranslation();
+  const [confirmInProgress, setConfirmInProgress] = useState(false);
+  const criticalActive = confirmInProgress && canConfirm && !isOnHold;
+
+  useEffect(() => {
+    if (!criticalActive) {
+      return;
+    }
+    document.documentElement.setAttribute('data-pickup-critical-flow', 'true');
+    return (): void => {
+      document.documentElement.removeAttribute('data-pickup-critical-flow');
+    };
+  }, [criticalActive]);
+
+  const handleConfirmFull = useCallback((): void => {
+    setConfirmInProgress(true);
+    onConfirmFull();
+  }, [onConfirmFull]);
+
+  const handleConfirmPartial = useCallback((): void => {
+    setConfirmInProgress(true);
+    onConfirmPartial();
+  }, [onConfirmPartial]);
 
   return (
-    <section className="pickup-panel pickup-stack">
+    <Card
+      className="mt-4"
+      {...(criticalActive ? { 'data-pickup-critical-flow': 'true' as const } : {})}
+    >
       <h2>{t('pickup.partial.confirm')}</h2>
 
       {lines.length > 0 ? (
-        <table className="pickup-table">
-          <thead>
-            <tr>
-              <th>{t('pickup.order.line')}</th>
-              <th>{t('pickup.order.ordered')}</th>
-              <th>{t('pickup.order.collected')}</th>
-              <th>{t('pickup.order.refused')}</th>
-              <th>{t('pickup.order.remaining')}</th>
-              <th>{t('pickup.partial.confirm')}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {lines.map((line) => (
-              <tr key={line.lineId}>
-                <td>{line.lineId}</td>
-                <td>{line.quantityOrdered}</td>
-                <td>{line.quantityCollected}</td>
-                <td>{line.quantityRefused}</td>
-                <td>{line.quantityRemaining}</td>
-                <td>
-                  <div className="pickup-line-controls">
-                    <input
-                      type="checkbox"
-                      checked={partialSelected[line.lineId] ?? false}
-                      aria-label={t('pickup.partial.selectLine', { lineId: line.lineId })}
-                      onChange={(event) => onToggleLine(line.lineId, event.target.checked)}
-                      disabled={line.quantityRemaining <= 0}
-                    />
-                    <button
-                      className="pickup-button pickup-button--secondary"
-                      type="button"
-                      aria-label={t('pickup.partial.decrease')}
-                      disabled={!partialSelected[line.lineId] || (partialQty[line.lineId] ?? 0) <= 0}
-                      onClick={() =>
-                        onChangeQty(line.lineId, Math.max(0, (partialQty[line.lineId] ?? 0) - 1))
-                      }
-                    >
-                      −
-                    </button>
-                    <span className="pickup-qty">{partialQty[line.lineId] ?? 0}</span>
-                    <button
-                      className="pickup-button pickup-button--secondary"
-                      type="button"
-                      aria-label={t('pickup.partial.increase')}
-                      disabled={
-                        !partialSelected[line.lineId] ||
-                        (partialQty[line.lineId] ?? 0) >= line.quantityRemaining
-                      }
-                      onClick={() =>
-                        onChangeQty(
-                          line.lineId,
-                          Math.min(line.quantityRemaining, (partialQty[line.lineId] ?? 0) + 1)
-                        )
-                      }
-                    >
-                      +
-                    </button>
-                  </div>
-                </td>
+        <div className="pickup-table-scroll w-full" data-testid="pickup-order-table-scroll">
+          <table className="w-full border-collapse overflow-hidden rounded-[var(--radius-xl)] bg-[var(--color-surface-elevated)] shadow-[var(--shadow-card)]">
+            <thead>
+              <tr>
+                <th className="border-b border-[var(--color-border)] p-3 text-left">
+                  {t('pickup.order.line')}
+                </th>
+                <th className="border-b border-[var(--color-border)] p-3 text-left">
+                  {t('pickup.order.ordered')}
+                </th>
+                <th className="border-b border-[var(--color-border)] p-3 text-left">
+                  {t('pickup.order.collected')}
+                </th>
+                <th className="border-b border-[var(--color-border)] p-3 text-left">
+                  {t('pickup.order.refused')}
+                </th>
+                <th className="border-b border-[var(--color-border)] p-3 text-left">
+                  {t('pickup.order.remaining')}
+                </th>
+                <th className="border-b border-[var(--color-border)] p-3 text-left">
+                  {t('pickup.partial.confirm')}
+                </th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {lines.map((line) => (
+                <tr key={line.lineId}>
+                  <td className="border-b border-[var(--color-border)] p-3 text-left">{line.lineId}</td>
+                  <td className="border-b border-[var(--color-border)] p-3 text-left">
+                    {line.quantityOrdered}
+                  </td>
+                  <td className="border-b border-[var(--color-border)] p-3 text-left">
+                    {line.quantityCollected}
+                  </td>
+                  <td className="border-b border-[var(--color-border)] p-3 text-left">
+                    {line.quantityRefused}
+                  </td>
+                  <td className="border-b border-[var(--color-border)] p-3 text-left">
+                    {line.quantityRemaining}
+                  </td>
+                  <td className="border-b border-[var(--color-border)] p-3 text-left">
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={partialSelected[line.lineId] ?? false}
+                        aria-label={t('pickup.partial.selectLine', { lineId: line.lineId })}
+                        onChange={(event) => onToggleLine(line.lineId, event.target.checked)}
+                        disabled={line.quantityRemaining <= 0}
+                      />
+                      <Button
+                        intent="secondary"
+                        size="sm"
+                        type="button"
+                        className="min-h-11 min-w-11"
+                        aria-label={t('pickup.partial.decrease')}
+                        disabled={!partialSelected[line.lineId] || (partialQty[line.lineId] ?? 0) <= 0}
+                        onClick={() =>
+                          onChangeQty(line.lineId, Math.max(0, (partialQty[line.lineId] ?? 0) - 1))
+                        }
+                      >
+                        −
+                      </Button>
+                      <span className="min-w-8 text-center font-semibold">
+                        {partialQty[line.lineId] ?? 0}
+                      </span>
+                      <Button
+                        intent="secondary"
+                        size="sm"
+                        type="button"
+                        className="min-h-11 min-w-11"
+                        aria-label={t('pickup.partial.increase')}
+                        disabled={
+                          !partialSelected[line.lineId] ||
+                          (partialQty[line.lineId] ?? 0) >= line.quantityRemaining
+                        }
+                        onClick={() =>
+                          onChangeQty(
+                            line.lineId,
+                            Math.min(line.quantityRemaining, (partialQty[line.lineId] ?? 0) + 1)
+                          )
+                        }
+                      >
+                        +
+                      </Button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       ) : null}
 
       {requiresPickupCode ? (
-        <label className="pickup-label">
-          {t('pickup.partial.pickupCode')}
-          <input
-            className="pickup-input"
-            value={pickupCode}
-            onChange={(event) => onPickupCodeChange(event.target.value)}
-          />
-        </label>
+        <FormField
+          surface="pickup"
+          label={t('pickup.partial.pickupCode')}
+          value={pickupCode}
+          onChange={(event) => onPickupCodeChange(event.target.value)}
+        />
       ) : null}
 
-      <div className="pickup-row">
-        <button
-          className="pickup-button"
+      <div className="flex flex-wrap items-center gap-3">
+        <Button
           type="button"
           data-testid="pickup-confirm-full"
-          onClick={onConfirmFull}
-          disabled={!canConfirm || isOnHold}
+          onClick={handleConfirmFull}
+          disabled={!canConfirm || isOnHold || confirmInProgress}
         >
           {t('pickup.partial.confirmFull')}
-        </button>
-        <button
-          className="pickup-button pickup-button--secondary"
+        </Button>
+        <Button
+          intent="secondary"
           type="button"
-          onClick={onConfirmPartial}
-          disabled={!canConfirm || isOnHold}
+          onClick={handleConfirmPartial}
+          disabled={!canConfirm || isOnHold || confirmInProgress}
         >
           {t('pickup.partial.confirm')}
-        </button>
+        </Button>
       </div>
-    </section>
+    </Card>
   );
 }

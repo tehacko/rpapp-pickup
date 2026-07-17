@@ -11,6 +11,9 @@ import type { OrderScreenState } from './orderScreenState.js';
 import { PromoDiscountLine } from './PromoDiscountLine.js';
 import { usePickupEntitlement } from '../../hooks/usePickupEntitlement.js';
 
+const SHELL = 'mx-auto w-full max-w-[720px] px-4 py-6';
+const LINK = 'text-[var(--color-accent)] underline';
+
 export interface OrderScreenViewProps {
   readonly screenState: OrderScreenState;
   readonly viewModel: OrderPageViewModel | null;
@@ -31,15 +34,15 @@ export function OrderScreenView({
 
   if (screenState.kind === 'loading') {
     return (
-      <main className="pickup-shell">
+      <div className={SHELL}>
         <ScreenState variant="loading" message={t('pickup.order.loading')} />
-      </main>
+      </div>
     );
   }
 
   if (screenState.kind === 'claimConflict') {
     return (
-      <main className="pickup-shell">
+      <div className={SHELL}>
         <h1>{t('pickup.order.claimConflictTitle')}</h1>
         <p>
           {screenState.claimedByDeviceLabel
@@ -48,38 +51,30 @@ export function OrderScreenView({
               })
             : t('pickup.order.claimConflictLead')}
         </p>
-        <Link className="pickup-link" to={`/${encodedTenant}/queue`}>
+        <Link className={LINK} to={`/${encodedTenant}/queue`}>
           {t('pickup.order.queue')}
         </Link>
-        {' · '}
-        <Link className="pickup-link" to={`/${encodedTenant}/scan`}>
-          {t('pickup.order.backToScan')}
-        </Link>
-      </main>
+      </div>
     );
   }
 
   if (screenState.kind === 'loadFailed' || viewModel === null) {
     return (
-      <main className="pickup-shell">
+      <div className={SHELL}>
         <ScreenState variant="error" message={t('pickup.order.loadFailed')} />
         <p>
-          <Link className="pickup-link" to={`/${encodedTenant}/scan`}>
-            {t('pickup.order.backToScan')}
-          </Link>
-          {' · '}
-          <Link className="pickup-link" to={`/${encodedTenant}/queue`}>
+          <Link className={LINK} to={`/${encodedTenant}/queue`}>
             {t('pickup.order.queue')}
           </Link>
         </p>
-      </main>
+      </div>
     );
   }
 
   const { order } = viewModel;
 
   return (
-    <main className="pickup-shell">
+    <div className={SHELL}>
       <h1>{t('pickup.order.title', { id: viewModel.fulfillmentId })}</h1>
       <p>{t('pickup.order.version', { version: order.version })}</p>
       <p>{t('pickup.order.status', { status: order.fulfillmentStatus })}</p>
@@ -136,27 +131,6 @@ export function OrderScreenView({
       />
 
       <ReprintPanel onReprint={actions.onReprint} />
-
-      <p>
-        <Link className="pickup-link" to={`/${encodedTenant}/scan`}>
-          {t('pickup.order.backToScan')}
-        </Link>
-        {' · '}
-        <Link className="pickup-link" to={`/${encodedTenant}/queue`}>
-          {t('pickup.order.queue')}
-        </Link>
-      </p>
-
-      {viewModel.message ? (
-        <p
-          className={`pickup-message ${
-            viewModel.messageKind === 'error' ? 'pickup-message--error' : 'pickup-message--success'
-          }`}
-          data-testid={`pickup-toast-${viewModel.messageKind}`}
-        >
-          {viewModel.message}
-        </p>
-      ) : null}
-    </main>
+    </div>
   );
 }

@@ -1,11 +1,13 @@
 /**
- * Pickup phone landscape smoke (RESP-W3-PICKUP-LANDSCAPE).
- * Scan screen at 844×390 without horizontal overflow trap.
+ * Pickup phone landscape smoke (RESP-W3-PICKUP-LANDSCAPE / L17).
+ * 844×390 → comfortable tier → side rail, not bottom nav; no page H-overflow.
  */
 import { test, expect } from '@playwright/test';
 import {
-  installPickupScanResponsiveMocks,
+  assertNoPageHorizontalOverflow,
+  installPickupShellNavMocks,
   loginAndOpenPickupScan,
+  PICKUP_RESPONSIVE_TENANT,
 } from '../helpers/pickupResponsiveMocks.js';
 
 test.describe('Pickup phone landscape smoke', () => {
@@ -15,15 +17,20 @@ test.describe('Pickup phone landscape smoke', () => {
 
   test.beforeEach(async ({ page, browserName }) => {
     test.skip(browserName !== 'chromium', 'Chromium-only');
-    await installPickupScanResponsiveMocks(page);
+    await installPickupShellNavMocks(page);
   });
 
-  test('scan screen renders in phone landscape', async ({ page }) => {
+  test('scan screen renders; rail visible / bottom hidden (L17)', async ({ page }) => {
     await loginAndOpenPickupScan(page);
 
-    const overflowX = await page.evaluate(
-      () => document.documentElement.scrollWidth <= window.innerWidth + 2,
-    );
-    expect(overflowX).toBe(true);
+    await expect(page.getByTestId('pickup-side-nav')).toBeVisible();
+    await expect(page.getByTestId('pickup-bottom-nav')).toHaveCount(0);
+    await assertNoPageHorizontalOverflow(page);
+  });
+
+  test('hub also uses side rail in landscape', async ({ page }) => {
+    await page.goto(`/${PICKUP_RESPONSIVE_TENANT}/hub`, { waitUntil: 'domcontentloaded' });
+    await expect(page.getByTestId('pickup-side-nav')).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByTestId('pickup-bottom-nav')).toHaveCount(0);
   });
 });

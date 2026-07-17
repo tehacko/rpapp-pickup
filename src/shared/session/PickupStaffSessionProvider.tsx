@@ -23,6 +23,7 @@ import {
   pickupStaffAuthBus,
   publishPickupStaffAuth,
 } from '../crossTab/pickupStaffCrossTab.js';
+import { clearPickupPwaClientState } from '../../app/pwa/clearPickupPwaClientState.js';
 import {
   invalidatePickupStaffSessionRefresh,
   refreshPickupStaffSession,
@@ -187,6 +188,7 @@ export function PickupStaffSessionProvider({
       } catch {
         // Cookie may already be cleared; local state is authoritative for UI.
       }
+      await clearPickupPwaClientState();
       if (hadSession) {
         publishPickupStaffAuth({ type: 'logout', tenantCode: code });
       }

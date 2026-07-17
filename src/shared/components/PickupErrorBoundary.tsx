@@ -33,8 +33,9 @@ function PickupErrorBoundaryFallback({
 }): JSX.Element {
   const { t } = useTranslation('pickup');
   return (
-    <main className="pickup-shell" role="alert">
-      <div className="pickup-panel pickup-stack">
+    // Landmark: root error fallback replaces the tree (including shell <main>) — sole <main> OK.
+    <main className="mx-auto w-full max-w-[720px] px-4 py-6" role="alert">
+      <div className="flex flex-col gap-4 rounded-xl bg-[var(--color-surface-elevated)] p-5 shadow-[var(--shadow-card)]">
         <h1>{t('app.errorBoundary.title')}</h1>
         <p>{t('app.errorBoundary.message')}</p>
         <Button surface="pickup" type="button" onClick={onRetry}>

@@ -1,5 +1,6 @@
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Button } from './surfacePrimitives.js';
 import type { ScreenStateProps } from './types/screenState.types.js';
 
 /**
@@ -11,7 +12,7 @@ export const ScreenState = memo<ScreenStateProps>((props) => {
 
   if (variant === 'loading') {
     return (
-      <div className="pickup-screen-state pickup-screen-state--loading" role="status" aria-live="polite">
+      <div className="flex flex-col items-center gap-2 py-6 text-center" role="status" aria-live="polite">
         <p>{message ?? title ?? t('pickup.common.loading')}</p>
       </div>
     );
@@ -20,28 +21,28 @@ export const ScreenState = memo<ScreenStateProps>((props) => {
   if (variant === 'error') {
     const errorMessage = error?.message ?? message ?? t('pickup.common.error');
     return (
-      <div className="pickup-screen-state pickup-screen-state--error" role="alert">
+      <div className="flex flex-col items-center gap-2 py-6 text-center" role="alert">
         {title ? <h2>{title}</h2> : <h2>{t('pickup.common.errorTitle')}</h2>}
         <p>{errorMessage}</p>
         {onRetry ? (
-          <button type="button" className="pickup-button" onClick={onRetry}>
+          <Button type="button" onClick={onRetry}>
             {t('pickup.common.retry')}
-          </button>
+          </Button>
         ) : null}
       </div>
     );
   }
 
   return (
-    <div className="pickup-screen-state pickup-screen-state--empty" role="status">
-      {icon ? <div className="pickup-screen-state__icon">{icon}</div> : null}
+    <div className="flex flex-col items-center gap-2 py-6 text-center" role="status">
+      {icon ? <div className="mx-auto">{icon}</div> : null}
       {title ? <h2>{title}</h2> : null}
       {message ? <p>{message}</p> : null}
-      {hint ? <p className="pickup-screen-state__hint">{hint}</p> : null}
+      {hint ? <p className="text-sm text-[var(--color-on-surface-muted)]">{hint}</p> : null}
       {action ? (
-        <button type="button" className="pickup-button" onClick={action.onClick}>
+        <Button type="button" onClick={action.onClick}>
           {action.label}
-        </button>
+        </Button>
       ) : null}
     </div>
   );

@@ -30,6 +30,7 @@ import {
 } from './orderScreenMutations.js';
 import { resolveOrderScreenState, type OrderScreenState } from './orderScreenState.js';
 import { usePickupStaffRePin } from '../../shared/security/usePickupStaffRePin.js';
+import { toastApi } from '../../shared/ui/Toast/toastApi.js';
 
 export interface OrderScreenActions {
   readonly setPickupCode: (value: string) => void;
@@ -76,8 +77,6 @@ export function useOrderScreen(
   const [refuseQty, setRefuseQty] = useState<Record<number, number>>({});
   const [refuseSelected, setRefuseSelected] = useState<Record<number, boolean>>({});
   const [order, setOrder] = useState<ResolveResponse | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
-  const [messageKind, setMessageKind] = useState<'success' | 'error'>('success');
   const [claimConflict, setClaimConflict] = useState<{ claimedByDeviceLabel: string | null } | null>(
     null,
   );
@@ -185,8 +184,7 @@ export function useOrderScreen(
   );
 
   const showToast = useCallback((text: string, kind: 'success' | 'error'): void => {
-    setMessage(text);
-    setMessageKind(kind);
+    toastApi(text, kind);
   }, []);
 
   const refreshOrder = useCallback(async (): Promise<ResolveResponse | null> => {
@@ -259,15 +257,11 @@ export function useOrderScreen(
       partialSelected,
       refuseQty,
       refuseSelected,
-      message,
-      messageKind,
       isCoolingDown: submitCooldown.isCoolingDown,
     });
   }, [
     fulfillmentId,
     holdReason,
-    message,
-    messageKind,
     order,
     partialQty,
     partialSelected,

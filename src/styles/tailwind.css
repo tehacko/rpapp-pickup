@@ -1,0 +1,29 @@
+/* rpapp-pickup — Tailwind v4 bootstrap (Phase 4b ADOPT_TAILWIND).
+ * Customer-gold mirror of rpapp-customer/src/styles/globals.css.
+ * Existing .pickup-* composition remains in app.css until Phase 5b.
+ */
+
+@import "tailwindcss";
+@import "pi-kiosk-shared/theme.css";
+@import "pi-kiosk-shared/responsive.css";
+@import "./pickup.extensions.css";
+
+/**
+ * Tailwind v4 breakpoint mirror — SSOT px values live in pi-kiosk-shared/responsive.css
+ * (--rp-breakpoint-*). Keep in sync with shared/src/responsive/breakpoints.ts.
+ */
+@theme {
+  --breakpoint-sm: 640px;
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 1024px;
+  --breakpoint-xl: 1280px;
+  --breakpoint-2xl: 1536px;
+}
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@source "../**/*.{ts,tsx}";
+/* Monorepo dev — sibling shared package sources */
+@source "../../../shared/src/ui/**/*.{ts,tsx}";
+/* Production separate-repo clones — pi-kiosk-shared from node_modules only */
+@source "../../node_modules/pi-kiosk-shared/dist/**/*.{js,mjs}";

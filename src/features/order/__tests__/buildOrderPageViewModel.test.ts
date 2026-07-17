@@ -56,8 +56,6 @@ const baseUi = {
   partialSelected: { 1: true, 2: false },
   refuseQty: { 1: 0, 2: 0 },
   refuseSelected: { 1: false, 2: false },
-  message: null,
-  messageKind: 'error' as const,
   isCoolingDown: false,
 };
 
@@ -102,14 +100,9 @@ describe('buildOrderPageViewModel', () => {
 
   it('reflects refreshed version after a version conflict refresh', () => {
     const staleVm = buildOrderPageViewModel(makeOrder({ version: 3 }), '42', 'demo', baseUi);
-    const refreshedVm = buildOrderPageViewModel(makeOrder({ version: 4 }), '42', 'demo', {
-      ...baseUi,
-      message: 'Order changed elsewhere. Refreshed — try again.',
-      messageKind: 'error',
-    });
+    const refreshedVm = buildOrderPageViewModel(makeOrder({ version: 4 }), '42', 'demo', baseUi);
     expect(staleVm.order.version).toBe(3);
     expect(refreshedVm.order.version).toBe(4);
-    expect(refreshedVm.message).toContain('Refreshed');
   });
 });
 
