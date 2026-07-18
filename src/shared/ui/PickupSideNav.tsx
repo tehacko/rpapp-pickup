@@ -8,6 +8,7 @@ import { cn } from './cn.js';
 import { IconButton } from './IconButton.js';
 import { resolvePickupBottomNavIcon } from './PickupBottomNavIcons.js';
 import { SailorMark } from './SailorMark.js';
+import { ThemeSwitch } from './ThemeSwitch.js';
 
 const MINT_SOFT_ACTIVE =
   'bg-[var(--brand-consumer-accent-soft)] font-semibold text-[var(--brand-consumer-accent)]';
@@ -213,6 +214,7 @@ export function PickupSideNav({
             <div className={railExpanded ? 'min-w-0 flex-1' : ''}>
               <LanguageToggle surface="pickup" i18nNamespace="pickup" placement="inline" />
             </div>
+            <ThemeSwitch />
             <IconButton
               icon={LogOut}
               tone="danger"

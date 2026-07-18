@@ -5,6 +5,7 @@ import { I18nextProvider } from 'react-i18next';
 import { BrowserRouter } from 'react-router-dom';
 import { initSentry } from 'pi-kiosk-shared/sentry';
 import { App } from './App';
+import { applyInitialPickupTheme, ThemeProvider } from './app/ThemeProvider.js';
 import { PickupPwaLifecycle } from './app/pwa/PickupPwaLifecycle.js';
 import { PickupErrorBoundary } from './shared/components/PickupErrorBoundary.js';
 import { PickupStaffSessionProvider } from './shared/session/PickupStaffSessionProvider.js';
@@ -20,6 +21,8 @@ import '@fontsource/poppins/600.css';
 import '@fontsource/poppins/700.css';
 import './styles/tailwind.css';
 import './styles/app.css';
+
+applyInitialPickupTheme();
 
 const PICKUP_PWA_PENDING_SHORTCUT_KEY = 'pickup_pwa_pending_shortcut';
 
@@ -61,23 +64,25 @@ const queryClient = new QueryClient();
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>
-    <I18nextProvider i18n={i18n}>
-      <QueryClientProvider client={queryClient}>
-        <BrowserRouter>
-          <ToastProvider>
-            <ConfirmApiProvider>
-              <AlertApiProvider>
-                <PickupErrorBoundary>
-                  <PickupStaffSessionProvider>
-                    <PickupPwaLifecycle />
-                    <App />
-                  </PickupStaffSessionProvider>
-                </PickupErrorBoundary>
-              </AlertApiProvider>
-            </ConfirmApiProvider>
-          </ToastProvider>
-        </BrowserRouter>
-      </QueryClientProvider>
-    </I18nextProvider>
+    <ThemeProvider>
+      <I18nextProvider i18n={i18n}>
+        <QueryClientProvider client={queryClient}>
+          <BrowserRouter>
+            <ToastProvider>
+              <ConfirmApiProvider>
+                <AlertApiProvider>
+                  <PickupErrorBoundary>
+                    <PickupStaffSessionProvider>
+                      <PickupPwaLifecycle />
+                      <App />
+                    </PickupStaffSessionProvider>
+                  </PickupErrorBoundary>
+                </AlertApiProvider>
+              </ConfirmApiProvider>
+            </ToastProvider>
+          </BrowserRouter>
+        </QueryClientProvider>
+      </I18nextProvider>
+    </ThemeProvider>
   </React.StrictMode>
 );

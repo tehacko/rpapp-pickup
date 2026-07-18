@@ -9,6 +9,7 @@ import { PICKUP_BUILD_LABEL } from './pickupBuildLabel.js';
 import { resolvePickupBottomNavIcon } from './PickupBottomNavIcons.js';
 import { cn } from './cn.js';
 import { IconButton } from './IconButton.js';
+import { ThemeSwitch } from './ThemeSwitch.js';
 
 export interface PickupMoreDrawerItem {
   readonly id: string;
@@ -219,6 +220,9 @@ export function PickupMoreDrawer({
                     aria-hidden
                   />
                   <LanguageToggle surface="pickup" i18nNamespace="pickup" placement="inline" />
+                </div>
+                <div className="flex items-center gap-2 px-1">
+                  <ThemeSwitch />
                 </div>
                 {footer}
                 <div className="flex items-center px-1">

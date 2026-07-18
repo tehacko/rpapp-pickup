@@ -82,6 +82,7 @@
   "pickup.hub.fulfillmentScan": "Skenování výdeje",
   "pickup.hub.barcodeAssign": "Přiřazení čárových kódů",
   "pickup.hub.signOut": "Odhlásit se",
+  "pickup.hub.appearanceAriaLabel": "Barva prostředí",
   "pickup.hub.deviceTitle": "Toto zařízení",
   "pickup.hub.devicePaired": "Spárováno jako {{label}}",
   "pickup.hub.deviceNotPaired": "Nespárováno — u vytížených objednávek může dojít ke konfliktu nároku.",

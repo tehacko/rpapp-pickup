@@ -82,6 +82,7 @@
   "pickup.hub.fulfillmentScan": "[!! Fulfillment scan !!]",
   "pickup.hub.barcodeAssign": "[!! Assign product barcodes !!]",
   "pickup.hub.signOut": "[!! Sign out !!]",
+  "pickup.hub.appearanceAriaLabel": "[!! Appearance !!]",
   "pickup.hub.deviceTitle": "[!! This device !!]",
   "pickup.hub.devicePaired": "[!! Paired as  !!]{{label}}",
   "pickup.hub.deviceNotPaired": "[!! Not paired — claim conflicts may occur on busy orders. !!]",
