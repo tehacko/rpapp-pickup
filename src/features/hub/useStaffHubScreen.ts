@@ -1,7 +1,6 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { fetchPickupStaffPickupPoints } from '../../api/pickupApi.js';
-import { PickupStaffFunction } from './pickupStaffFunctions.js';
+import { PickupStaffFunction } from '../../shared/entitlements/pickupStaffFunctions.js';
 import { getPairedDevice } from '../../lib/deviceStorage.js';
 import { usePickupEntitlement } from '../../hooks/usePickupEntitlement.js';
 import { useStaffToken, useTenantCode } from '../../hooks/useStaffToken.js';
@@ -12,9 +11,9 @@ import {
   type StaffHubPickupPointOption,
   type StaffHubViewModel,
 } from './buildStaffHubViewModel.js';
+import { useStaffPickupPointsQuery } from '../../shared/queries/useStaffPickupPointsQuery.js';
 
 export interface StaffHubScreenActions {
-  readonly signOut: () => void;
   readonly setActivePickupPointId: (pickupPointId: number) => void;
 }
 
@@ -44,7 +43,6 @@ export function useStaffHubScreen(): UseStaffHubScreenResult {
   const tenantCode = useTenantCode();
   const accessToken = useStaffToken();
   const {
-    signOut,
     isRoamingStaff,
     activePickupPointId,
     setActivePickupPointId,
@@ -54,17 +52,8 @@ export function useStaffHubScreen(): UseStaffHubScreenResult {
   const pairedDevice = getPairedDevice(tenantCode);
   const shouldLoadPickupPoints = isRoamingStaff && accessToken !== null;
 
-  const pickupPointsQuery = useQuery({
-    queryKey: ['pickup', tenantCode, 'staffPickupPoints'],
-    queryFn: async () => {
-      if (accessToken === null) {
-        return [];
-      }
-      return fetchPickupStaffPickupPoints(tenantCode, accessToken);
-    },
+  const pickupPointsQuery = useStaffPickupPointsQuery({
     enabled: shouldLoadPickupPoints,
-    staleTime: 60_000,
-    retry: 1,
   });
 
   const sellConfigQuery = useQuery({
@@ -120,12 +109,9 @@ export function useStaffHubScreen(): UseStaffHubScreenResult {
 
   const actions = useMemo<StaffHubScreenActions>(
     () => ({
-      signOut: () => {
-        void signOut(tenantCode);
-      },
       setActivePickupPointId,
     }),
-    [setActivePickupPointId, signOut, tenantCode],
+    [setActivePickupPointId],
   );
 
   return { accessToken, viewModel, actions };

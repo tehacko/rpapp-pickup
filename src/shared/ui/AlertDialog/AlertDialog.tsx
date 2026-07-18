@@ -19,12 +19,13 @@ export interface AlertDialogProps {
 
 function messageClassName(variant: AlertDialogVariant): string {
   if (variant === 'success') {
-    return 'rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-900';
+    return 'rounded-lg border border-[var(--color-success)] bg-[var(--color-success-foreground)] px-3 py-2 text-sm text-[var(--color-on-surface)]';
   }
   if (variant === 'error') {
-    return 'rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800';
+    return 'rounded-lg border border-[var(--color-danger)] bg-[var(--color-danger-foreground)] px-3 py-2 text-sm text-[var(--color-on-surface)]';
   }
-  return 'rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-900';
+  // `info` key kept for API compat — map to neutral/muted only (never sky / --color-info)
+  return 'rounded-lg border border-[var(--color-border-strong)] bg-[var(--color-surface-muted)] px-3 py-2 text-sm text-[var(--color-on-surface-muted)]';
 }
 
 export const AlertDialog = memo<AlertDialogProps>(({

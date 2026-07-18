@@ -6,14 +6,28 @@ Pickup staff PWA for order fulfillment (scan, queue, confirm, hold, refuse).
 
 | Piece | Path | Role |
 |-------|------|------|
-| **PickupAppShell** | `src/shared/ui/PickupAppShell.tsx` | Auth guard (no session → `/:tenantCode/login`); compact bottom nav + More; md+ side nav (64/224); content column max **720px**; measures `--pickup-bottom-chrome` |
+| **PickupAppShell** | `src/shared/ui/PickupAppShell.tsx` | Auth guard (no session → `/:tenantCode/login`); **owns all chrome** (page padding `p-4 md:p-6`, muted page bg, bottom + side nav, measured `--pickup-bottom-chrome`); content column width per Screen Recipe (not 720-only forever) |
+| **PickupContextBar** | `src/shared/ui/PickupContextBar.tsx` (≥md shell chrome) | Active pickup-point strip — **not** admin `EnterpriseHeader`; Radix Select sets `activePickupPointId`. **Product intent:** ≥md ContextBar is for **roaming / multi-point staff**; fixed-point staff use the Hub point switcher when shown. Do **not** invent a mobile ContextBar. |
+| **PickupSideNav** / **PickupBottomNav** / **PickupMoreDrawer** | `src/shared/ui/Pickup*.tsx` | Shell-owned destinations + sign-out; More is drawer (no DropdownMenu unless overflow needs it) |
+| **PageHeader** | `src/shared/ui/PageHeader.tsx` | Screen toolbar (title / lead / actions) — **not** pickup-point strip |
 | **App routes** | `src/App.tsx` | Authenticated routes nested under shell; `login` + `device-pairing` **outside** shell |
 | **RootPage** | `src/pages/RootPage.tsx` | Last-tenant → hub (shell guard → login) / `DEFAULT_TENANT` → login / else tenant hint |
 | **PWA** | VitePWA + `src/app/pwa/*` | Online-first installable shell; `runtimeCaching: []`; BroadcastChannel `rpapp-pickup-pwa-reload`; shortcuts hub/scan/queue |
 
-**Nav rule:** Screens must not invent a second nav — chrome is shell-owned only. Sell tab IFF `sellingEnabled === true` (never a `staff_sell` entitlement myth).
+**Nav rule:** Screens must not invent a second nav — chrome is shell-owned only. Sell tab IFF `sellingEnabled === true` (never a `staff_sell` entitlement myth). Sign-out is chrome-only (no page-level hub sign-out).
 
-**Styling:** **ADOPT_TAILWIND** — see [`STYLING.md`](./STYLING.md) and [`../../docs/FRONTEND/PICKUP_STYLING_ADR.md`](../../docs/FRONTEND/PICKUP_STYLING_ADR.md).
+**Screen Recipe (shelled routes):**
+
+```
+PageHeader
+  → optional filters (SegmentTabs | FilterChip | SearchField)
+  → content (SectionCard | ListRow/QueueRow/OrderLineRow | ActionTile grid | dual-pane)
+  → PickupStickyCta slots: primary | secondary | danger
+```
+
+Page padding owned by **`PickupAppShell` only**; screen toolbars use local `PageHeader` (not `EnterpriseHeader`). List screens: `PickupListLayout` **or** checklist `banner → KPI (omit if empty) → children → sticky`.
+
+**Styling:** **ADOPT_TAILWIND** — see [`STYLING.md`](./STYLING.md) and [`../../docs/FRONTEND/PICKUP_STYLING_ADR.md`](../../docs/FRONTEND/PICKUP_STYLING_ADR.md). Legacy `.pickup-*` inventory in STYLING.md.
 
 ## Humble object (ScreenState + ViewModel)
 
@@ -149,7 +163,7 @@ Admin agents implementing pickup-adjacent features (devices, pickup points) stay
 
 **Added:** `MFE-v3-S-03` (`Button`, `Card`) · adopted in fulfillment views via `MFE-v3-D-04`
 
-Pickup is an **ADOPT_TAILWIND** surface (Tailwind v4 + `theme.css`; CSS_EXCEPTION superseded). Shared atoms render pickup styling through explicit `surface="pickup"` — the recipe lives in `shared/src/ui/Button/Button.tsx` and `Card/Card.tsx`, using semantic tokens (`--color-accent`, `--color-surface-*`, `--color-focus-ring`, `--radius-lg`). Composition helpers (`.pickup-shell`, `.pickup-stack`, `.pickup-link`, `.pickup-table`, …) remain in `src/styles/app.css` until full utility migration; **`.pickup-button` CSS was removed** — use shared `Button surface="pickup"`.
+Pickup is an **ADOPT_TAILWIND** surface (Tailwind v4 + `theme.css`; CSS_EXCEPTION superseded). Shared atoms render pickup styling through explicit `surface="pickup"` — the recipe lives in `shared/src/ui/Button/Button.tsx` and `Card/Card.tsx`, using semantic tokens (`--color-accent`, `--color-surface-*`, `--color-focus-ring`, `--radius-lg`). Prefer Tailwind + pickup-local primitives; legacy `.pickup-*` inventory and quarantine list live in [`STYLING.md`](./STYLING.md). **`.pickup-button` CSS was removed** — use shared `Button surface="pickup"`.
 
 ### Import and caller rules
 
@@ -159,10 +173,11 @@ import { Button, Card } from 'pi-kiosk-shared/ui';
 
 | Rule | Detail |
 |------|--------|
-| **Always pass `surface="pickup"`** | Default on `Button` / `Card` is `customer`; omitting `surface` breaks operator styling |
+| **Always pass `surface="pickup"`** | Default on `Button` / `Card` / `FormField` is `customer`; omitting `surface` breaks operator styling |
 | **Views only** | Import in `*ScreenView.tsx` (and future migrated panels); hooks stay free of JSX primitives |
-| **Layout helpers** | Pair atoms with `.pickup-shell`, `.pickup-stack`, `.pickup-label`, `.pickup-input` from `src/styles/app.css` |
-| **No admin bridge** | Unlike admin `surfacePrimitives.tsx`, pickup imports `pi-kiosk-shared/ui` directly |
+| **Layout helpers** | Prefer Tailwind + pickup-local primitives; legacy `.pickup-*` — see STYLING inventory (keep `.pickup-table-scroll` / `.pickup-touch-target`) |
+| **Bridge** | Prefer `src/shared/ui/surfacePrimitives.tsx` (pins `surface="pickup"`) or explicit `pi-kiosk-shared/ui` + `surface="pickup"` |
+| **No admin imports** | Never import `rpapp-admin/` |
 
 ### `Button surface="pickup"`
 

@@ -1,6 +1,7 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { LogIn } from 'lucide-react';
 import {
   formatRateLimitMessage,
   getRetryAfterMs,
@@ -8,9 +9,13 @@ import {
   useSubmitCooldown,
 } from 'pi-kiosk-shared';
 import { TurnstileExecuteWidget, useTurnstileExecute } from 'pi-kiosk-shared/ui';
-import { Button } from '../shared/ui/surfacePrimitives.js';
+import { Button, FormField } from '../shared/ui/surfacePrimitives.js';
+import { AlertBanner, InlineNotice } from '../shared/ui/AlertBanner.js';
+import { Input } from '../shared/ui/Input.js';
+import { SailorMark } from '../shared/ui/SailorMark.js';
+import { SectionCard } from '../shared/ui/SectionCard.js';
 import { fetchSalesPointById, loginPickupStaff, PickupApiError } from '../api/pickupApi';
-import { resolvePostLoginPath } from '../features/hub/pickupStaffFunctions';
+import { resolvePostLoginPath } from '../shared/entitlements/pickupStaffFunctions.js';
 import { usePickupEntitlement } from '../hooks/usePickupEntitlement';
 import { isDevicePaired, setPairedDevice } from '../lib/deviceStorage.js';
 import { rememberPickupLastTenant } from '../lib/pickupLastTenant.js';
@@ -152,99 +157,134 @@ export function LoginPage(): JSX.Element {
 
   return (
     // Landmark: login is outside PickupAppShell — this page may own the sole <main>.
-    <main className="mx-auto w-full max-w-[720px] px-4 py-6">
-      <h1>{t('pickup.login.title')}</h1>
-      {isTenantInactive ? (
-        <div
-          className="mb-4 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-muted)] p-4"
-          data-testid={PICKUP_TENANT_INACTIVE_TEST_ID}
-          role="alert"
-        >
-          <h2 className="m-0 text-lg font-semibold text-[var(--color-on-surface)]">
-            {t('pickup.tenantInactive.title')}
-          </h2>
-          <p className="mb-0 mt-2 text-sm text-[var(--color-on-surface-muted)]">
-            {t('pickup.tenantInactive.body')}
-          </p>
+    <main className="mx-auto flex min-h-[100dvh] w-full max-w-md flex-col justify-center px-4 py-8">
+      <SectionCard elevated data-testid="pickup-login-card">
+        <div className="flex flex-col gap-4">
+        <div className="flex flex-col items-center gap-3 text-center">
+          <SailorMark size="lg" />
+          <h1 className="m-0 inline-flex items-center gap-2 text-xl font-bold tracking-tight text-[var(--color-on-surface)]">
+            <LogIn
+              className="h-5 w-5 shrink-0 stroke-[1.75] text-[var(--brand-consumer-accent)]"
+              aria-hidden
+            />
+            {t('pickup.login.title')}
+          </h1>
         </div>
-      ) : null}
-      {entitlementLoading ? <p role="status">{t('pickup.login.entitlementLoading')}</p> : null}
-      {!entitlementLoading && !isTenantInactive && !isLoginAllowed ? (
-        <p className="text-sm text-red-600" role="alert">
-          {t('pickup.login.entitlementDenied', {
-            block: denialReason ?? 'staff_pickup_scan',
-          })}
-        </p>
-      ) : null}
-      {displayPmLoading ? <p>{t('pickup.login.pmLoading')}</p> : null}
-      {displayPmName ? <p>{t('pickup.login.pmName', { name: displayPmName })}</p> : null}
-      {isSuperPickuperLogin ? (
-        <p className="text-sm text-[var(--color-on-surface-muted)]">{t('pickup.login.superPickuperHint')}</p>
-      ) : null}
-      <form className="flex flex-col gap-3" onSubmit={(event) => void onSubmit(event)}>
-        <label className="flex flex-col gap-1 text-sm font-medium text-[var(--color-on-surface)]" htmlFor="pickup-sales-point-id">
-          {t('pickup.login.salesPointId')}
-          <input
+
+        {isTenantInactive ? (
+          <div
+            className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-muted)] p-4"
+            data-testid={PICKUP_TENANT_INACTIVE_TEST_ID}
+            role="alert"
+          >
+            <h2 className="m-0 text-lg font-semibold text-[var(--color-on-surface)]">
+              {t('pickup.tenantInactive.title')}
+            </h2>
+            <p className="mb-0 mt-2 text-sm text-[var(--color-on-surface-muted)]">
+              {t('pickup.tenantInactive.body')}
+            </p>
+          </div>
+        ) : null}
+
+        {entitlementLoading ? (
+          <p className="m-0 text-sm text-[var(--color-on-surface-muted)]" role="status">
+            {t('pickup.login.entitlementLoading')}
+          </p>
+        ) : null}
+
+        {!entitlementLoading && !isTenantInactive && !isLoginAllowed ? (
+          <AlertBanner
+            tone="danger"
+            role="alert"
+            message={t('pickup.login.entitlementDenied', {
+              block: denialReason ?? 'staff_pickup_scan',
+            })}
+          />
+        ) : null}
+
+        {displayPmLoading ? (
+          <p className="m-0 text-sm text-[var(--color-on-surface-muted)]">
+            {t('pickup.login.pmLoading')}
+          </p>
+        ) : null}
+        {displayPmName ? (
+          <p className="m-0 text-sm text-[var(--color-on-surface-muted)]">
+            {t('pickup.login.pmName', { name: displayPmName })}
+          </p>
+        ) : null}
+        {isSuperPickuperLogin ? (
+          <InlineNotice tone="neutral">{t('pickup.login.superPickuperHint')}</InlineNotice>
+        ) : null}
+
+        <form className="flex flex-col gap-3" onSubmit={(event) => void onSubmit(event)}>
+          <FormField
             id="pickup-sales-point-id"
-            className="min-h-11 w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-[var(--color-on-surface)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus-ring)]"
+            label={t('pickup.login.salesPointId')}
             value={salesPointId}
             onChange={(event) => setSalesPointId(event.target.value)}
             disabled={submitCooldown.isCoolingDown || isTenantInactive}
             placeholder={t('pickup.login.salesPointIdPlaceholder')}
+            autoComplete="username"
           />
-        </label>
-        <label className="flex flex-col gap-1 text-sm font-medium text-[var(--color-on-surface)]" htmlFor="pickup-pin">
-          {t('pickup.login.pin')}
-          <input
-            id="pickup-pin"
-            className="min-h-11 w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-[var(--color-on-surface)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus-ring)]"
-            value={pin}
-            type="password"
-            onChange={(event) => setPin(event.target.value)}
-            disabled={submitCooldown.isCoolingDown || isTenantInactive}
-            placeholder={t('pickup.login.pinPlaceholder')}
-          />
-        </label>
-        {showDeviceCodeField ? (
-          <label className="flex flex-col gap-1 text-sm font-medium text-[var(--color-on-surface)]" htmlFor="pickup-device-code">
-            {t('pickup.login.deviceCode')}
-            <input
+          <div className="flex w-full flex-col gap-1.5">
+            <label
+              htmlFor="pickup-pin"
+              className="text-sm font-medium text-[var(--color-on-surface)]"
+            >
+              {t('pickup.login.pin')}
+            </label>
+            <Input
+              id="pickup-pin"
+              data-testid="pickup-pin"
+              type="password"
+              inputMode="numeric"
+              value={pin}
+              onChange={(event) => setPin(event.target.value)}
+              disabled={submitCooldown.isCoolingDown || isTenantInactive}
+              placeholder={t('pickup.login.pinPlaceholder')}
+              autoComplete="current-password"
+            />
+          </div>
+          {showDeviceCodeField ? (
+            <FormField
               id="pickup-device-code"
-              className="min-h-11 w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-[var(--color-on-surface)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus-ring)]"
+              label={t('pickup.login.deviceCode')}
               value={deviceCode}
               onChange={(event) => setDeviceCode(event.target.value)}
               disabled={submitCooldown.isCoolingDown || isTenantInactive}
               placeholder={t('pickup.login.deviceCodePlaceholder')}
               autoComplete="off"
             />
-          </label>
+          ) : null}
+          <div className="pt-1">
+            <TurnstileExecuteWidget
+              turnstile={turnstile}
+              className="w-full"
+              testId="pickup-turnstile-execute-field"
+            />
+          </div>
+          <Button
+            type="submit"
+            block
+            disabled={
+              isSubmitting ||
+              submitCooldown.isCoolingDown ||
+              isTenantInactive ||
+              !isLoginAllowed
+            }
+          >
+            {t('pickup.login.submit')}
+          </Button>
+        </form>
+
+        {cooldownMessage ? (
+          <AlertBanner tone="danger" role="alert" message={cooldownMessage} />
         ) : null}
-        <TurnstileExecuteWidget
-          turnstile={turnstile}
-          className="w-full"
-          testId="pickup-turnstile-execute-field"
-        />
-        <Button
-          type="submit"
-          block
-          disabled={
-            isSubmitting ||
-            submitCooldown.isCoolingDown ||
-            isTenantInactive ||
-            !isLoginAllowed
-          }
-        >
-          {t('pickup.login.submit')}
-        </Button>
-      </form>
-      {cooldownMessage ? (
-        <p className="text-sm text-red-600" role="alert">
-          {cooldownMessage}
-        </p>
-      ) : null}
-      {error && !cooldownMessage ? (
-        <p className="text-sm text-red-600">{error}</p>
-      ) : null}
+        {error && !cooldownMessage ? (
+          <AlertBanner tone="danger" role="alert" message={error} />
+        ) : null}
+        </div>
+      </SectionCard>
     </main>
   );
 }

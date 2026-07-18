@@ -1,4 +1,9 @@
 import type { QueueItem } from '../../types.js';
+import {
+  computeQueueAge,
+  formatQueueAgeLabel,
+  type QueueAgeTone,
+} from './queueAging.js';
 
 export type PickupPointTabId = number | 'none';
 export type ActivePickupPointFilter = 'all' | PickupPointTabId;
@@ -6,6 +11,7 @@ export type ActivePickupPointFilter = 'all' | PickupPointTabId;
 export interface QueuePickupPointTab {
   readonly id: PickupPointTabId;
   readonly label: string;
+  readonly count?: number;
 }
 
 export interface QueueItemClaimBadge {
@@ -14,11 +20,24 @@ export interface QueueItemClaimBadge {
   readonly expiresSoon: boolean;
 }
 
+export interface QueueItemAgeView {
+  readonly tone: QueueAgeTone;
+  readonly urgency?: 'high';
+  readonly labelKind: 'hidden' | 'in' | 'ago' | 'overdue';
+  readonly minutes: number | null;
+}
+
 export interface QueueListItemViewModel {
   readonly fulfillmentId: number;
   readonly status: string;
   readonly pickupPointName: string | null;
   readonly claimBadge: QueueItemClaimBadge | null;
+  /** Nested age details (labelKind / minutes) for i18n remapping. */
+  readonly age: QueueItemAgeView | null;
+  /** Flat aging tone for StatusBadge / row urgency (`null` = hide age slot). */
+  readonly ageTone: QueueAgeTone | null;
+  /** Relative age string (`null` when promisedPickupAt missing/invalid). */
+  readonly ageLabel: string | null;
 }
 
 export interface QueuePageUiState {
@@ -26,6 +45,7 @@ export interface QueuePageUiState {
   readonly errorMessage: string | null;
   readonly showOfflineRetryBanner: boolean;
   readonly showPickupPointTabs: boolean;
+  readonly lastUpdatedAt: number | null;
 }
 
 export interface QueuePageViewModel {
@@ -36,6 +56,7 @@ export interface QueuePageViewModel {
   readonly errorMessage: string | null;
   readonly showOfflineRetryBanner: boolean;
   readonly showPickupPointTabs: boolean;
+  readonly lastUpdatedAt: number | null;
 }
 
 export function isQueueClaimActive(
@@ -75,15 +96,27 @@ export function buildPickupPointTabs(
   items: readonly QueueItem[],
   unassignedLabel: string,
 ): QueuePickupPointTab[] {
-  const tabs = new Map<PickupPointTabId, string>();
+  const tabs = new Map<PickupPointTabId, { label: string; count: number }>();
   for (const item of items) {
     if (item.pickupPointId === null) {
-      tabs.set('none', unassignedLabel);
+      const existing = tabs.get('none');
+      tabs.set('none', {
+        label: unassignedLabel,
+        count: (existing?.count ?? 0) + 1,
+      });
     } else {
-      tabs.set(item.pickupPointId, item.pickupPointName ?? String(item.pickupPointId));
+      const existing = tabs.get(item.pickupPointId);
+      tabs.set(item.pickupPointId, {
+        label: item.pickupPointName ?? String(item.pickupPointId),
+        count: (existing?.count ?? 0) + 1,
+      });
     }
   }
-  return Array.from(tabs.entries()).map(([id, label]) => ({ id, label }));
+  return Array.from(tabs.entries()).map(([id, value]) => ({
+    id,
+    label: value.label,
+    count: value.count,
+  }));
 }
 
 export function filterQueueItems(
@@ -104,12 +137,32 @@ export function buildQueueListItemViewModels(
   currentDeviceLabel: string | null,
   nowMs: number = Date.now(),
 ): QueueListItemViewModel[] {
-  return items.map((item) => ({
-    fulfillmentId: item.fulfillmentId,
-    status: item.status,
-    pickupPointName: item.pickupPointName,
-    claimBadge: buildQueueItemClaimBadge(item, currentDeviceLabel, undefined, nowMs),
-  }));
+  return items.map((item) => {
+    const ageInfo = computeQueueAge(item.promisedPickupAt, nowMs);
+    const ageLabel = formatQueueAgeLabel(ageInfo);
+    let age: QueueItemAgeView | null = null;
+    let ageTone: QueueAgeTone | null = null;
+    if (ageInfo.labelKind !== 'hidden' && ageLabel !== null) {
+      const minutes =
+        ageInfo.overdueMinutes !== null ? ageInfo.overdueMinutes : ageInfo.minutesUntil;
+      age = {
+        tone: ageInfo.tone,
+        urgency: ageInfo.urgency,
+        labelKind: ageInfo.labelKind,
+        minutes,
+      };
+      ageTone = ageInfo.tone;
+    }
+    return {
+      fulfillmentId: item.fulfillmentId,
+      status: item.status,
+      pickupPointName: item.pickupPointName,
+      claimBadge: buildQueueItemClaimBadge(item, currentDeviceLabel, undefined, nowMs),
+      age,
+      ageTone,
+      ageLabel,
+    };
+  });
 }
 
 export function buildQueuePageViewModel(
@@ -130,5 +183,6 @@ export function buildQueuePageViewModel(
     errorMessage: ui.errorMessage,
     showOfflineRetryBanner: ui.showOfflineRetryBanner,
     showPickupPointTabs: ui.showPickupPointTabs,
+    lastUpdatedAt: ui.lastUpdatedAt,
   };
 }

@@ -45,6 +45,7 @@ export interface OrderScreenActions {
   readonly onHold: () => void;
   readonly onRelease: () => void;
   readonly onReprint: () => void;
+  readonly onRetry: () => void;
 }
 
 export interface UseOrderScreenResult {
@@ -293,8 +294,18 @@ export function useOrderScreen(
           descriptionKey: 'pickup.repin.reprintDescription',
           action: () => void reprintOrderCredentials(mutationContext),
         }),
+      onRetry: () => {
+        void (async () => {
+          setLoading(true);
+          try {
+            await refreshOrder();
+          } finally {
+            setLoading(false);
+          }
+        })();
+      },
     }),
-    [mutationContext, requestRePin],
+    [mutationContext, refreshOrder, requestRePin],
   );
 
   return { accessToken, tenantCode, screenState, viewModel, actions, rePinModal };

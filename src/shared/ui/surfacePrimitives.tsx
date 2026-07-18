@@ -20,5 +20,9 @@ export const Card = forwardRef<HTMLDivElement, CardProps>((props, ref) => (
 ));
 Card.displayName = 'Card';
 
-export type FormFieldProps = SharedFormFieldProps;
-export const FormField = SharedFormField;
+export type FormFieldProps = Omit<SharedFormFieldProps, 'surface'>;
+/** Always pin Sailor surface — shared FormField defaults to `customer`. */
+export const FormField = forwardRef<HTMLInputElement, FormFieldProps>((props, ref) => (
+  <SharedFormField ref={ref} {...props} surface="pickup" />
+));
+FormField.displayName = 'FormField';

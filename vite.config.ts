@@ -43,7 +43,7 @@ export default defineConfig(({ mode }) => {
       id: 'rpapp-pickup-pwa',
       display: 'standalone',
       background_color: '#f8fafc',
-      theme_color: '#0f172a',
+      theme_color: '#00203F',
       icons: [
         { src: 'pwa-192.png', sizes: '192x192', type: 'image/png' },
         { src: 'pwa-512.png', sizes: '512x512', type: 'image/png' },

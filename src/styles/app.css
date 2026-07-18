@@ -1,53 +1,27 @@
 /**
  * Pickup composition CSS (legacy .pickup-* helpers).
  * Theme / responsive / extensions + Tailwind v4 bootstrap live in tailwind.css
- * (Phase 4b ADOPT_TAILWIND). Full BEM→utility migration is Phase 5b.
+ * (Phase 4b ADOPT_TAILWIND). Color / radius / shadow / motion SSOT =
+ * `pi-kiosk-shared/theme.css` — do not re-declare those here.
  *
  * Sections:
- *  1. @theme bridge — :root mirrors shared/src/tokens/theme.css @theme (sync on S-2)
- *  2. Dark mode — prefers-color-scheme (DECISION-2 hybrid)
- *  3. Layout tokens — spacing, touch, typography (pickup-local only)
- *  4. .pickup-* composition helpers
+ *  1. Chrome-only layout tokens (spacing, touch, typography aliases)
+ *  2. Base document
+ *  3. .pickup-* composition helpers
  */
 :root {
-  --color-surface: #ffffff;
-  --color-surface-muted: #f8fafc;
-  --color-surface-elevated: #ffffff;
-  --color-surface-hover: #f1f5f9;
-  --color-on-surface: #0f172a;
-  --color-on-surface-muted: #475569;
-  --color-on-surface-disabled: #94a3b8;
-  --color-primary: #0f172a;
-  --color-primary-foreground: #f8fafc;
-  --color-accent: var(--brand-consumer-accent);
-  --color-accent-foreground: var(--brand-consumer-accent-foreground);
-  --color-accent-hover: #001a33;
-  --color-success: #16a34a;
-  --color-success-foreground: #ecfdf5;
-  --color-danger: #dc2626;
-  --color-danger-foreground: #fef2f2;
-  --color-warning: #d97706;
-  --color-warning-foreground: #fffbeb;
-  --color-border: #e2e8f0;
-  --color-border-strong: #cbd5e1;
-  --color-focus-ring: var(--brand-consumer-accent);
-  --color-disabled-opacity: 0.55;
-  --radius-sm: 0.375rem;
-  --radius-md: 0.5rem;
-  --radius-lg: 0.75rem;
-  --radius-xl: 1rem;
-  --shadow-card: 0 1px 2px rgba(15, 23, 42, 0.06), 0 4px 12px rgba(15, 23, 42, 0.04);
-  --shadow-popover: 0 6px 24px rgba(15, 23, 42, 0.12);
-  --motion-duration-fast: 120ms;
-  --motion-duration-base: 200ms;
-  --motion-easing-standard: cubic-bezier(0.2, 0.8, 0.2, 1);
+  /* Layout / typography — pickup chrome only (colors come from theme.css) */
   --spacing-4: 8px;
   --spacing-6: 12px;
   --spacing-8: 16px;
   --spacing-10: 20px;
   --spacing-12: 24px;
-  --font-family-primary: 'Inter', 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-family-primary: 'Inter', 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI',
+    sans-serif;
+  /* Body size — optional outdoor bump to 15px / 0.9375rem is documented in STYLING.md */
   --font-size-base: 0.95rem;
+  /* DESIGN_CONTRACT alias — maps md → base (do not invent a separate md scale) */
+  --font-size-md: var(--font-size-base);
   --font-size-lg: 1.1rem;
   --font-size-xl: 1.25rem;
   --font-weight-medium: 500;
@@ -56,38 +30,7 @@
   --transition-fast: var(--motion-duration-base) var(--motion-easing-standard);
 }
 
-/* §3 — Dark mode (prefers-color-scheme; no .dark toggle in pickup) */
-@media (prefers-color-scheme: dark) {
-  :root {
-    color-scheme: dark;
-    --color-surface: #0b1220;
-    --color-surface-muted: #0f172a;
-    --color-surface-elevated: #111a2e;
-    --color-surface-hover: #162031;
-    --color-on-surface: #e2e8f0;
-    --color-on-surface-muted: #94a3b8;
-    --color-on-surface-disabled: #64748b;
-    --color-primary: #f8fafc;
-    --color-primary-foreground: #0f172a;
-    --color-accent: var(--brand-consumer-accent);
-    --color-accent-foreground: var(--brand-consumer-accent-foreground);
-    --color-accent-hover: var(--brand-consumer-accent-soft);
-    --color-success: #22c55e;
-    --color-success-foreground: #052e16;
-    --color-danger: #f87171;
-    --color-danger-foreground: #450a0a;
-    --color-warning: #fbbf24;
-    --color-warning-foreground: #451a03;
-    --color-border: #1f2937;
-    --color-border-strong: #334155;
-    --color-focus-ring: var(--brand-consumer-accent-soft);
-    --color-disabled-opacity: 0.5;
-    --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.28), 0 4px 12px rgba(0, 0, 0, 0.2);
-    --shadow-popover: 0 6px 24px rgba(0, 0, 0, 0.36);
-  }
-}
-
-/* §4 — Base document + layout tokens applied */
+/* §2 — Base document */
 html {
   color-scheme: light dark;
 }
@@ -106,24 +49,11 @@ body {
   background: var(--color-surface-muted);
 }
 
-/* §5 — .pickup-* composition helpers (operator touch UX) */
-.pickup-shell {
-  max-width: 720px;
-  margin: 0 auto;
-  padding: var(--spacing-12);
-}
-
-.pickup-shell h1 {
-  margin: 0 0 var(--spacing-8);
-  font-size: var(--font-size-xl);
-  font-weight: var(--font-weight-semibold);
-}
-
-.pickup-shell h2 {
-  margin: var(--spacing-12) 0 var(--spacing-6);
-  font-size: var(--font-size-lg);
-}
-
+/*
+ * §3 — .pickup-* composition helpers (operator touch UX)
+ * G-LEGACY-CSS: `.pickup-shell` removed (AppShell main no longer applies it).
+ * Prefer Tailwind + shared/ui primitives; keep helpers below until screen migrations finish.
+ */
 .pickup-stack {
   display: flex;
   flex-direction: column;

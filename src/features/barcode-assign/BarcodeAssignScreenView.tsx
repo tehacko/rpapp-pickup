@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next';
+import { AlertBanner } from '../../shared/ui/AlertBanner.js';
 import { Button } from '../../shared/ui/surfacePrimitives.js';
 import { ScreenState } from '../../shared/ui/ScreenState.js';
 import type { BarcodeAssignCatalogViewModel } from './buildBarcodeAssignViewModel.js';
@@ -16,9 +17,14 @@ export function BarcodeAssignScreenView({
   const { t } = useTranslation();
 
   return (
-    <div className="mx-auto w-full max-w-[720px] px-4 py-6">
-      <h1>{t('pickup.barcodeAssign.title')}</h1>
-      <label className="flex flex-col gap-1 text-sm font-medium text-[var(--color-on-surface)]" htmlFor="pickup-barcode-search">
+    <div className="flex w-full flex-col gap-4">
+      <h1 className="m-0 text-xl font-bold tracking-tight text-[var(--color-on-surface)]">
+        {t('pickup.barcodeAssign.title')}
+      </h1>
+      <label
+        className="flex flex-col gap-1 text-sm font-medium text-[var(--color-on-surface)]"
+        htmlFor="pickup-barcode-search"
+      >
         {t('pickup.barcodeAssign.searchLabel')}
         <input
           id="pickup-barcode-search"
@@ -31,16 +37,21 @@ export function BarcodeAssignScreenView({
         <ScreenState variant="loading" message={t('pickup.barcodeAssign.loading')} />
       ) : null}
       {viewModel.errorMessage ? (
-        <p className="text-sm text-red-600">{viewModel.errorMessage}</p>
+        <AlertBanner tone="danger" role="alert" message={viewModel.errorMessage} />
       ) : null}
-      <ul className="flex flex-col gap-3">
+      <ul className="m-0 flex list-none flex-col gap-3 p-0">
         {viewModel.rows.map((row) => (
-          <li key={row.key}>
+          <li key={row.key} className="list-none">
             {row.showInactiveBanner ? (
-              <p className="text-sm text-[var(--color-on-surface-muted)]">{t('pickup.barcodeAssign.inactiveBanner')}</p>
+              <p className="m-0 text-sm text-[var(--color-on-surface-muted)]">
+                {t('pickup.barcodeAssign.inactiveBanner')}
+              </p>
             ) : null}
             {row.showArchivedRow ? (
-              <p className="text-sm text-[var(--color-on-surface-muted)]" title={t('pickup.barcodeAssign.archivedTooltip')}>
+              <p
+                className="m-0 text-sm text-[var(--color-on-surface-muted)]"
+                title={t('pickup.barcodeAssign.archivedTooltip')}
+              >
                 {t('pickup.barcodeAssign.archivedRow')}
               </p>
             ) : null}

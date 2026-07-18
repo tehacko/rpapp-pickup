@@ -18,14 +18,15 @@ export interface ToastViewportProps {
 
 function rootClassName(variant: ToastVariant): string {
   const base =
-    'pointer-events-auto flex items-start gap-3 rounded-[var(--radius-md)] px-4 py-3 text-base font-medium leading-normal text-white shadow-lg motion-reduce:transition-none';
+    'pointer-events-auto flex items-start gap-3 rounded-[var(--radius-md)] px-4 py-3 text-base font-medium leading-normal shadow-lg motion-reduce:transition-none';
   if (variant === 'success') {
-    return `${base} bg-[var(--color-success,#16a34a)]`;
+    return `${base} bg-[var(--color-success)] text-[var(--color-success-foreground)]`;
   }
   if (variant === 'error') {
-    return `${base} bg-[var(--color-danger,#dc2626)]`;
+    return `${base} bg-[var(--color-danger)] text-[var(--color-danger-foreground)]`;
   }
-  return `${base} bg-[var(--color-info,#3b82f6)]`;
+  // Keep TS key `info` — neutral/muted surface (never --color-info).
+  return `${base} border border-[var(--color-border-strong)] bg-[var(--color-surface-elevated)] text-[var(--color-on-surface)]`;
 }
 
 export const ToastViewport = memo<ToastViewportProps>(({ toasts, onDismiss }) => {
@@ -59,7 +60,7 @@ export const ToastViewport = memo<ToastViewportProps>(({ toasts, onDismiss }) =>
           <Toast.Close asChild>
             <button
               type="button"
-              className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded border-0 bg-transparent p-0 text-inherit hover:bg-white/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+              className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded border-0 bg-transparent p-0 text-inherit hover:bg-[color-mix(in_oklab,currentColor_12%,transparent)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-current"
               aria-label={t('shared.notificationCloseAria')}
               data-testid="pickup-toast-close"
             >

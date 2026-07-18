@@ -9,7 +9,7 @@ import {
 import {
   PickupStaffFunction,
   type PickupStaffFunctionKey,
-} from '../features/hub/pickupStaffFunctions.js';
+} from '../shared/entitlements/pickupStaffFunctions.js';
 import { isTenantInactiveError } from '../lib/tenantInactive.js';
 import { resolvePickupDeviceFlags } from './pickupDeviceFlags.js';
 

@@ -1,6 +1,7 @@
 import {
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type ReactNode,
@@ -9,17 +10,24 @@ import { Navigate, Outlet, useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import { useResponsiveTier } from 'pi-kiosk-shared/responsive';
-import { PickupStaffFunction } from '../../features/hub/pickupStaffFunctions.js';
-import { sellCatalogGateway } from '../../features/sell/sellCatalogGateway.js';
-import { usePickupEntitlement } from '../../hooks/usePickupEntitlement.js';
-import { usePickupStaffSession } from '../session/PickupStaffSessionProvider.js';
-import { PickupBottomNav } from './PickupBottomNav.js';
-import { PickupMoreDrawer } from './PickupMoreDrawer.js';
+import { PickupStaffFunction } from './adapters/pickupStaffFunctions.js';
+import { fetchSellCatalogConfig } from './adapters/sellCatalogEnabled.js';
+import { PICKUP_STAFF_ALWAYS_CAN_ACCESS_QUEUE } from '../shared/entitlements/pickupQueueAccess.js';
+import { useStaffPickupPointsQuery } from '../shared/queries/useStaffPickupPointsQuery.js';
+import { OfflineBanner } from '../shared/ui/OfflineBanner.js';
+import { usePickupEntitlement } from '../hooks/usePickupEntitlement.js';
+import { getPairedDevice } from '../lib/deviceStorage.js';
+import { useOnlineStatus } from '../shared/network/useOnlineStatus.js';
+import { usePickupStaffSession } from '../shared/session/PickupStaffSessionProvider.js';
+import { PickupBottomNav } from '../shared/ui/PickupBottomNav.js';
+import { PickupContextBar } from '../shared/ui/PickupContextBar.js';
+import { PickupMoreDrawer } from '../shared/ui/PickupMoreDrawer.js';
 import {
   PickupMoreShellProvider,
   usePickupMoreShell,
-} from './PickupMoreShellContext.js';
-import { PickupSideNav } from './PickupSideNav.js';
+} from '../shared/ui/PickupMoreShellContext.js';
+import { PickupSideNav } from '../shared/ui/PickupSideNav.js';
+import { Skeleton } from '../shared/ui/Skeleton.js';
 
 const SIDE_COLLAPSED_PX = 64;
 const SIDE_EXPANDED_PX = 224;
@@ -33,6 +41,25 @@ export interface PickupAppShellProps {
 
 function buildTenantPath(tenantCode: string, segment: string): string {
   return `/${encodeURIComponent(tenantCode)}/${segment}`;
+}
+
+function PickupHydrateSkeleton({ label }: { readonly label: string }): JSX.Element {
+  return (
+    <div
+      className="mx-auto w-full max-w-5xl space-y-3 p-4 md:p-6"
+      aria-busy="true"
+      aria-label={label}
+      data-testid="pickup-shell-hydrate"
+    >
+      <Skeleton className="h-8 w-40 bg-[var(--brand-consumer-accent-soft)]/50" aria-label={label} />
+      <Skeleton className="h-4 w-64 max-w-full bg-[var(--brand-consumer-accent)]/15" />
+      <Skeleton className="h-24 w-full rounded-lg bg-[var(--brand-consumer-accent)]/10" />
+      <div className="grid gap-2 sm:grid-cols-2">
+        <Skeleton className="h-11 bg-[var(--brand-consumer-accent-soft)]/35" />
+        <Skeleton className="h-11 bg-[var(--brand-consumer-accent-soft)]/35" />
+      </div>
+    </div>
+  );
 }
 
 export function PickupAppShell({ bottomNav }: PickupAppShellProps): JSX.Element {
@@ -50,8 +77,18 @@ function PickupAppShellChrome({ bottomNav }: PickupAppShellProps): JSX.Element {
   const { t } = useTranslation('pickup');
   const tier = useResponsiveTier();
   const isCompact = tier === 'compact';
-  const { accessToken, sessionHydrated, signOut } = usePickupStaffSession();
-  const { entitledFunctions } = usePickupEntitlement(tenantCode);
+  const isOnline = useOnlineStatus();
+  const isOffline = !isOnline;
+  const {
+    accessToken,
+    sessionHydrated,
+    signOut,
+    sessionClaims,
+    isRoamingStaff,
+    activePickupPointId,
+    setActivePickupPointId,
+  } = usePickupStaffSession();
+  const { entitledFunctions, deviceFlags } = usePickupEntitlement(tenantCode);
   const [sideExpanded, setSideExpanded] = useState(false);
   const { isMoreOpen, closeMore, toggleMore } = usePickupMoreShell();
   const bottomChromeRef = useRef<HTMLDivElement | null>(null);
@@ -65,13 +102,31 @@ function PickupAppShellChrome({ bottomNav }: PickupAppShellProps): JSX.Element {
       if (accessToken === null || tenantCode.length === 0) {
         return null;
       }
-      return sellCatalogGateway.fetchConfig(tenantCode, accessToken);
+      return fetchSellCatalogConfig(tenantCode, accessToken);
     },
     enabled: accessToken !== null && tenantCode.length > 0,
     staleTime: 60_000,
     retry: 0,
   });
 
+  const shouldLoadPickupPoints =
+    !isCompact && isRoamingStaff && accessToken !== null && tenantCode.length > 0;
+  const pickupPointsQuery = useStaffPickupPointsQuery({
+    enabled: shouldLoadPickupPoints,
+  });
+
+  const contextPoints = useMemo(() => {
+    const points = pickupPointsQuery.data ?? [];
+    return points.map((point) => ({
+      id: point.id,
+      label: point.name.trim().length > 0 ? point.name : point.code,
+    }));
+  }, [pickupPointsQuery.data]);
+
+  const showContextBar =
+    !isCompact && isRoamingStaff && (contextPoints.length > 0 || pickupPointsQuery.isLoading);
+
+  const pairedDevice = tenantCode.length > 0 ? getPairedDevice(tenantCode) : null;
   const sellingEnabled = sellConfigQuery.data?.sellingEnabled === true;
   const canScan = entitledFunctions.includes(PickupStaffFunction.FULFILLMENT_SCAN);
   const canAssign = entitledFunctions.includes(PickupStaffFunction.BARCODE_ASSIGN);
@@ -157,7 +212,7 @@ function PickupAppShellChrome({ bottomNav }: PickupAppShellProps): JSX.Element {
   }
 
   if (!sessionHydrated) {
-    return <p className="mx-auto w-full max-w-[720px] px-4 py-6">{t('pickup.common.loading')}</p>;
+    return <PickupHydrateSkeleton label={t('pickup.common.loading')} />;
   }
 
   if (accessToken === null) {
@@ -168,12 +223,15 @@ function PickupAppShellChrome({ bottomNav }: PickupAppShellProps): JSX.Element {
 
   const sideWidth = railExpanded ? SIDE_EXPANDED_PX : SIDE_COLLAPSED_PX;
 
+  // Queue nav: SSOT PICKUP_STAFF_ALWAYS_CAN_ACCESS_QUEUE (authed staff; not scan-gated).
   const navItems: readonly { id: string; to: string; labelKey: string }[] = [
     { id: 'hub', to: buildTenantPath(tenantCode, 'hub'), labelKey: 'nav.bottom.hub' },
     ...(canScan
       ? [{ id: 'scan', to: buildTenantPath(tenantCode, 'scan'), labelKey: 'nav.bottom.scan' }]
       : []),
-    { id: 'queue', to: buildTenantPath(tenantCode, 'queue'), labelKey: 'nav.bottom.queue' },
+    ...(PICKUP_STAFF_ALWAYS_CAN_ACCESS_QUEUE
+      ? [{ id: 'queue', to: buildTenantPath(tenantCode, 'queue'), labelKey: 'nav.bottom.queue' }]
+      : []),
     ...(sellingEnabled
       ? [{ id: 'sell', to: buildTenantPath(tenantCode, 'sell'), labelKey: 'nav.bottom.sell' }]
       : []),
@@ -189,6 +247,18 @@ function PickupAppShellChrome({ bottomNav }: PickupAppShellProps): JSX.Element {
       ]
     : [];
 
+  const deviceItems: readonly { id: string; to: string; labelKey: string }[] =
+    deviceFlags.registryEnabled
+      ? [
+          {
+            id: 'device-pairing',
+            to: buildTenantPath(tenantCode, 'device-pairing'),
+            labelKey:
+              pairedDevice !== null ? 'pickup.hub.deviceManage' : 'pickup.hub.devicePair',
+          },
+        ]
+      : [];
+
   const defaultBottomNav = (
     <PickupBottomNav
       items={navItems}
@@ -196,6 +266,7 @@ function PickupAppShellChrome({ bottomNav }: PickupAppShellProps): JSX.Element {
       onMoreClick={toggleMore}
       moreButtonRef={moreButtonRef}
       showMore
+      isOffline={isOffline}
     />
   );
 
@@ -212,18 +283,38 @@ function PickupAppShellChrome({ bottomNav }: PickupAppShellProps): JSX.Element {
         <PickupSideNav
           railExpanded={railExpanded}
           sideWidth={sideWidth}
+          tenantCode={tenantCode}
           navItems={navItems}
           moreItems={moreItems}
           onToggleExpanded={() => {
             setSideExpanded((value) => !value);
           }}
           onSignOut={onSignOut}
+          salesPointId={sessionClaims?.salesPointId ?? null}
+          role={sessionClaims?.role ?? null}
+          pairedDeviceLabel={pairedDevice?.deviceLabel ?? null}
+          isOffline={isOffline}
         />
       ) : null}
 
       <div className="flex min-w-0 flex-1 flex-col">
+        {showContextBar ? (
+          <PickupContextBar
+            points={contextPoints}
+            value={activePickupPointId}
+            onChange={setActivePickupPointId}
+            loading={pickupPointsQuery.isLoading}
+          />
+        ) : null}
+
+        {isOffline ? (
+          <div className="border-b border-[var(--color-border)] px-4 py-2 md:px-6">
+            <OfflineBanner message={t('pwa.offlineBanner')} />
+          </div>
+        ) : null}
+
         {/* Landmark: shelled routes nest under this single <main> — page views must not add another. */}
-        <main id="main" className="mx-auto w-full max-w-[720px] flex-1">
+        <main id="main" className="mx-auto w-full max-w-5xl flex-1 p-4 md:p-6">
           <Outlet />
         </main>
 
@@ -242,6 +333,7 @@ function PickupAppShellChrome({ bottomNav }: PickupAppShellProps): JSX.Element {
           open={isMoreOpen}
           onClose={closeMore}
           items={moreItems}
+          deviceItems={deviceItems}
           onSignOut={onSignOut}
         />
       ) : null}

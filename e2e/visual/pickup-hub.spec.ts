@@ -1,6 +1,11 @@
 /**
- * Pickup staff hub visual regression (MFE-v3-D-07).
+ * Pickup staff hub visual regression (MFE-v3-D-07) + enterprise UX chrome.
  * Hermetic mocked API — hub at /{tenant}/hub, light + dark via prefers-color-scheme.
+ *
+ * Manual checklist (G-PW-SPEC): also capture Wide (≥md side rail + ContextBar) and
+ * Compact (bottom nav + More drawer) chrome for hub — pair with queue/order/login stubs
+ * under e2e/visual/pickup-*-smoke.spec.ts and Wave4 todos in e2e/enterprise-ux-mvp.smoke.spec.ts
+ * (Hub ActionTiles).
  */
 import { test, expect, type Page } from '@playwright/test';
 import { mockTurnstileDisabled } from '../helpers/barcodeE2eMocks.js';
@@ -154,7 +159,7 @@ test.describe('Pickup hub visual regression', () => {
       test(`pickup hub screen — ${theme}`, async ({ page }) => {
         await loginAndOpenPickupHub(page);
 
-        const screen = page.locator('main.pickup-shell');
+        const screen = page.locator('main#main');
         await expect(screen).toBeVisible();
         await stabilizeForScreenshot(page);
         await expect(screen).toHaveScreenshot(`pickup-hub-${theme}.png`);

@@ -3,10 +3,12 @@
  * pi-kiosk-shared MUST NOT export React ScreenState.
  */
 
+import type { ReactNode } from 'react';
+
 export type ScreenStateVariant = 'loading' | 'error' | 'empty';
 
 export interface EmptyStateProps {
-  icon: string;
+  icon?: ReactNode;
   title: string;
   message: string;
   hint?: string;
@@ -26,8 +28,9 @@ export interface ScreenStateProps {
   readonly title?: string;
   readonly message?: string;
   readonly hint?: string;
-  readonly icon?: string;
+  readonly icon?: ReactNode;
   readonly error?: Error;
   readonly onRetry?: () => void;
   readonly action?: ScreenStateAction;
+  readonly skeletonCount?: number;
 }

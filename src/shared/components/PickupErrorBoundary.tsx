@@ -8,9 +8,10 @@
 import type { ErrorInfo, ReactNode } from 'react';
 import { Component } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button } from 'pi-kiosk-shared/ui';
 import { captureBoundaryError } from 'pi-kiosk-shared/sentry';
 import { pickupLogger } from '../logging/pickupLogger.js';
+import { Button } from '../ui/surfacePrimitives.js';
+import { SailorMark } from '../ui/SailorMark.js';
 
 /** Monorepo contract for staff/customer/kiosk/pickup error boundaries. */
 export interface ErrorBoundaryContract {
@@ -34,11 +35,20 @@ function PickupErrorBoundaryFallback({
   const { t } = useTranslation('pickup');
   return (
     // Landmark: root error fallback replaces the tree (including shell <main>) — sole <main> OK.
-    <main className="mx-auto w-full max-w-[720px] px-4 py-6" role="alert">
-      <div className="flex flex-col gap-4 rounded-xl bg-[var(--color-surface-elevated)] p-5 shadow-[var(--shadow-card)]">
-        <h1>{t('app.errorBoundary.title')}</h1>
-        <p>{t('app.errorBoundary.message')}</p>
-        <Button surface="pickup" type="button" onClick={onRetry}>
+    <main
+      className="mx-auto flex min-h-[100dvh] w-full max-w-md flex-col items-center justify-center gap-4 px-4 py-8"
+      role="alert"
+      data-testid="pickup-error-boundary-fallback"
+    >
+      <SailorMark size="lg" />
+      <div className="flex w-full flex-col gap-3 rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-5 shadow-[var(--shadow-card)] text-center">
+        <h1 className="m-0 text-xl font-bold tracking-tight text-[var(--color-on-surface)]">
+          {t('app.errorBoundary.title')}
+        </h1>
+        <p className="m-0 text-sm text-[var(--color-on-surface-muted)]">
+          {t('app.errorBoundary.message')}
+        </p>
+        <Button type="button" onClick={onRetry} className="mt-1">
           {t('app.errorBoundary.retry')}
         </Button>
       </div>

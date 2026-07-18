@@ -1,7 +1,10 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { FulfillmentLine } from '../types';
-import { Button, Card, FormField } from '../shared/ui/surfacePrimitives.js';
+import { Button, FormField } from '../shared/ui/surfacePrimitives.js';
+import { OrderLineRow } from '../shared/ui/OrderLineRow.js';
+import { QuantityStepper } from '../shared/ui/QuantityStepper.js';
+import { SectionCard } from '../shared/ui/SectionCard.js';
 
 interface PartialConfirmPanelProps {
   lines: FulfillmentLine[];
@@ -14,8 +17,9 @@ interface PartialConfirmPanelProps {
   onPickupCodeChange: (value: string) => void;
   onToggleLine: (lineId: number, selected: boolean) => void;
   onChangeQty: (lineId: number, qty: number) => void;
-  onConfirmFull: () => void;
   onConfirmPartial: () => void;
+  /** When true, omit outer SectionCard (parent owns card chrome). */
+  embedded?: boolean;
 }
 
 export function PartialConfirmPanel({
@@ -29,8 +33,8 @@ export function PartialConfirmPanel({
   onPickupCodeChange,
   onToggleLine,
   onChangeQty,
-  onConfirmFull,
   onConfirmPartial,
+  embedded = false,
 }: PartialConfirmPanelProps): JSX.Element {
   const { t } = useTranslation();
   const [confirmInProgress, setConfirmInProgress] = useState(false);
@@ -46,144 +50,98 @@ export function PartialConfirmPanel({
     };
   }, [criticalActive]);
 
-  const handleConfirmFull = useCallback((): void => {
-    setConfirmInProgress(true);
-    onConfirmFull();
-  }, [onConfirmFull]);
-
   const handleConfirmPartial = useCallback((): void => {
     setConfirmInProgress(true);
     onConfirmPartial();
   }, [onConfirmPartial]);
 
-  return (
-    <Card
-      className="mt-4"
-      {...(criticalActive ? { 'data-pickup-critical-flow': 'true' as const } : {})}
+  // G10: when embedded, OrderScreen sticky owns Confirm Full — omit in-panel confirm
+  // (no pickup-partial-confirm). Non-embedded keeps footer confirm CTA.
+  const confirmButton = (
+    <Button
+      intent="secondary"
+      type="button"
+      onClick={handleConfirmPartial}
+      disabled={!canConfirm || isOnHold || confirmInProgress}
+      data-testid="pickup-partial-confirm"
     >
-      <h2>{t('pickup.partial.confirm')}</h2>
+      {t('pickup.partial.confirm')}
+    </Button>
+  );
 
-      {lines.length > 0 ? (
-        <div className="pickup-table-scroll w-full" data-testid="pickup-order-table-scroll">
-          <table className="w-full border-collapse overflow-hidden rounded-[var(--radius-xl)] bg-[var(--color-surface-elevated)] shadow-[var(--shadow-card)]">
-            <thead>
-              <tr>
-                <th className="border-b border-[var(--color-border)] p-3 text-left">
-                  {t('pickup.order.line')}
-                </th>
-                <th className="border-b border-[var(--color-border)] p-3 text-left">
-                  {t('pickup.order.ordered')}
-                </th>
-                <th className="border-b border-[var(--color-border)] p-3 text-left">
-                  {t('pickup.order.collected')}
-                </th>
-                <th className="border-b border-[var(--color-border)] p-3 text-left">
-                  {t('pickup.order.refused')}
-                </th>
-                <th className="border-b border-[var(--color-border)] p-3 text-left">
-                  {t('pickup.order.remaining')}
-                </th>
-                <th className="border-b border-[var(--color-border)] p-3 text-left">
-                  {t('pickup.partial.confirm')}
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {lines.map((line) => (
-                <tr key={line.lineId}>
-                  <td className="border-b border-[var(--color-border)] p-3 text-left">{line.lineId}</td>
-                  <td className="border-b border-[var(--color-border)] p-3 text-left">
-                    {line.quantityOrdered}
-                  </td>
-                  <td className="border-b border-[var(--color-border)] p-3 text-left">
-                    {line.quantityCollected}
-                  </td>
-                  <td className="border-b border-[var(--color-border)] p-3 text-left">
-                    {line.quantityRefused}
-                  </td>
-                  <td className="border-b border-[var(--color-border)] p-3 text-left">
-                    {line.quantityRemaining}
-                  </td>
-                  <td className="border-b border-[var(--color-border)] p-3 text-left">
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={partialSelected[line.lineId] ?? false}
-                        aria-label={t('pickup.partial.selectLine', { lineId: line.lineId })}
-                        onChange={(event) => onToggleLine(line.lineId, event.target.checked)}
-                        disabled={line.quantityRemaining <= 0}
-                      />
-                      <Button
-                        intent="secondary"
-                        size="sm"
-                        type="button"
-                        className="min-h-11 min-w-11"
-                        aria-label={t('pickup.partial.decrease')}
-                        disabled={!partialSelected[line.lineId] || (partialQty[line.lineId] ?? 0) <= 0}
-                        onClick={() =>
-                          onChangeQty(line.lineId, Math.max(0, (partialQty[line.lineId] ?? 0) - 1))
-                        }
-                      >
-                        −
-                      </Button>
-                      <span className="min-w-8 text-center font-semibold">
-                        {partialQty[line.lineId] ?? 0}
-                      </span>
-                      <Button
-                        intent="secondary"
-                        size="sm"
-                        type="button"
-                        className="min-h-11 min-w-11"
-                        aria-label={t('pickup.partial.increase')}
-                        disabled={
-                          !partialSelected[line.lineId] ||
-                          (partialQty[line.lineId] ?? 0) >= line.quantityRemaining
-                        }
-                        onClick={() =>
-                          onChangeQty(
-                            line.lineId,
-                            Math.min(line.quantityRemaining, (partialQty[line.lineId] ?? 0) + 1)
-                          )
-                        }
-                      >
-                        +
-                      </Button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ) : null}
+  const linesBlock: ReactNode =
+    lines.length > 0 ? (
+      <div className="pickup-table-scroll flex flex-col" data-testid="pickup-order-table-scroll">
+        {lines.map((line) => {
+          const selected = partialSelected[line.lineId] ?? false;
+          const qty = partialQty[line.lineId] ?? 0;
+          const lineDisabled = line.quantityRemaining <= 0 || isOnHold;
+          return (
+            <OrderLineRow
+              key={line.lineId}
+              testId={`pickup-partial-line-${line.lineId}`}
+              label={`${t('pickup.order.line')} #${line.lineId}`}
+              meta={`${t('pickup.order.ordered')} ${line.quantityOrdered} · ${t('pickup.order.collected')} ${line.quantityCollected} · ${t('pickup.order.remaining')} ${line.quantityRemaining}`}
+              selected={selected}
+              disabled={lineDisabled}
+              onToggle={(nextSelected) => onToggleLine(line.lineId, nextSelected)}
+              trailing={
+                <QuantityStepper
+                  value={qty}
+                  min={0}
+                  max={line.quantityRemaining}
+                  disabled={!selected || lineDisabled}
+                  aria-label={t('pickup.partial.qty', {
+                    defaultValue: `Line ${String(line.lineId)} quantity`,
+                  })}
+                  testId={`pickup-partial-qty-${line.lineId}`}
+                  onDec={() => onChangeQty(line.lineId, Math.max(0, qty - 1))}
+                  onInc={() =>
+                    onChangeQty(line.lineId, Math.min(line.quantityRemaining, qty + 1))
+                  }
+                />
+              }
+            />
+          );
+        })}
+      </div>
+    ) : null;
 
-      {requiresPickupCode ? (
+  const codeBlock =
+    requiresPickupCode ? (
+      <div className="mt-3">
         <FormField
-          surface="pickup"
+          id="pickup-partial-pickup-code"
           label={t('pickup.partial.pickupCode')}
           value={pickupCode}
           onChange={(event) => onPickupCodeChange(event.target.value)}
         />
-      ) : null}
-
-      <div className="flex flex-wrap items-center gap-3">
-        <Button
-          type="button"
-          data-testid="pickup-confirm-full"
-          onClick={handleConfirmFull}
-          disabled={!canConfirm || isOnHold || confirmInProgress}
-        >
-          {t('pickup.partial.confirmFull')}
-        </Button>
-        <Button
-          intent="secondary"
-          type="button"
-          onClick={handleConfirmPartial}
-          disabled={!canConfirm || isOnHold || confirmInProgress}
-        >
-          {t('pickup.partial.confirm')}
-        </Button>
       </div>
-    </Card>
+    ) : null;
+
+  if (embedded) {
+    return (
+      <div
+        {...(criticalActive ? { 'data-pickup-critical-flow': 'true' as const } : {})}
+        data-testid="pickup-partial-confirm-panel"
+      >
+        {linesBlock}
+        {codeBlock}
+      </div>
+    );
+  }
+
+  return (
+    <div {...(criticalActive ? { 'data-pickup-critical-flow': 'true' as const } : {})}>
+      <SectionCard
+        title={t('pickup.partial.confirm')}
+        elevated
+        data-testid="pickup-partial-confirm-panel"
+        footer={confirmButton}
+      >
+        {linesBlock}
+        {codeBlock}
+      </SectionCard>
+    </div>
   );
 }

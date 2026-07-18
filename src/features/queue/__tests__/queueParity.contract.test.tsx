@@ -59,17 +59,22 @@ describe('pickup queue parity contract', () => {
                 status: 'READY',
                 pickupPointName: null,
                 claimBadge: null,
+                age: null,
+                ageTone: null,
+                ageLabel: null,
               },
             ],
             isEmpty: false,
             errorMessage: null,
             showOfflineRetryBanner: false,
             showPickupPointTabs: false,
+            lastUpdatedAt: null,
           }}
         />
       </MemoryRouter>
     );
 
-    expect(screen.getByRole('button', { name: 'pickup.queue.open' })).toBeTruthy();
+    expect(screen.getByTestId('pickup-queue-row')).toBeTruthy();
+    expect(screen.getByRole('button', { name: '#100' })).toBeTruthy();
   });
 });

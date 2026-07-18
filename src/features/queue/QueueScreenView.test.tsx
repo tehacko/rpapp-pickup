@@ -13,7 +13,7 @@ jest.mock('pi-kiosk-shared/ui', () => {
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
-    t: (key: string) => key,
+    t: (key: string, opts?: { defaultValue?: string }) => opts?.defaultValue ?? key,
   }),
 }));
 
@@ -24,11 +24,6 @@ function expectPickupSurfaceButton(element: HTMLElement): void {
   expect(element.className).toContain('h-11');
 }
 
-function _expectPickupPrimaryButton(element: HTMLElement): void {
-  expectPickupSurfaceButton(element);
-  expect(element.className).toContain('bg-[var(--color-accent)]');
-}
-
 function expectPickupSecondaryButton(element: HTMLElement): void {
   expectPickupSurfaceButton(element);
   expect(element.className).toContain('bg-[var(--color-surface)]');
@@ -36,7 +31,7 @@ function expectPickupSecondaryButton(element: HTMLElement): void {
 
 function createViewModel(overrides: Partial<QueuePageViewModel> = {}): QueuePageViewModel {
   return {
-    tabs: [{ id: 1, label: 'Counter A' }],
+    tabs: [{ id: 1, label: 'Counter A', count: 1 }],
     activePickupPointId: 'all',
     items: [
       {
@@ -44,12 +39,16 @@ function createViewModel(overrides: Partial<QueuePageViewModel> = {}): QueuePage
         status: 'READY',
         pickupPointName: 'Counter A',
         claimBadge: null,
+        age: null,
+        ageTone: null,
+        ageLabel: null,
       },
     ],
     isEmpty: false,
     errorMessage: null,
     showOfflineRetryBanner: false,
     showPickupPointTabs: true,
+    lastUpdatedAt: Date.parse('2026-07-18T12:00:00.000Z'),
     ...overrides,
   };
 }
@@ -89,6 +88,7 @@ function renderQueueScreen(overrides: Partial<QueueScreenViewProps> = {}): Queue
           }
         />
         <Route path="/:tenantCode/order/:fulfillmentId" element={<LocationProbe />} />
+        <Route path="/:tenantCode/scan" element={<LocationProbe />} />
       </Routes>
     </MemoryRouter>,
   );
@@ -101,15 +101,15 @@ describe('QueueScreenView', () => {
     jest.clearAllMocks();
   });
 
-  it('renders loading state without queue action buttons', () => {
+  it('renders loading state with skeleton ScreenState', () => {
     renderQueueScreen({
       screenState: { kind: 'loading' },
       viewModel: null,
     });
 
     expect(screen.getByRole('heading', { name: 'pickup.queue.title' })).toBeTruthy();
-    expect(screen.getByRole('status').textContent).toContain('pickup.queue.loading');
-    expect(screen.queryByRole('button', { name: 'pickup.queue.open' })).toBeNull();
+    expect(screen.getByTestId('pickup-screen-state-loading')).toBeTruthy();
+    expect(screen.queryByTestId('pickup-queue-row')).toBeNull();
   });
 
   it('renders load-failed state with retry wired to refresh', () => {
@@ -123,23 +123,20 @@ describe('QueueScreenView', () => {
     expect(actions.refresh).toHaveBeenCalledTimes(1);
   });
 
-  it('renders queue items with shared pickup open buttons', () => {
+  it('renders queue rows with status badge and navigates on row tap', () => {
     renderQueueScreen();
 
-    const openButton = screen.getByRole('button', { name: 'pickup.queue.open' });
-    expectPickupSecondaryButton(openButton);
-    expect(screen.getByText(/#42 — READY/)).toBeTruthy();
-  });
+    const row = screen.getByTestId('pickup-queue-row');
+    expect(row).toBeTruthy();
+    expect(screen.getByTestId('pickup-status-badge')).toBeTruthy();
+    expect(screen.getByText('#42')).toBeTruthy();
 
-  it('navigates to order detail when open button is clicked', () => {
-    renderQueueScreen();
-
-    fireEvent.click(screen.getByRole('button', { name: 'pickup.queue.open' }));
+    fireEvent.click(row);
 
     expect(screen.getByTestId('location-path').textContent).toBe('/demo/order/42');
   });
 
-  it('renders offline banner retry as shared pickup button', () => {
+  it('renders offline banner retry and sticky refresh', () => {
     const actions = renderQueueScreen({
       viewModel: createViewModel({ showOfflineRetryBanner: true }),
     });
@@ -147,18 +144,83 @@ describe('QueueScreenView', () => {
     expect(screen.getByTestId('queue-offline-banner')).toBeTruthy();
 
     const retryButton = screen.getByRole('button', { name: 'pickup.queue.retry' });
-    expectPickupSecondaryButton(retryButton);
     expect(screen.getByRole('button', { name: 'pickup.queue.refresh' })).toBeTruthy();
+    expectPickupSecondaryButton(screen.getByTestId('queue-sticky-refresh'));
 
     fireEvent.click(retryButton);
     expect(actions.refresh).toHaveBeenCalledTimes(1);
   });
 
-  it('switches pickup-point tabs through native tab buttons', () => {
+  it('switches pickup-point tabs through SegmentTabs', () => {
     const actions = renderQueueScreen();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Counter A' }));
+    fireEvent.click(screen.getByRole('tab', { name: /Counter A/ }));
 
     expect(actions.setActivePickupPointId).toHaveBeenCalledWith(1);
+  });
+
+  it('shows empty state CTA to scan', () => {
+    renderQueueScreen({
+      viewModel: createViewModel({ items: [], isEmpty: true }),
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'pickup.queue.goToScan' }));
+    expect(screen.getByTestId('location-path').textContent).toBe('/demo/scan');
+  });
+
+  it('renders aging StatusBadge tones from viewModel ageTone', () => {
+    renderQueueScreen({
+      viewModel: createViewModel({
+        items: [
+          {
+            fulfillmentId: 7,
+            status: 'READY',
+            pickupPointName: 'Counter A',
+            claimBadge: null,
+            age: {
+              tone: 'danger',
+              urgency: 'high',
+              labelKind: 'overdue',
+              minutes: 20,
+            },
+            ageTone: 'danger',
+            ageLabel: '20m overdue',
+          },
+          {
+            fulfillmentId: 8,
+            status: 'READY',
+            pickupPointName: 'Counter A',
+            claimBadge: null,
+            age: {
+              tone: 'warn',
+              labelKind: 'overdue',
+              minutes: 8,
+            },
+            ageTone: 'warn',
+            ageLabel: '8m overdue',
+          },
+          {
+            fulfillmentId: 9,
+            status: 'READY',
+            pickupPointName: 'Counter A',
+            claimBadge: null,
+            age: {
+              tone: 'neutral',
+              labelKind: 'ago',
+              minutes: 3,
+            },
+            ageTone: 'neutral',
+            ageLabel: '3m ago',
+          },
+        ],
+      }),
+    });
+
+    const ageBadges = screen.getAllByTestId('queue-age-badge');
+    expect(ageBadges).toHaveLength(3);
+    expect(ageBadges[0]?.getAttribute('data-age-tone')).toBe('danger');
+    expect(ageBadges[1]?.getAttribute('data-age-tone')).toBe('warn');
+    expect(ageBadges[2]?.getAttribute('data-age-tone')).toBe('neutral');
+    expect(screen.getAllByTestId('pickup-status-badge').length).toBeGreaterThanOrEqual(3);
   });
 });

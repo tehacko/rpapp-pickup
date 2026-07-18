@@ -40,164 +40,7 @@
   min-width: 44px;
 }
 
-/* L33 — table H-scroll containment (do not rely on utility-only overflow) */
-.pickup-table-scroll {
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  max-width: 100%;
-}
-
-/* Phase 4 — PickupAppShell layout (L19 / L28); Tailwind utilities land in 4b */
-.pickup-app-shell {
-  display: flex;
-  min-height: 100dvh;
-  background: var(--color-surface-muted);
-}
-
-.pickup-app-shell__skip {
-  position: absolute;
-  left: -9999px;
-  top: 0;
-  z-index: var(--pickup-z-90);
-}
-
-.pickup-app-shell__skip:focus {
-  left: var(--spacing-8);
-  top: var(--spacing-8);
-  padding: var(--spacing-4) var(--spacing-8);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-}
-
-.pickup-app-shell__side {
-  display: flex;
-  flex-direction: column;
-  flex-shrink: 0;
-  border-right: 1px solid var(--color-border);
-  background: var(--color-surface);
-  transition: width 200ms var(--motion-easing-standard, ease);
-  position: relative;
-}
-
-.pickup-app-shell__rail-toggle {
-  position: absolute;
-  top: var(--spacing-8);
-  right: -14px;
-  z-index: var(--pickup-z-10);
-  width: 28px;
-  height: 28px;
-  border-radius: 999px;
-  border: 1px solid var(--color-border);
-  background: var(--color-surface);
-  cursor: pointer;
-}
-
-.pickup-app-shell__side-nav {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-4);
-  padding: var(--spacing-12) var(--spacing-4);
-  flex: 1;
-  overflow: auto;
-}
-
-.pickup-app-shell__nav-link {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--spacing-4);
-  padding: var(--spacing-4);
-  border-radius: var(--radius-md);
-  color: var(--color-on-surface);
-  text-decoration: none;
-}
-
-.pickup-app-shell__nav-icon {
-  flex-shrink: 0;
-  font-weight: var(--font-weight-semibold);
-  width: 1.25rem;
-  text-align: center;
-}
-
-.pickup-app-shell__nav-link--active {
-  background: var(--color-surface-hover);
-  font-weight: var(--font-weight-semibold);
-}
-
-.pickup-app-shell__side[data-expanded='true'] .pickup-app-shell__nav-link {
-  justify-content: flex-start;
-  padding-inline: var(--spacing-6);
-}
-
-.pickup-app-shell__nav-label {
-  overflow: hidden;
-  white-space: nowrap;
-  max-width: 0;
-  opacity: 0;
-}
-
-.pickup-app-shell__nav-label[data-expanded='true'] {
-  max-width: 12rem;
-  opacity: 1;
-  margin-inline-start: var(--spacing-4);
-}
-
-.pickup-app-shell__side-footer {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-6);
-  padding: var(--spacing-8);
-  border-top: 1px solid var(--color-border);
-}
-
-.pickup-app-shell__body {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-width: 0;
-}
-
-.pickup-app-shell__content {
-  flex: 1;
-  width: 100%;
-  max-width: 720px;
-  margin-inline: auto;
-}
-
-.pickup-app-shell__bottom-chrome {
-  position: sticky;
-  bottom: 0;
-  z-index: var(--pickup-z-40);
-  border-top: 1px solid var(--color-border);
-  background: var(--color-surface);
-}
-
-.pickup-app-shell__bottom-stub {
-  display: flex;
-  justify-content: flex-end;
-  padding: var(--spacing-6) var(--spacing-8);
-}
-
-.pickup-app-shell__more-btn {
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  background: var(--color-surface);
-  padding: var(--spacing-4) var(--spacing-8);
-  cursor: pointer;
-}
-
-.pickup-app-shell__more {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-6);
-  padding: var(--spacing-8);
-  border-top: 1px solid var(--color-border);
-}
-
-/**
- * Wide operator tables (L16/L18) — real scroll rule; class marker alone is insufficient.
- * `--pickup-sticky-cta-clearance` keeps last rows clear of sticky primary CTAs.
- */
+/* L33 — table H-scroll + sticky CTA clearance (keep; used by PartialConfirmPanel) */
 .pickup-table-scroll {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
@@ -206,17 +49,39 @@
   scroll-padding-bottom: var(--pickup-sticky-cta-clearance);
 }
 
-/* phone-small tier — tighter shell padding below sm */
-@media not all and (--rp-sm-up) {
-  .pickup-shell {
-    padding: var(--spacing-8);
-  }
-}
+/* G-LEGACY-CSS: `.pickup-app-shell*` BEM deleted — PickupAppShell is Tailwind-only. */
 
 @media (--rp-md-up) {
   .pickup-queue-shell {
     max-width: 48rem;
     margin-inline: auto;
+  }
+}
+
+/**
+ * Aging urgency pulse (status matrix §5) — reduced-motion safe.
+ * Applied via `data-urgency="high"` on QueueRow / StatusBadge.
+ */
+@keyframes pickup-urgency-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in oklab, var(--color-danger) 35%, transparent);
+  }
+  50% {
+    box-shadow: 0 0 0 4px color-mix(in oklab, var(--color-danger) 18%, transparent);
+  }
+}
+
+[data-urgency='high'],
+.pickup-urgency-high {
+  animation: pickup-urgency-pulse 1.6s var(--motion-easing-standard, ease) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-urgency='high'],
+  .pickup-urgency-high {
+    animation: none;
+    box-shadow: inset 3px 0 0 0 var(--color-danger);
   }
 }
 

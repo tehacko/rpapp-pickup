@@ -1,0 +1,12 @@
+﻿{
+    "violations":  0,
+    "include":  [
+                    "[data-testid=\"pickup-segment-tabs\"]",
+                    "main#main"
+                ],
+    "dialogs":  "not scanned in hermetic smoke — Radix AlertDialog/ConfirmDialog + jsx-a11y",
+    "command":  "npx playwright test e2e/visual/pickup-hub.spec.ts e2e/visual/pickup-queue-smoke.spec.ts e2e/visual/pickup-order-smoke.spec.ts e2e/visual/pickup-login-smoke.spec.ts --project=chromium",
+    "date":  "2026-07-18",
+    "package":  "@axe-core/playwright",
+    "spec":  "e2e/visual/pickup-queue-smoke.spec.ts"
+}

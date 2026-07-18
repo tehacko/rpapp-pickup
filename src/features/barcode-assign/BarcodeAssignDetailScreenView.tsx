@@ -1,6 +1,7 @@
 import { FormEvent } from 'react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { AlertBanner } from '../../shared/ui/AlertBanner.js';
 import { Button, Card } from '../../shared/ui/surfacePrimitives.js';
 import { ScreenState } from '../../shared/ui/ScreenState.js';
 import type { BarcodeAssignDetailViewModel } from './buildBarcodeAssignDetailViewModel.js';
@@ -18,31 +19,42 @@ export function BarcodeAssignDetailScreenView({
   videoRef,
 }: BarcodeAssignDetailScreenViewProps): JSX.Element {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const encodedTenant = encodeURIComponent(viewModel.tenantCode);
 
   return (
-    <div className="mx-auto w-full max-w-[720px] px-4 py-6">
-      <h1>{t('pickup.barcodeAssign.detailTitle', { productId: viewModel.productId })}</h1>
+    <div className="flex w-full flex-col gap-4">
+      <h1 className="m-0 text-xl font-bold tracking-tight text-[var(--color-on-surface)]">
+        {t('pickup.barcodeAssign.detailTitle', { productId: viewModel.productId })}
+      </h1>
       {viewModel.selectedVariantLabel ? (
-        <p className="text-sm text-[var(--color-on-surface-muted)]">
+        <p className="m-0 text-sm text-[var(--color-on-surface-muted)]">
           {t('pickup.barcodeAssign.variantSelected', { name: viewModel.selectedVariantLabel })}
         </p>
       ) : null}
-      <p>
-        <Link className="text-[var(--color-accent)] underline" to={`/${encodedTenant}/barcode-assign`}>
+      <div>
+        <Button
+          intent="secondary"
+          type="button"
+          onClick={() => {
+            navigate(`/${encodedTenant}/barcode-assign`);
+          }}
+        >
           {t('pickup.barcodeAssign.backToList')}
-        </Link>
-      </p>
+        </Button>
+      </div>
 
       {viewModel.needsVariantPicker ? (
         <Card className="flex flex-col gap-3">
-          <h2>{t('pickup.barcodeAssign.chooseVariant')}</h2>
+          <h2 className="m-0 text-base font-semibold text-[var(--color-on-surface)]">
+            {t('pickup.barcodeAssign.chooseVariant')}
+          </h2>
           {viewModel.catalogLoading ? (
             <ScreenState variant="loading" message={t('pickup.barcodeAssign.loading')} />
           ) : null}
-          <ul className="flex flex-col gap-3">
+          <ul className="m-0 flex list-none flex-col gap-3 p-0">
             {viewModel.variantRows.map((item) => (
-              <li key={item.variantId}>
+              <li key={item.variantId} className="list-none">
                 <Button
                   intent="secondary"
                   type="button"
@@ -75,7 +87,10 @@ export function BarcodeAssignDetailScreenView({
           </Card>
 
           <form className="flex flex-col gap-3" onSubmit={(event: FormEvent) => actions.save(event)}>
-            <label className="flex flex-col gap-1 text-sm font-medium text-[var(--color-on-surface)]" htmlFor="pickup-barcode-code">
+            <label
+              className="flex flex-col gap-1 text-sm font-medium text-[var(--color-on-surface)]"
+              htmlFor="pickup-barcode-code"
+            >
               {t('pickup.barcodeAssign.codeLabel')}
               <input
                 id="pickup-barcode-code"
@@ -88,15 +103,23 @@ export function BarcodeAssignDetailScreenView({
               <ScreenState variant="loading" message={t('pickup.barcodeAssign.checking')} />
             ) : null}
             {viewModel.checkResult?.canonical ? (
-              <p>{t('pickup.barcodeAssign.canonical', { value: viewModel.checkResult.canonical })}</p>
-            ) : null}
-            {viewModel.conflictProductName ? (
-              <p className="text-sm text-[var(--color-on-surface-muted)]" role="alert">
-                {t('pickup.barcodeAssign.conflictWarning', { name: viewModel.conflictProductName })}
+              <p className="m-0 text-sm text-[var(--color-on-surface)]">
+                {t('pickup.barcodeAssign.canonical', { value: viewModel.checkResult.canonical })}
               </p>
             ) : null}
+            {viewModel.conflictProductName ? (
+              <AlertBanner
+                tone="warn"
+                role="alert"
+                message={t('pickup.barcodeAssign.conflictWarning', {
+                  name: viewModel.conflictProductName,
+                })}
+              />
+            ) : null}
             {viewModel.confirmOverwrite ? (
-              <p className="text-sm text-[var(--color-on-surface-muted)]">{t('pickup.barcodeAssign.confirmOverwrite')}</p>
+              <p className="m-0 text-sm text-[var(--color-on-surface-muted)]">
+                {t('pickup.barcodeAssign.confirmOverwrite')}
+              </p>
             ) : null}
             <Button type="submit" disabled={!viewModel.canSave || viewModel.isSaving}>
               {t('pickup.barcodeAssign.save')}
@@ -104,17 +127,21 @@ export function BarcodeAssignDetailScreenView({
           </form>
 
           {viewModel.saveError ? (
-            <p className="text-sm text-red-600">{viewModel.saveError}</p>
+            <AlertBanner tone="danger" role="alert" message={viewModel.saveError} />
           ) : null}
 
           {viewModel.currentBarcode ? (
             <Card className="flex flex-col gap-3">
-              <p>{t('pickup.barcodeAssign.current', { value: viewModel.currentBarcode })}</p>
+              <p className="m-0 text-sm text-[var(--color-on-surface)]">
+                {t('pickup.barcodeAssign.current', { value: viewModel.currentBarcode })}
+              </p>
               <img src={viewModel.artifactLinearUrl} alt={t('pickup.barcodeAssign.artifactLinear')} />
               <img src={viewModel.artifactQrUrl} alt={t('pickup.barcodeAssign.artifactQr')} />
               {viewModel.confirmClear ? (
                 <div className="flex flex-col gap-3">
-                  <p>{t('pickup.barcodeAssign.clearConfirm')}</p>
+                  <p className="m-0 text-sm text-[var(--color-on-surface)]">
+                    {t('pickup.barcodeAssign.clearConfirm')}
+                  </p>
                   <div className="flex flex-wrap items-center gap-2">
                     <Button intent="secondary" type="button" onClick={actions.confirmClear}>
                       {t('pickup.barcodeAssign.clearConfirmAction')}

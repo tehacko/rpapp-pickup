@@ -100,8 +100,8 @@ describe('buildPickupPointTabs', () => {
       'No pickup point',
     );
     expect(tabs).toEqual([
-      { id: 5, label: 'Front desk' },
-      { id: 'none', label: 'No pickup point' },
+      { id: 5, label: 'Front desk', count: 2 },
+      { id: 'none', label: 'No pickup point', count: 1 },
     ]);
   });
 });
@@ -135,7 +135,7 @@ describe('buildQueuePageViewModel', () => {
         }),
         makeQueueItem({ fulfillmentId: 11, pickupPointId: null, pickupPointName: null }),
       ],
-      { activePickupPointId: 'all', errorMessage: null, showOfflineRetryBanner: false, showPickupPointTabs: true },
+      { activePickupPointId: 'all', errorMessage: null, showOfflineRetryBanner: false, showPickupPointTabs: true, lastUpdatedAt: now },
       { unassignedPickupPoint: 'No pickup point' },
       null,
       now,
@@ -147,17 +147,76 @@ describe('buildQueuePageViewModel', () => {
       expiresSoon: false,
     });
     expect(vm.tabs).toEqual([
-      { id: 5, label: 'Front desk' },
-      { id: 'none', label: 'No pickup point' },
+      { id: 5, label: 'Front desk', count: 1 },
+      { id: 'none', label: 'No pickup point', count: 1 },
     ]);
     expect(vm.isEmpty).toBe(false);
     expect(vm.showOfflineRetryBanner).toBe(false);
   });
 
+  it('exposes ageTone and ageLabel from promisedPickupAt thresholds', () => {
+    const now = Date.parse('2026-07-06T11:20:00.000Z');
+    const vm = buildQueuePageViewModel(
+      [
+        makeQueueItem({
+          fulfillmentId: 1,
+          promisedPickupAt: '2026-07-06T11:00:00.000Z',
+        }),
+        makeQueueItem({
+          fulfillmentId: 2,
+          promisedPickupAt: '2026-07-06T11:12:00.000Z',
+        }),
+        makeQueueItem({
+          fulfillmentId: 3,
+          promisedPickupAt: '2026-07-06T11:17:00.000Z',
+        }),
+        makeQueueItem({
+          fulfillmentId: 4,
+          promisedPickupAt: '2026-07-06T11:25:00.000Z',
+        }),
+        makeQueueItem({
+          fulfillmentId: 5,
+          promisedPickupAt: null,
+        }),
+      ],
+      {
+        activePickupPointId: 'all',
+        errorMessage: null,
+        showOfflineRetryBanner: false,
+        showPickupPointTabs: false,
+        lastUpdatedAt: now,
+      },
+      { unassignedPickupPoint: 'No pickup point' },
+      null,
+      now,
+    );
+    expect(vm.items[0]?.ageTone).toBe('danger');
+    expect(vm.items[0]?.ageLabel).toBe('20m overdue');
+    expect(vm.items[0]?.age?.labelKind).toBe('overdue');
+    expect(vm.items[1]?.ageTone).toBe('warn');
+    expect(vm.items[1]?.ageLabel).toBe('8m overdue');
+    expect(vm.items[1]?.age?.labelKind).toBe('overdue');
+    expect(vm.items[2]?.ageTone).toBe('neutral');
+    expect(vm.items[2]?.ageLabel).toBe('3m ago');
+    expect(vm.items[2]?.age?.labelKind).toBe('ago');
+    expect(vm.items[3]?.ageTone).toBe('neutral');
+    expect(vm.items[3]?.ageLabel).toBe('in 5m');
+    expect(vm.items[3]?.age?.labelKind).toBe('in');
+    expect(vm.items[4]?.ageTone).toBeNull();
+    expect(vm.items[4]?.ageLabel).toBeNull();
+    expect(vm.lastUpdatedAt).toBe(now);
+  });
+
   it('surfaces offline retry banner flag from ui state', () => {
     const vm = buildQueuePageViewModel(
       [makeQueueItem()],
-      { activePickupPointId: 'all', errorMessage: 'stale', showOfflineRetryBanner: true, showPickupPointTabs: true },
+      {
+        activePickupPointId: 'all',
+        errorMessage: 'stale',
+        showOfflineRetryBanner: true,
+        showPickupPointTabs: true,
+        lastUpdatedAt: null,
+      },
       { unassignedPickupPoint: 'No pickup point' },
       null,
     );

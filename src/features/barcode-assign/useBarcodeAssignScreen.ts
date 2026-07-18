@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { PickupStaffFunction } from '../hub/pickupStaffFunctions.js';
+import { PickupStaffFunction } from '../../shared/entitlements/pickupStaffFunctions.js';
 import { usePickupEntitlement } from '../../hooks/usePickupEntitlement.js';
 import { useStaffToken, useTenantCode } from '../../hooks/useStaffToken.js';
 import type { BarcodeAssignCatalogItem } from '../../gateway/productBarcode.gateway.js';

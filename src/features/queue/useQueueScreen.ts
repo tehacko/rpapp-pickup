@@ -96,6 +96,7 @@ export function useQueueScreen(gateway: IQueueGateway = queueGateway): UseQueueS
   const [loadFailed, setLoadFailed] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [refreshFailed, setRefreshFailed] = useState(false);
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(null);
   const { isRoamingStaff, activePickupPointId: sessionActivePoint } = usePickupStaffSession();
   const [localFilter, setLocalFilter] = useState<ActivePickupPointFilter>('all');
   const effectiveFilter: ActivePickupPointFilter =
@@ -117,6 +118,7 @@ export function useQueueScreen(gateway: IQueueGateway = queueGateway): UseQueueS
       setRefreshFailed(false);
       setErrorMessage(null);
       setItems([...result.items]);
+      setLastUpdatedAt(Date.now());
     },
     [t],
   );
@@ -126,6 +128,7 @@ export function useQueueScreen(gateway: IQueueGateway = queueGateway): UseQueueS
     setRefreshFailed(false);
     setErrorMessage(null);
     setItems([...snapshotItems]);
+    setLastUpdatedAt(Date.now());
     setLoading(false);
   }, []);
 
@@ -245,13 +248,24 @@ export function useQueueScreen(gateway: IQueueGateway = queueGateway): UseQueueS
         errorMessage,
         showOfflineRetryBanner,
         showPickupPointTabs: !isRoamingStaff,
+        lastUpdatedAt,
       },
       {
         unassignedPickupPoint: t('pickup.queue.filterUnassigned'),
       },
       pairedDeviceLabel,
     );
-  }, [effectiveFilter, errorMessage, isOnline, isRoamingStaff, refreshFailed, screenState, t, tenantCode]);
+  }, [
+    effectiveFilter,
+    errorMessage,
+    isOnline,
+    isRoamingStaff,
+    lastUpdatedAt,
+    refreshFailed,
+    screenState,
+    t,
+    tenantCode,
+  ]);
 
   const actions = useMemo<QueueScreenActions>(
     () => ({

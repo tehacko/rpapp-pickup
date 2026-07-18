@@ -9,6 +9,7 @@ import {
 import { PickupApiError, verifyPickupStaffPin } from '../../api/pickupApi.js';
 import { useStaffToken, useTenantCode } from '../../hooks/useStaffToken.js';
 import { Button, FormField } from '../ui/surfacePrimitives.js';
+import { SailorMark } from '../ui/SailorMark.js';
 
 export interface PickupStaffRePinModalProps {
   readonly open: boolean;
@@ -18,6 +19,9 @@ export interface PickupStaffRePinModalProps {
   readonly onVerified: () => void;
 }
 
+/**
+ * Dedicated staff re-PIN chrome — dense Sailor dialog (not a generic alert).
+ */
 export function PickupStaffRePinModal({
   open,
   titleKey,
@@ -91,29 +95,36 @@ export function PickupStaffRePinModal({
       }}
     >
       <section
-        className="flex w-[min(calc(100vw-2rem),26rem)] max-h-[min(90vh,56rem)] flex-col gap-4 overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-6 text-[var(--color-on-surface)] shadow-xl"
+        className="flex w-[min(calc(100vw-2rem),24rem)] max-h-[min(90vh,40rem)] flex-col gap-3 overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-5 text-[var(--color-on-surface)] shadow-[var(--shadow-popover)]"
         role="dialog"
         aria-modal="true"
         aria-labelledby="pickup-repin-title"
         data-pickup-repin-open="true"
+        data-testid="pickup-staff-repin-modal"
       >
-        <h2 id="pickup-repin-title" className="m-0 text-lg font-semibold">
-          {t(titleKey)}
-        </h2>
-        <p className="m-0 text-[var(--color-on-surface-muted)]">{t(descriptionKey)}</p>
-        <form className="flex flex-col gap-4" onSubmit={(event) => void onSubmit(event)}>
+        <header className="flex items-start gap-3">
+          <SailorMark size="sm" />
+          <div className="min-w-0 flex-1">
+            <h2 id="pickup-repin-title" className="m-0 text-lg font-semibold tracking-tight">
+              {t(titleKey)}
+            </h2>
+            <p className="m-0 mt-1 text-sm text-[var(--color-on-surface-muted)]">
+              {t(descriptionKey)}
+            </p>
+          </div>
+        </header>
+        <form className="flex flex-col gap-3" onSubmit={(event) => void onSubmit(event)}>
           <FormField
             id="pickup-repin-pin"
-            surface="pickup"
             label={t('pickup.repin.pinLabel')}
             type="password"
             inputMode="numeric"
-            autoComplete="off"
+            autoComplete="one-time-code"
             value={pin}
             onChange={(event) => setPin(event.target.value)}
             disabled={submitCooldown.isCoolingDown}
           />
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center justify-end gap-2 pt-1">
             <Button intent="secondary" type="button" onClick={handleCancel}>
               {t('pickup.repin.cancel')}
             </Button>
@@ -127,7 +138,7 @@ export function PickupStaffRePinModal({
         </form>
         {cooldownMessage ? (
           <p
-            className="m-0 rounded-[var(--radius-lg)] bg-[var(--color-surface-elevated)] p-3 text-[var(--color-danger)] shadow-[var(--shadow-card)]"
+            className="m-0 rounded-[var(--radius-md)] border border-[var(--color-danger)] bg-[var(--color-danger-foreground)] px-3 py-2 text-sm text-[var(--color-danger)]"
             role="alert"
           >
             {cooldownMessage}
@@ -135,7 +146,7 @@ export function PickupStaffRePinModal({
         ) : null}
         {error && !cooldownMessage ? (
           <p
-            className="m-0 rounded-[var(--radius-lg)] bg-[var(--color-surface-elevated)] p-3 text-[var(--color-danger)] shadow-[var(--shadow-card)]"
+            className="m-0 rounded-[var(--radius-md)] border border-[var(--color-danger)] bg-[var(--color-danger-foreground)] px-3 py-2 text-sm text-[var(--color-danger)]"
             role="alert"
           >
             {error}

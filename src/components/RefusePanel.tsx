@@ -1,6 +1,9 @@
 import { useTranslation } from 'react-i18next';
 import type { FulfillmentLine } from '../types';
-import { Button, Card } from '../shared/ui/surfacePrimitives.js';
+import { OrderLineRow } from '../shared/ui/OrderLineRow.js';
+import { QuantityStepper } from '../shared/ui/QuantityStepper.js';
+import { SectionCard } from '../shared/ui/SectionCard.js';
+import { PageSectionHeader } from '../shared/ui/PageSectionHeader.js';
 
 interface RefusePanelProps {
   lines: FulfillmentLine[];
@@ -9,7 +12,8 @@ interface RefusePanelProps {
   isOnHold: boolean;
   onToggleLine: (lineId: number, selected: boolean) => void;
   onChangeQty: (lineId: number, qty: number) => void;
-  onRefuse: () => void;
+  /** When true, omit outer SectionCard (parent owns card chrome). */
+  embedded?: boolean;
 }
 
 export function RefusePanel({
@@ -19,89 +23,59 @@ export function RefusePanel({
   isOnHold,
   onToggleLine,
   onChangeQty,
-  onRefuse,
+  embedded = false,
 }: RefusePanelProps): JSX.Element {
   const { t } = useTranslation();
 
-  return (
-    <Card className="mt-4">
-      <h2>{t('pickup.refuse.title')}</h2>
-      <div className="w-full overflow-x-auto">
-        <table className="w-full border-collapse overflow-hidden rounded-[var(--radius-xl)] bg-[var(--color-surface-elevated)] shadow-[var(--shadow-card)]">
-          <thead>
-            <tr>
-              <th className="border-b border-[var(--color-border)] p-3 text-left">
-                {t('pickup.order.line')}
-              </th>
-              <th className="border-b border-[var(--color-border)] p-3 text-left">
-                {t('pickup.order.remaining')}
-              </th>
-              <th className="border-b border-[var(--color-border)] p-3 text-left">
-                {t('pickup.refuse.title')}
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {lines.map((line) => (
-              <tr key={line.lineId}>
-                <td className="border-b border-[var(--color-border)] p-3 text-left">{line.lineId}</td>
-                <td className="border-b border-[var(--color-border)] p-3 text-left">
-                  {line.quantityRemaining}
-                </td>
-                <td className="border-b border-[var(--color-border)] p-3 text-left">
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={refuseSelected[line.lineId] ?? false}
-                      aria-label={t('pickup.refuse.selectLine', { lineId: line.lineId })}
-                      onChange={(event) => onToggleLine(line.lineId, event.target.checked)}
-                      disabled={line.quantityRemaining <= 0 || isOnHold}
-                    />
-                    <Button
-                      intent="secondary"
-                      size="sm"
-                      type="button"
-                      className="min-h-11 min-w-11"
-                      aria-label={t('pickup.partial.decrease')}
-                      disabled={!refuseSelected[line.lineId] || (refuseQty[line.lineId] ?? 0) <= 0}
-                      onClick={() =>
-                        onChangeQty(line.lineId, Math.max(0, (refuseQty[line.lineId] ?? 0) - 1))
-                      }
-                    >
-                      −
-                    </Button>
-                    <span className="min-w-8 text-center font-semibold">
-                      {refuseQty[line.lineId] ?? 0}
-                    </span>
-                    <Button
-                      intent="secondary"
-                      size="sm"
-                      type="button"
-                      className="min-h-11 min-w-11"
-                      aria-label={t('pickup.partial.increase')}
-                      disabled={
-                        !refuseSelected[line.lineId] ||
-                        (refuseQty[line.lineId] ?? 0) >= line.quantityRemaining
-                      }
-                      onClick={() =>
-                        onChangeQty(
-                          line.lineId,
-                          Math.min(line.quantityRemaining, (refuseQty[line.lineId] ?? 0) + 1)
-                        )
-                      }
-                    >
-                      +
-                    </Button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+  const body = (
+    <div className="flex flex-col">
+      {lines.map((line) => {
+        const selected = refuseSelected[line.lineId] ?? false;
+        const qty = refuseQty[line.lineId] ?? 0;
+        const lineDisabled = line.quantityRemaining <= 0 || isOnHold;
+        return (
+          <OrderLineRow
+            key={line.lineId}
+            testId={`pickup-refuse-line-${line.lineId}`}
+            label={`${t('pickup.order.line')} #${line.lineId}`}
+            meta={`${t('pickup.order.remaining')} ${line.quantityRemaining}`}
+            selected={selected}
+            disabled={lineDisabled}
+            onToggle={(nextSelected) => onToggleLine(line.lineId, nextSelected)}
+            trailing={
+              <QuantityStepper
+                value={qty}
+                min={0}
+                max={line.quantityRemaining}
+                disabled={!selected || lineDisabled}
+                aria-label={t('pickup.refuse.qty', {
+                  defaultValue: `Line ${String(line.lineId)} refuse quantity`,
+                })}
+                testId={`pickup-refuse-qty-${line.lineId}`}
+                onDec={() => onChangeQty(line.lineId, Math.max(0, qty - 1))}
+                onInc={() =>
+                  onChangeQty(line.lineId, Math.min(line.quantityRemaining, qty + 1))
+                }
+              />
+            }
+          />
+        );
+      })}
+    </div>
+  );
+
+  if (embedded) {
+    return (
+      <div data-testid="pickup-refuse-panel">
+        <PageSectionHeader title={t('pickup.refuse.title')} />
+        {body}
       </div>
-      <Button type="button" onClick={onRefuse} disabled={isOnHold}>
-        {t('pickup.refuse.confirm')}
-      </Button>
-    </Card>
+    );
+  }
+
+  return (
+    <SectionCard title={t('pickup.refuse.title')} elevated data-testid="pickup-refuse-panel">
+      {body}
+    </SectionCard>
   );
 }

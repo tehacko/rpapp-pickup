@@ -21,7 +21,10 @@ export function PromoDiscountLine(input: {
   }
 
   return (
-    <p className="text-sm font-medium text-[var(--color-success)]" data-testid="pickup-promo-discount">
+    <p
+      className="m-0 inline-flex items-center rounded-[var(--radius-sm)] border border-[var(--color-success)] bg-[color-mix(in_oklab,var(--color-success)_12%,var(--color-surface))] px-2.5 py-1 text-sm font-medium text-[var(--color-success)]"
+      data-testid="pickup-promo-discount"
+    >
       {t('pickup.order.promoDiscount', {
         amount: input.appliedDiscount.cartDiscountAmount.toFixed(2),
         currency: input.appliedDiscount.currency,

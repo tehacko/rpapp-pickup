@@ -12,6 +12,12 @@ import { ConfirmApiProvider } from './shared/ui/confirm/confirmApi.js';
 import { AlertApiProvider } from './shared/ui/AlertDialog/alertApi.js';
 import { ToastProvider } from './shared/ui/Toast/ToastProvider.js';
 import i18n from './i18n';
+import '@fontsource/inter/400.css';
+import '@fontsource/inter/500.css';
+import '@fontsource/inter/600.css';
+import '@fontsource/inter/700.css';
+import '@fontsource/poppins/600.css';
+import '@fontsource/poppins/700.css';
 import './styles/tailwind.css';
 import './styles/app.css';
 

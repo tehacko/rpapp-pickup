@@ -86,7 +86,15 @@ export const ConfirmDialog = memo<ConfirmDialogProps>(({
               </AlertDialog.Description>
             ) : null}
             {warning !== undefined ? (
-              <p className="m-0 text-sm font-semibold text-[var(--color-danger)]">{warning}</p>
+              <p
+                className={
+                  variant === 'warning'
+                    ? 'm-0 rounded-[var(--radius-md)] border border-[var(--color-warning)] bg-[var(--color-warning-foreground)] px-3 py-2 text-sm font-semibold text-[var(--color-warning)]'
+                    : 'm-0 rounded-[var(--radius-md)] border border-[var(--color-danger)] bg-[var(--color-danger-foreground)] px-3 py-2 text-sm font-semibold text-[var(--color-danger)]'
+                }
+              >
+                {warning}
+              </p>
             ) : null}
             {children}
           </div>
