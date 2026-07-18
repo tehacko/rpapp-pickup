@@ -179,7 +179,8 @@ export async function fetchPickupStaffEntitlement(
     `/api/${encodeURIComponent(tenantCode)}/v1/pickup/staff/entitlement`,
   );
   if (!res.ok) {
-    throw new PickupApiError(res.status, 'Failed to load pickup staff entitlement');
+    const { message, code } = await parseErrorBody(res);
+    throw new PickupApiError(res.status, message, { code });
   }
   const body = (await res.json()) as { data?: PickupStaffEntitlementSnapshot };
   if (body.data === undefined) {

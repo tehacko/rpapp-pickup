@@ -42,6 +42,8 @@
   "pickup.login.entitlementDenied": "Pickup staff access is not enabled for this tenant ({{block}}).",
   "pickup.login.entitlementLoading": "Checking access…",
   "pickup.login.pickupPointNotAllowed": "Pickup point access is not configured for this sales point.",
+  "pickup.tenantInactive.title": "Organization unavailable",
+  "pickup.tenantInactive.body": "This organization is deactivated. Pickup staff access is blocked until the organization is reactivated.",
   "pickup.login.deviceCode": "Device code (optional)",
   "pickup.login.deviceCodePlaceholder": "Counter tablet code if not paired yet",
   "pickup.turnstile.loading": "Loading security check…",

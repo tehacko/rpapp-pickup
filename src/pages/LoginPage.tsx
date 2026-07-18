@@ -14,6 +14,10 @@ import { resolvePostLoginPath } from '../features/hub/pickupStaffFunctions';
 import { usePickupEntitlement } from '../hooks/usePickupEntitlement';
 import { isDevicePaired, setPairedDevice } from '../lib/deviceStorage.js';
 import { rememberPickupLastTenant } from '../lib/pickupLastTenant.js';
+import {
+  isTenantInactiveError,
+  PICKUP_TENANT_INACTIVE_TEST_ID,
+} from '../lib/tenantInactive.js';
 import { usePickupStaffSession } from '../shared/session/PickupStaffSessionProvider.js';
 import { useTenantCode } from '../hooks/useStaffToken';
 
@@ -23,7 +27,8 @@ export function LoginPage(): JSX.Element {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { t } = useTranslation();
-  const { isLoginAllowed, denialReason, isLoading: entitlementLoading, entitledFunctions } = usePickupEntitlement(tenantCode);
+  const { isLoginAllowed, denialReason, isLoading: entitlementLoading, entitledFunctions, isTenantInactive } =
+    usePickupEntitlement(tenantCode);
   const submitCooldown = useSubmitCooldown();
   const kioskHintDefault = searchParams.get('kioskHint')?.trim() ?? '';
   const [salesPointId, setSalesPointId] = useState(kioskHintDefault);
@@ -76,7 +81,7 @@ export function LoginPage(): JSX.Element {
 
   async function onSubmit(event: FormEvent): Promise<void> {
     event.preventDefault();
-    if (isSubmitting || submitCooldown.isCoolingDown) {
+    if (isSubmitting || submitCooldown.isCoolingDown || isTenantInactive) {
       return;
     }
     setError(null);
@@ -135,6 +140,10 @@ export function LoginPage(): JSX.Element {
         setError(t('pickup.login.pickupPointNotAllowed'));
         return;
       }
+      if (isTenantInactiveError(err)) {
+        setError(t('pickup.tenantInactive.body'));
+        return;
+      }
       setError(err instanceof Error ? err.message : t('pickup.toast.loginFailed'));
     } finally {
       setIsSubmitting(false);
@@ -145,8 +154,22 @@ export function LoginPage(): JSX.Element {
     // Landmark: login is outside PickupAppShell — this page may own the sole <main>.
     <main className="mx-auto w-full max-w-[720px] px-4 py-6">
       <h1>{t('pickup.login.title')}</h1>
+      {isTenantInactive ? (
+        <div
+          className="mb-4 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-muted)] p-4"
+          data-testid={PICKUP_TENANT_INACTIVE_TEST_ID}
+          role="alert"
+        >
+          <h2 className="m-0 text-lg font-semibold text-[var(--color-on-surface)]">
+            {t('pickup.tenantInactive.title')}
+          </h2>
+          <p className="mb-0 mt-2 text-sm text-[var(--color-on-surface-muted)]">
+            {t('pickup.tenantInactive.body')}
+          </p>
+        </div>
+      ) : null}
       {entitlementLoading ? <p role="status">{t('pickup.login.entitlementLoading')}</p> : null}
-      {!entitlementLoading && !isLoginAllowed ? (
+      {!entitlementLoading && !isTenantInactive && !isLoginAllowed ? (
         <p className="text-sm text-red-600" role="alert">
           {t('pickup.login.entitlementDenied', {
             block: denialReason ?? 'staff_pickup_scan',
@@ -166,7 +189,7 @@ export function LoginPage(): JSX.Element {
             className="min-h-11 w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-[var(--color-on-surface)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus-ring)]"
             value={salesPointId}
             onChange={(event) => setSalesPointId(event.target.value)}
-            disabled={submitCooldown.isCoolingDown}
+            disabled={submitCooldown.isCoolingDown || isTenantInactive}
             placeholder={t('pickup.login.salesPointIdPlaceholder')}
           />
         </label>
@@ -178,7 +201,7 @@ export function LoginPage(): JSX.Element {
             value={pin}
             type="password"
             onChange={(event) => setPin(event.target.value)}
-            disabled={submitCooldown.isCoolingDown}
+            disabled={submitCooldown.isCoolingDown || isTenantInactive}
             placeholder={t('pickup.login.pinPlaceholder')}
           />
         </label>
@@ -190,7 +213,7 @@ export function LoginPage(): JSX.Element {
               className="min-h-11 w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-[var(--color-on-surface)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus-ring)]"
               value={deviceCode}
               onChange={(event) => setDeviceCode(event.target.value)}
-              disabled={submitCooldown.isCoolingDown}
+              disabled={submitCooldown.isCoolingDown || isTenantInactive}
               placeholder={t('pickup.login.deviceCodePlaceholder')}
               autoComplete="off"
             />
@@ -204,7 +227,12 @@ export function LoginPage(): JSX.Element {
         <Button
           type="submit"
           block
-          disabled={isSubmitting || submitCooldown.isCoolingDown || !isLoginAllowed}
+          disabled={
+            isSubmitting ||
+            submitCooldown.isCoolingDown ||
+            isTenantInactive ||
+            !isLoginAllowed
+          }
         >
           {t('pickup.login.submit')}
         </Button>

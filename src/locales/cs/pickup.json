@@ -42,6 +42,8 @@
   "pickup.login.entitlementDenied": "Přístup pro pickup personál není pro tohoto tenanta zapnutý ({{block}}).",
   "pickup.login.entitlementLoading": "Kontrola přístupu…",
   "pickup.login.pickupPointNotAllowed": "Pro tento prodejní bod není nastaven přístup k výdejním místům.",
+  "pickup.tenantInactive.title": "Organizace není dostupná",
+  "pickup.tenantInactive.body": "Tato organizace je deaktivována. Přístup pickup personálu je zablokován, dokud organizace nebude znovu aktivována.",
   "pickup.login.deviceCode": "Kód zařízení (volitelné)",
   "pickup.login.deviceCodePlaceholder": "Kód tabletu u pokladny, pokud ještě není spárován",
   "pickup.turnstile.loading": "Načítání bezpečnostní kontroly…",

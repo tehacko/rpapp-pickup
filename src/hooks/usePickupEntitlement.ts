@@ -10,6 +10,7 @@ import {
   PickupStaffFunction,
   type PickupStaffFunctionKey,
 } from '../features/hub/pickupStaffFunctions.js';
+import { isTenantInactiveError } from '../lib/tenantInactive.js';
 import { resolvePickupDeviceFlags } from './pickupDeviceFlags.js';
 
 export type { PickupStaffEntitlementSnapshot as PickupEntitlementSnapshot };
@@ -18,6 +19,7 @@ export interface UsePickupEntitlementResult {
   readonly snapshot: PickupStaffEntitlementSnapshot | null;
   readonly isLoading: boolean;
   readonly isError: boolean;
+  readonly isTenantInactive: boolean;
   readonly isLoginAllowed: boolean;
   readonly entitledFunctions: readonly PickupStaffFunctionKey[];
   readonly deviceFlags: PickupStaffEntitlementSnapshot['deviceFlags'];
@@ -74,6 +76,7 @@ export function usePickupEntitlement(tenantCode: string): UsePickupEntitlementRe
     snapshot,
     isLoading: query.isLoading,
     isError: query.isError,
+    isTenantInactive: isTenantInactiveError(query.error),
     isLoginAllowed,
     entitledFunctions,
     deviceFlags,

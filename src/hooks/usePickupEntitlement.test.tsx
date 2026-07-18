@@ -55,4 +55,26 @@ describe('usePickupEntitlement', () => {
     expect(result.current.isLoginAllowed).toBe(false);
     expect(result.current.denialReason).toBe('staff_pickup_scan');
   });
+
+  it('flags isTenantInactive when entitlement query fails with TENANT_INACTIVE', () => {
+    const { PickupApiError } = jest.requireActual('../api/pickupApi.js') as {
+      PickupApiError: new (
+        status: number,
+        message: string,
+        options?: { code?: string },
+      ) => Error;
+    };
+    mockUseQuery.mockReturnValue({
+      data: undefined,
+      isSuccess: false,
+      isLoading: false,
+      isError: true,
+      error: new PickupApiError(403, 'Tenant is deactivated', { code: 'TENANT_INACTIVE' }),
+    });
+
+    const { result } = renderHook(() => usePickupEntitlement('demo-tenant'));
+
+    expect(result.current.isTenantInactive).toBe(true);
+    expect(result.current.isLoginAllowed).toBe(false);
+  });
 });
