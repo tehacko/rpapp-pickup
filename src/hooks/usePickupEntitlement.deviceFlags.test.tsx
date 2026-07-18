@@ -7,9 +7,13 @@ jest.mock('@tanstack/react-query', () => ({
   useQuery: (...args: unknown[]) => mockUseQuery(...args),
 }));
 
-jest.mock('../api/pickupApi.js', () => ({
-  fetchPickupStaffEntitlement: jest.fn(),
-}));
+jest.mock('../api/pickupApi.js', () => {
+  const actual = jest.requireActual('../api/pickupApi.js') as typeof import('../api/pickupApi.js');
+  return {
+    ...actual,
+    fetchPickupStaffEntitlement: jest.fn(),
+  };
+});
 
 import { usePickupEntitlement } from './usePickupEntitlement.js';
 

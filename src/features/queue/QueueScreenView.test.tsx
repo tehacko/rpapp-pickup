@@ -148,6 +148,7 @@ describe('QueueScreenView', () => {
 
     const retryButton = screen.getByRole('button', { name: 'pickup.queue.retry' });
     expectPickupSecondaryButton(retryButton);
+    expect(screen.getByRole('button', { name: 'pickup.queue.refresh' })).toBeTruthy();
 
     fireEvent.click(retryButton);
     expect(actions.refresh).toHaveBeenCalledTimes(1);

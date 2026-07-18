@@ -59,8 +59,14 @@ export function QueueScreenView({
           onRetry={actions.refresh}
         />
         <PickupStickyCta>
-          <Button intent="secondary" type="button" onClick={actions.refresh}>
-            {t('pickup.queue.retry')}
+          <Button
+            intent="secondary"
+            type="button"
+            onClick={actions.refresh}
+            aria-label={t('pickup.queue.refresh')}
+            data-testid="queue-sticky-refresh"
+          >
+            {t('pickup.queue.refresh')}
           </Button>
         </PickupStickyCta>
       </div>
@@ -98,7 +104,13 @@ export function QueueScreenView({
       {viewModel.showOfflineRetryBanner ? (
         <div className={`${ROW} mt-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-elevated)] p-3`} role="status" data-testid="queue-offline-banner">
           <p className="m-0">{t('pickup.queue.offlineBanner')}</p>
-          <Button intent="secondary" type="button" onClick={actions.refresh}>
+          <Button
+            intent="secondary"
+            type="button"
+            onClick={actions.refresh}
+            aria-label={t('pickup.queue.retry')}
+            data-testid="queue-offline-retry"
+          >
             {t('pickup.queue.retry')}
           </Button>
         </div>
@@ -146,8 +158,14 @@ export function QueueScreenView({
       ) : null}
 
       <PickupStickyCta>
-        <Button intent="secondary" type="button" onClick={actions.refresh}>
-          {t('pickup.queue.retry')}
+        <Button
+          intent="secondary"
+          type="button"
+          onClick={actions.refresh}
+          aria-label={t('pickup.queue.refresh')}
+          data-testid="queue-sticky-refresh"
+        >
+          {t('pickup.queue.refresh')}
         </Button>
       </PickupStickyCta>
     </div>

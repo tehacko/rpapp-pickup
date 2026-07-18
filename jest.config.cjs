@@ -17,6 +17,7 @@ module.exports = {
     '^react-dom$': '<rootDir>/node_modules/react-dom',
     '^react/jsx-runtime$': '<rootDir>/node_modules/react/jsx-runtime',
     '^react/jsx-dev-runtime$': '<rootDir>/node_modules/react/jsx-dev-runtime',
+    '^pi-kiosk-shared/ui$': '<rootDir>/../shared/src/ui/index.ts',
     '^pi-kiosk-shared/clientLogRedaction$':
       '<rootDir>/../shared/src/clientLogRedaction.ts',
     '^pi-kiosk-shared/crossTab$': '<rootDir>/../shared/src/crossTab/index.ts',
@@ -26,11 +27,15 @@ module.exports = {
       '<rootDir>/../shared/src/sentry/captureConflictBreadcrumb.ts',
     '^pi-kiosk-shared/sentry$': '<rootDir>/../shared/src/sentry/initSentry.ts',
     '^pi-kiosk-shared$': '<rootDir>/../shared/src/index.ts',
+    '^@marsidev/react-turnstile$':
+      '<rootDir>/src/test/shims/react-turnstile.shim.tsx',
     '^\\.\\./shared/vite/readViteMetaEnv\\.js$': '<rootDir>/src/test/shims/readViteMetaEnv.shim.ts',
     '^(\\.{1,2}/.*)\\.js$': '$1',
   },
   transform: {
     '^.+\\.(ts|tsx|js)$': ['ts-jest', { useESM: true, tsconfig: 'tsconfig.json' }],
   },
-  transformIgnorePatterns: ['node_modules/(?!(pi-kiosk-shared)/)'],
+  transformIgnorePatterns: [
+    'node_modules/(?!(pi-kiosk-shared|@marsidev)/)',
+  ],
 };

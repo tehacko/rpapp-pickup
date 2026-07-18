@@ -152,6 +152,7 @@
   "pickup.queue.claimBadgeExpiresSoon": "claim expires soon",
   "pickup.queue.offlineBanner": "You are offline or the queue could not refresh. Retry when connection is restored.",
   "pickup.queue.retry": "Retry",
+  "pickup.queue.refresh": "Refresh queue",
   "pickup.order.title": "Order #{{id}}",
   "pickup.order.version": "Version: {{version}}",
   "pickup.order.status": "Status: {{status}}",

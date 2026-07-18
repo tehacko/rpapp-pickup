@@ -152,6 +152,7 @@
   "pickup.queue.claimBadgeExpiresSoon": "nárok brzy vyprší",
   "pickup.queue.offlineBanner": "Jste offline nebo se frontu nepodařilo obnovit. Zkuste to znovu po obnovení připojení.",
   "pickup.queue.retry": "Zkusit znovu",
+  "pickup.queue.refresh": "Obnovit frontu",
   "pickup.order.title": "Objednávka #{{id}}",
   "pickup.order.version": "Verze: {{version}}",
   "pickup.order.status": "Stav: {{status}}",

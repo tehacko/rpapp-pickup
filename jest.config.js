@@ -43,6 +43,8 @@ export default {
     '^pi-kiosk-shared/sentry$': '<rootDir>/../shared/src/sentry/initSentry.ts',
     '^pi-kiosk-shared/crossTab$': '<rootDir>/../shared/src/crossTab/index.ts',
     '^pi-kiosk-shared$': '<rootDir>/../shared/src/index.ts',
+    '^@marsidev/react-turnstile$':
+      '<rootDir>/src/test/shims/react-turnstile.shim.tsx',
     '^(\\.{1,2}/.*)\\.js$': '$1',
     '\\.(css|less|scss|sass)$': 'identity-obj-proxy',
   },
