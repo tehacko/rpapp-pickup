@@ -1,5 +1,6 @@
 /**
  * Icon-only light/dark switch — same control as rpapp-customer AccountThemeToggle.
+ * Dark mode: white track + dark thumb (high contrast on dark chrome).
  */
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../app/ThemeProvider.js';
@@ -29,7 +30,7 @@ export function ThemeSwitch(): JSX.Element {
       className={[
         TRACK_CLASS,
         isDark
-          ? 'justify-end border-[var(--color-border)] bg-[var(--color-surface)]'
+          ? 'justify-end border-[var(--color-border)] bg-white'
           : 'justify-start border-[var(--color-on-surface)] bg-[var(--color-on-surface)]',
       ].join(' ')}
     >
@@ -37,7 +38,7 @@ export function ThemeSwitch(): JSX.Element {
         aria-hidden="true"
         className={[
           THUMB_CLASS,
-          isDark ? 'bg-[var(--color-on-surface)]' : 'bg-[var(--color-surface)]',
+          isDark ? 'bg-[var(--color-surface-muted)]' : 'bg-[var(--color-surface)]',
         ].join(' ')}
       />
     </button>
