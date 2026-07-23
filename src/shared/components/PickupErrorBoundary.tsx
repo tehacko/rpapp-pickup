@@ -1,14 +1,17 @@
 /**
  * Pickup staff PWA root error boundary — props aligned with monorepo
- * `ErrorBoundaryContract` (see `docs/FRONTEND/ERROR_BOUNDARY_CONTRACT.md`).
+ * `ErrorBoundaryContract` (see `up-backend/docs/FRONTEND/ERROR_BOUNDARY_CONTRACT.md`).
  *
  * Staff/customer/kiosk/pickup apps use `fallback?: ReactNode` + `retryKey` remount.
  * Admin uses a function fallback variant documented separately.
+ *
+ * Optional `observability` is additive (ADR-017) and does **not** change the published
+ * `ErrorBoundaryContract` shape (`children` + `fallback?`).
  */
 import type { ErrorInfo, ReactNode } from 'react';
 import { Component } from 'react';
 import { useTranslation } from 'react-i18next';
-import { captureBoundaryError } from 'pi-kiosk-shared/sentry';
+import { capturePickupBoundaryError } from '../../lib/observability/pickupBoundarySentry.js';
 import { pickupLogger } from '../logging/pickupLogger.js';
 import { Button } from '../ui/surfacePrimitives.js';
 import { SailorMark } from '../ui/SailorMark.js';
@@ -19,13 +22,21 @@ export interface ErrorBoundaryContract {
   readonly fallback?: ReactNode;
 }
 
+/** L2/L3 RemountBoundary may pass `feature` + `boundary_layer`; root may omit (defaults). */
+export interface PickupErrorBoundaryObservability {
+  readonly boundary_layer?: string;
+  readonly feature?: string;
+}
+
 export interface PickupErrorBoundaryState {
   hasError: boolean;
   error?: Error;
   retryKey: number;
 }
 
-export type PickupErrorBoundaryProps = ErrorBoundaryContract;
+export type PickupErrorBoundaryProps = ErrorBoundaryContract & {
+  readonly observability?: PickupErrorBoundaryObservability;
+};
 
 function PickupErrorBoundaryFallback({
   onRetry,
@@ -73,13 +84,21 @@ export class PickupErrorBoundary extends Component<
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
+    const obs = this.props.observability;
+    const feature = obs?.feature ?? 'shell';
+
     pickupLogger.error('ErrorBoundary caught an error', error, {
       module: 'ErrorBoundary',
-      feature: 'shell',
+      feature,
       operation: 'componentDidCatch',
       componentStack: errorInfo.componentStack,
+      ...(obs?.boundary_layer !== undefined ? { boundary_layer: obs.boundary_layer } : {}),
     });
-    captureBoundaryError(error, errorInfo);
+
+    capturePickupBoundaryError(error, errorInfo, {
+      feature,
+      ...(obs?.boundary_layer !== undefined ? { boundary_layer: obs.boundary_layer } : {}),
+    });
   }
 
   private handleRetry = (): void => {

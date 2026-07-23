@@ -3,9 +3,12 @@ import { getPairedDeviceCode } from '../lib/deviceStorage.js';
 import type { PickupStaffDeviceFlags } from '../hooks/pickupDeviceFlags.js';
 import { resolvePickupDeviceFlags } from '../hooks/pickupDeviceFlags.js';
 import { getRetryAfterMs } from 'pi-kiosk-shared';
+import { readRequestId, setClientCorrelationId } from 'pi-kiosk-shared/logging';
+import { setSentryCorrelationId } from 'pi-kiosk-shared/sentry';
 import { capturePickupRateLimitBreadcrumb } from '../lib/observability/sentry';
 import { notifyPickupStaffSessionExpired } from '../shared/session/pickupStaffAuthNotify.js';
 import type { QueueItem, ResolveResponse, SalesPointLookupResponse } from '../types';
+import { claimLog } from '../features/order/logging.js';
 
 export interface FulfillmentClaimResult {
   readonly fulfillmentId: number;
@@ -96,7 +99,14 @@ async function handleMutationFailure(res: Response, path: string, method: string
 }
 
 function pickupFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
-  return fetch(input, pickupFetchInit(init));
+  return fetch(input, pickupFetchInit(init)).then((res) => {
+    const id = readRequestId(res);
+    if (id !== undefined) {
+      setClientCorrelationId(id);
+      setSentryCorrelationId(id);
+    }
+    return res;
+  });
 }
 
 function mutationHeaders(
@@ -490,11 +500,18 @@ export async function acquireFulfillmentClaim(
     body: JSON.stringify({ deviceCode }),
   });
   if (!res.ok) {
+    const correlationId = readRequestId(res);
+    claimLog.error('acquireFulfillmentClaim failed', {
+      operation: 'acquire',
+      fulfillmentId,
+      correlationId,
+      status: res.status,
+    });
     await handleMutationFailure(res, path, 'POST');
   }
-  const json = (await res.json()) as { data?: FulfillmentClaimResult };
-  if (json.data === undefined) {
-    throw new PickupApiError(res.status, 'Invalid fulfillment claim response');
+  const json = (await res.json()) as { success?: boolean; data?: FulfillmentClaimResult };
+  if (json.success !== true || json.data == null) {
+    throw new Error('Invalid claim response');
   }
   return json.data;
 }
@@ -515,6 +532,13 @@ export async function releaseFulfillmentClaim(
   if (res.ok) {
     return;
   }
+  const correlationId = readRequestId(res);
+  claimLog.error('releaseFulfillmentClaim failed', {
+    operation: 'release',
+    fulfillmentId,
+    correlationId,
+    status: res.status,
+  });
   await handleMutationFailure(res, path, 'POST');
 }
 

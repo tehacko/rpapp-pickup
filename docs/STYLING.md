@@ -2,8 +2,8 @@
 
 **PR-ID:** `admin-pickup-media-pwa` Phase 7b (re-sign) · pickup enterprise UX MVP  
 **Status:** Active — **ADOPT_TAILWIND** (signed 2026-07-17)  
-**SSOT:** [`../../docs/FRONTEND/PICKUP_STYLING_ADR.md`](../../docs/FRONTEND/PICKUP_STYLING_ADR.md)  
-**Related:** [`../../docs/FRONTEND/ADR-PICKUP-TAILWIND-ADOPT.md`](../../docs/FRONTEND/ADR-PICKUP-TAILWIND-ADOPT.md), [`../../docs/FRONTEND/PRIMITIVE_OWNERSHIP.md`](../../docs/FRONTEND/PRIMITIVE_OWNERSHIP.md)
+**SSOT:** [`../../up-backend/docs/FRONTEND/PICKUP_STYLING_ADR.md`](../../up-backend/docs/FRONTEND/PICKUP_STYLING_ADR.md)  
+**Related:** [`../../up-backend/docs/FRONTEND/ADR-PICKUP-TAILWIND-ADOPT.md`](../../up-backend/docs/FRONTEND/ADR-PICKUP-TAILWIND-ADOPT.md), [`../../up-backend/docs/FRONTEND/PRIMITIVE_OWNERSHIP.md`](../../up-backend/docs/FRONTEND/PRIMITIVE_OWNERSHIP.md)
 
 ---
 
@@ -39,7 +39,7 @@ Import order: `main.tsx` loads `tailwind.css` then `app.css`.
 
 Do **not** add Checkbox / Switch / Popover Radix packages. Native checkboxes OK in feature rows.
 
-Ownership: [`PRIMITIVE_OWNERSHIP.md`](../../docs/FRONTEND/PRIMITIVE_OWNERSHIP.md) §4.1.
+Ownership: [`PRIMITIVE_OWNERSHIP.md`](../../up-backend/docs/FRONTEND/PRIMITIVE_OWNERSHIP.md) §4.1.
 
 ---
 

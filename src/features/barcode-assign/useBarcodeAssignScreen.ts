@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { PickupStaffFunction } from '../../shared/entitlements/pickupStaffFunctions.js';
 import { usePickupEntitlement } from '../../hooks/usePickupEntitlement.js';
 import { useStaffToken, useTenantCode } from '../../hooks/useStaffToken.js';
+import { usePickupErrorHandler } from '../../shared/hooks/usePickupErrorHandler.js';
 import type { BarcodeAssignCatalogItem } from '../../gateway/productBarcode.gateway.js';
 import {
   buildBarcodeAssignCatalogViewModel,
@@ -12,10 +13,12 @@ import {
 } from './buildBarcodeAssignViewModel.js';
 import type { IBarcodeAssignGateway } from './IBarcodeAssignGateway.js';
 import { barcodeAssignGateway } from './barcodeAssignGateway.js';
+import { assignLog } from './logging.js';
 
 export interface BarcodeAssignScreenActions {
   readonly setQuery: (value: string) => void;
   readonly openRow: (productId: number, variantId?: number) => void;
+  readonly retry: () => void;
 }
 
 export interface UseBarcodeAssignScreenResult {
@@ -34,10 +37,12 @@ export function useBarcodeAssignScreen(
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { entitledFunctions } = usePickupEntitlement(tenantCode);
+  const { handleError } = usePickupErrorHandler();
   const [query, setQuery] = useState('');
   const [items, setItems] = useState<readonly BarcodeAssignCatalogItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [reloadToken, setReloadToken] = useState(0);
 
   const canAssign = entitledFunctions.includes(PickupStaffFunction.BARCODE_ASSIGN);
 
@@ -61,6 +66,8 @@ export function useBarcodeAssignScreen(
           if (cancelled) {
             return;
           }
+          assignLog.error('Barcode assign catalog load failed', err, { operation: 'listCatalog' });
+          handleError(err, 'barcode.assign.listCatalog');
           setErrorMessage(err instanceof Error ? err.message : t('pickup.barcodeAssign.loadFailed'));
           setItems([]);
         })
@@ -75,7 +82,7 @@ export function useBarcodeAssignScreen(
       cancelled = true;
       window.clearTimeout(handle);
     };
-  }, [accessToken, gateway, query, t, tenantCode]);
+  }, [accessToken, gateway, handleError, query, reloadToken, t, tenantCode]);
 
   const viewModel = useMemo(
     () =>
@@ -96,12 +103,17 @@ export function useBarcodeAssignScreen(
     [navigate, tenantCode],
   );
 
+  const retry = useCallback((): void => {
+    setReloadToken((token) => token + 1);
+  }, []);
+
   const actions = useMemo<BarcodeAssignScreenActions>(
     () => ({
       setQuery,
       openRow,
+      retry,
     }),
-    [openRow],
+    [openRow, retry],
   );
 
   return { accessToken, tenantCode, canAssign, viewModel, actions };

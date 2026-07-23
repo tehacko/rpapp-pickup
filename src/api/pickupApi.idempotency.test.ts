@@ -25,10 +25,12 @@ import {
 describe('pickupApi idempotency', () => {
   const fetchMock = jest.fn<typeof fetch>();
   const originalFetch = global.fetch;
+  const emptyHeaders = { get: (): string | null => null };
 
   beforeEach(() => {
     fetchMock.mockResolvedValue({
       ok: true,
+      headers: emptyHeaders,
       json: async () => ({ data: { expiresInSeconds: 3600, salesPointId: 3 } }),
     } as Response);
     global.fetch = fetchMock as unknown as typeof fetch;
@@ -50,6 +52,7 @@ describe('pickupApi idempotency', () => {
   it('sends Idempotency-Key on resolve-by-code', async () => {
     fetchMock.mockResolvedValueOnce({
       ok: true,
+      headers: emptyHeaders,
       json: async () => ({ data: { fulfillmentId: 1 } }),
     } as Response);
     await fetchResolveByCode('tenant-a', 'token', 'AB12', 'resolve-idem-key');
@@ -60,7 +63,11 @@ describe('pickupApi idempotency', () => {
   });
 
   it('sends Idempotency-Key on fulfillment mutations', async () => {
-    fetchMock.mockResolvedValue({ ok: true, json: async () => ({ data: {} }) } as Response);
+    fetchMock.mockResolvedValue({
+      ok: true,
+      headers: emptyHeaders,
+      json: async () => ({ data: {} }),
+    } as Response);
 
     await confirmPickup('t', 'tok', 9, { version: 1 }, 'confirm-key');
     await refuseLines('t', 'tok', 9, { version: 1, lines: [] }, 'refuse-key');
@@ -81,6 +88,7 @@ describe('pickupApi idempotency', () => {
     fetchMock.mockResolvedValueOnce({
       ok: false,
       status: 401,
+      headers: emptyHeaders,
       json: async () => ({ error: 'Unauthorized' }),
     } as Response);
     await expect(loginPickupStaff('tenant-a', { salesPointId: 1, pin: 'bad' })).rejects.toBeInstanceOf(PickupApiError);

@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useStaffToken, useTenantCode } from '../../hooks/useStaffToken.js';
+import { usePickupErrorHandler } from '../../shared/hooks/usePickupErrorHandler.js';
 import { usePickupStaffSession } from '../../shared/session/PickupStaffSessionProvider.js';
 import { buildSellCartViewModel } from './buildSellCartViewModel.js';
 import { buildSellCatalogViewModel } from './buildSellCatalogViewModel.js';
 import type { ISellCatalogGateway } from './ISellCatalogGateway.js';
+import { catalogLog } from './logging.js';
 import { sellCatalogGateway } from './sellCatalogGateway.js';
 import {
   addSellCartLine,
@@ -23,6 +25,8 @@ export interface SellScreenActions {
   readonly removeLine: (key: string) => void;
   readonly checkoutCash: () => void;
   readonly dismissCheckoutMessage: () => void;
+  readonly retryCatalog: () => void;
+  readonly retryConfig: () => void;
 }
 
 export interface UseSellScreenResult {
@@ -30,6 +34,7 @@ export interface UseSellScreenResult {
   readonly tenantCode: string;
   readonly canSell: boolean;
   readonly configLoaded: boolean;
+  readonly configError: string | null;
   readonly catalogViewModel: ReturnType<typeof buildSellCatalogViewModel>;
   readonly cartViewModel: ReturnType<typeof buildSellCartViewModel>;
   readonly checkoutLoading: boolean;
@@ -53,19 +58,23 @@ export function useSellScreen(
   const tenantCode = useTenantCode();
   const accessToken = useStaffToken();
   const { t } = useTranslation();
+  const { handleError } = usePickupErrorHandler();
   const { activePickupPointId } = usePickupStaffSession();
   const [config, setConfig] = useState<SellConfig>(DEFAULT_CONFIG);
   const [configLoaded, setConfigLoaded] = useState(false);
+  const [configError, setConfigError] = useState<string | null>(null);
+  const [configReloadToken, setConfigReloadToken] = useState(0);
   const [query, setQuery] = useState('');
   const [items, setItems] = useState<readonly SellCatalogItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [catalogReloadToken, setCatalogReloadToken] = useState(0);
   const [cartLines, setCartLines] = useState<readonly SellCartLine[]>([]);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [checkoutMessage, setCheckoutMessage] = useState<string | null>(null);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
 
-  const canSell = configLoaded && config.sellingEnabled;
+  const canSell = configLoaded && configError === null && config.sellingEnabled;
 
   useEffect(() => {
     if (!accessToken) {
@@ -77,19 +86,24 @@ export function useSellScreen(
       .then((next) => {
         if (!cancelled) {
           setConfig(next);
+          setConfigError(null);
           setConfigLoaded(true);
         }
       })
-      .catch(() => {
+      .catch((err: unknown) => {
         if (!cancelled) {
-          setConfig(DEFAULT_CONFIG);
+          catalogLog.error('Sell config load failed', err, { operation: 'fetchConfig' });
+          handleError(err, 'sell.catalog.fetchConfig');
+          setConfigError(
+            err instanceof Error ? err.message : t('pickup.sell.configLoadFailed'),
+          );
           setConfigLoaded(true);
         }
       });
     return () => {
       cancelled = true;
     };
-  }, [accessToken, gateway, tenantCode]);
+  }, [accessToken, configReloadToken, gateway, handleError, t, tenantCode]);
 
   useEffect(() => {
     if (!accessToken || !canSell) {
@@ -108,6 +122,8 @@ export function useSellScreen(
         })
         .catch((err: unknown) => {
           if (!cancelled) {
+            catalogLog.error('Sell catalog load failed', err, { operation: 'fetchCatalog' });
+            handleError(err, 'sell.catalog.fetchCatalog');
             setErrorMessage(
               err instanceof Error ? err.message : t('pickup.sell.catalogLoadFailed'),
             );
@@ -124,7 +140,7 @@ export function useSellScreen(
       cancelled = true;
       window.clearTimeout(handle);
     };
-  }, [accessToken, canSell, gateway, query, t, tenantCode]);
+  }, [accessToken, canSell, catalogReloadToken, gateway, handleError, query, t, tenantCode]);
 
   const catalogViewModel = useMemo(
     () =>
@@ -212,6 +228,8 @@ export function useSellScreen(
           t('pickup.sell.checkoutSuccess', { transactionId: completed.transactionId }),
         );
       } catch (err: unknown) {
+        catalogLog.error('Sell cash checkout failed', err, { operation: 'checkoutCash' });
+        handleError(err, 'sell.catalog.checkoutCash');
         setCheckoutError(
           err instanceof Error ? err.message : t('pickup.sell.checkoutFailed'),
         );
@@ -225,6 +243,7 @@ export function useSellScreen(
     cartLines,
     checkoutLoading,
     gateway,
+    handleError,
     t,
     tenantCode,
   ]);
@@ -232,6 +251,16 @@ export function useSellScreen(
   const dismissCheckoutMessage = useCallback((): void => {
     setCheckoutMessage(null);
     setCheckoutError(null);
+  }, []);
+
+  const retryCatalog = useCallback((): void => {
+    setCatalogReloadToken((token) => token + 1);
+  }, []);
+
+  const retryConfig = useCallback((): void => {
+    setConfigLoaded(false);
+    setConfigError(null);
+    setConfigReloadToken((token) => token + 1);
   }, []);
 
   const actions = useMemo<SellScreenActions>(
@@ -243,6 +272,8 @@ export function useSellScreen(
       removeLine,
       checkoutCash,
       dismissCheckoutMessage,
+      retryCatalog,
+      retryConfig,
     }),
     [
       addItem,
@@ -251,6 +282,8 @@ export function useSellScreen(
       dismissCheckoutMessage,
       incrementLine,
       removeLine,
+      retryCatalog,
+      retryConfig,
     ],
   );
 
@@ -259,6 +292,7 @@ export function useSellScreen(
     tenantCode,
     canSell,
     configLoaded,
+    configError,
     catalogViewModel,
     cartViewModel,
     checkoutLoading,

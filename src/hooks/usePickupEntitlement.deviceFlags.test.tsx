@@ -37,6 +37,7 @@ describe('usePickupEntitlement device flags', () => {
       isSuccess: true,
       isLoading: false,
       isError: false,
+      refetch: jest.fn(),
     });
 
     const { result } = renderHook(() => usePickupEntitlement('demo-tenant'));

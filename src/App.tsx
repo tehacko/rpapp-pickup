@@ -2,8 +2,14 @@ import { lazy, Suspense } from 'react';
 import { Route, Routes } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { PickupAppShell } from './app/PickupAppShell.js';
+import { RemountBoundary } from './shared/components/RemountBoundary.js';
+import { PickupRouteErrorFallback } from './shared/components/PickupRouteErrorFallback.js';
 import { Skeleton } from './shared/ui/Skeleton.js';
 import { SailorMark } from './shared/ui/SailorMark.js';
+import {
+  ErrorIsolationProbe,
+  type ErrorIsolationProbeFeature,
+} from './test/e2e/errorIsolationProbe.js';
 
 const LoginPage = lazy(async () => {
   const mod = await import('./pages/LoginPage');
@@ -70,6 +76,26 @@ function RouteFallback(): JSX.Element {
   );
 }
 
+type PickupL3ProbeFeature = Exclude<ErrorIsolationProbeFeature, 'shell-outlet'>;
+
+function withPickupRouteBoundary(
+  feature: PickupL3ProbeFeature,
+  testId: string,
+  element: JSX.Element,
+): JSX.Element {
+  return (
+    <RemountBoundary
+      feature={feature}
+      fallback={({ onRetry, feature: f }) => (
+        <PickupRouteErrorFallback onRetry={onRetry} feature={f} testId={testId} />
+      )}
+    >
+      <ErrorIsolationProbe feature={feature} />
+      {element}
+    </RemountBoundary>
+  );
+}
+
 export function App(): JSX.Element {
   return (
     <Suspense fallback={<RouteFallback />}>
@@ -79,17 +105,50 @@ export function App(): JSX.Element {
         <Route path="/:tenantCode/device-pairing" element={<DevicePairingPage />} />
 
         <Route path="/:tenantCode" element={<PickupAppShell />}>
-          <Route path="hub" element={<StaffHubPage />} />
-          <Route path="scan" element={<ScanPage />} />
-          <Route path="barcode-assign" element={<BarcodeAssignPage />} />
+          <Route
+            path="hub"
+            element={withPickupRouteBoundary('hub', 'pickup-eb-l3-hub', <StaffHubPage />)}
+          />
+          <Route
+            path="scan"
+            element={withPickupRouteBoundary('scan', 'pickup-eb-l3-scan', <ScanPage />)}
+          />
+          <Route
+            path="barcode-assign"
+            element={withPickupRouteBoundary(
+              'barcode',
+              'pickup-eb-l3-barcode',
+              <BarcodeAssignPage />,
+            )}
+          />
           <Route
             path="barcode-assign/:productId/variants/:variantId"
-            element={<BarcodeAssignDetailPage />}
+            element={withPickupRouteBoundary(
+              'barcode-detail',
+              'pickup-eb-l3-barcode-detail',
+              <BarcodeAssignDetailPage />,
+            )}
           />
-          <Route path="barcode-assign/:productId" element={<BarcodeAssignDetailPage />} />
-          <Route path="queue" element={<QueuePage />} />
-          <Route path="sell" element={<SellPage />} />
-          <Route path="order/:fulfillmentId" element={<OrderPage />} />
+          <Route
+            path="barcode-assign/:productId"
+            element={withPickupRouteBoundary(
+              'barcode-detail',
+              'pickup-eb-l3-barcode-detail',
+              <BarcodeAssignDetailPage />,
+            )}
+          />
+          <Route
+            path="queue"
+            element={withPickupRouteBoundary('queue', 'pickup-eb-l3-queue', <QueuePage />)}
+          />
+          <Route
+            path="sell"
+            element={withPickupRouteBoundary('sell', 'pickup-eb-l3-sell', <SellPage />)}
+          />
+          <Route
+            path="order/:fulfillmentId"
+            element={withPickupRouteBoundary('order', 'pickup-eb-l3-order', <OrderPage />)}
+          />
         </Route>
 
         <Route path="*" element={<RootPage />} />

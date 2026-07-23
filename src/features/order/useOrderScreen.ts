@@ -12,6 +12,7 @@ import { capturePickupConflictBreadcrumb } from '../../lib/observability/sentry.
 import { useDeviceHeartbeat } from '../../hooks/useDeviceHeartbeat.js';
 import { usePickupEntitlement } from '../../hooks/usePickupEntitlement.js';
 import { useStaffToken, useTenantCode } from '../../hooks/useStaffToken.js';
+import { usePickupErrorHandler } from '../../shared/hooks/usePickupErrorHandler.js';
 import type { ResolveResponse } from '../../types.js';
 import {
   buildInitialLineSelectionState,
@@ -31,6 +32,7 @@ import {
 import { resolveOrderScreenState, type OrderScreenState } from './orderScreenState.js';
 import { usePickupStaffRePin } from '../../shared/security/usePickupStaffRePin.js';
 import { toastApi } from '../../shared/ui/Toast/toastApi.js';
+import { claimLog, mutationsLog } from './logging.js';
 
 export interface OrderScreenActions {
   readonly setPickupCode: (value: string) => void;
@@ -70,6 +72,7 @@ export function useOrderScreen(
   const { t } = useTranslation();
   const submitCooldown = useSubmitCooldown();
   const { requestRePin, rePinModal } = usePickupStaffRePin();
+  const { handleError } = usePickupErrorHandler();
 
   const [pickupCode, setPickupCode] = useState('');
   const [holdReason, setHoldReason] = useState('');
@@ -107,20 +110,41 @@ export function useOrderScreen(
     let cancelled = false;
     void (async () => {
       setLoading(true);
-      const data =
-        shortCode.length >= 4
-          ? await gateway.resolveByCode(tenantCode, accessToken, shortCode)
-          : await gateway.resolve(tenantCode, accessToken, scanToken);
-      if (cancelled) {
-        return;
+      try {
+        const data =
+          shortCode.length >= 4
+            ? await gateway.resolveByCode(tenantCode, accessToken, shortCode)
+            : await gateway.resolve(tenantCode, accessToken, scanToken);
+        if (cancelled) {
+          return;
+        }
+        applyOrder(data);
+      } catch (err) {
+        if (cancelled) {
+          return;
+        }
+        mutationsLog.error('Order resolve failed', err, { operation: 'resolve' });
+        handleError(err, 'order.mutations.resolve');
+        applyOrder(null);
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
-      applyOrder(data);
-      setLoading(false);
     })();
     return () => {
       cancelled = true;
     };
-  }, [accessToken, applyOrder, canResolveOrder, gateway, scanToken, shortCode, tenantCode]);
+  }, [
+    accessToken,
+    applyOrder,
+    canResolveOrder,
+    gateway,
+    handleError,
+    scanToken,
+    shortCode,
+    tenantCode,
+  ]);
 
   useEffect(() => {
     if (!accessToken || pairedDeviceCode === undefined || !hasFulfillmentId) {
@@ -145,6 +169,11 @@ export function useOrderScreen(
           return;
         }
         if (err instanceof PickupApiError && err.code === 'FULFILLMENT_CLAIMED_BY_OTHER_DEVICE') {
+          claimLog.warn('Fulfillment claim held by other device', err, {
+            operation: 'acquire',
+            fulfillmentId: parsedFulfillmentId,
+          });
+          handleError(err, 'order.claim.acquire');
           capturePickupConflictBreadcrumb({
             code: 'FULFILLMENT_CLAIMED_BY_OTHER_DEVICE',
             operation: 'acquireClaim',
@@ -157,10 +186,21 @@ export function useOrderScreen(
           return;
         }
         if (err instanceof PickupApiError && err.code === 'FULFILLMENT_ON_HOLD') {
+          claimLog.warn('Fulfillment claim skipped — on hold', err, {
+            operation: 'acquire',
+            fulfillmentId: parsedFulfillmentId,
+          });
+          handleError(err, 'order.claim.acquire');
           setClaimConflict(null);
           setClaimHeld(false);
           claimHeldRef.current = false;
+          return;
         }
+        claimLog.error('acquireFulfillmentClaim failed', err, {
+          operation: 'acquire',
+          fulfillmentId: parsedFulfillmentId,
+        });
+        handleError(err, 'order.claim.acquire');
       }
     })();
     return () => {
@@ -171,12 +211,25 @@ export function useOrderScreen(
           accessToken,
           parsedFulfillmentId,
           pairedDeviceCode,
-        ).catch(() => undefined);
+        ).catch((err: unknown) => {
+          claimLog.warn('releaseFulfillmentClaim failed', err, {
+            operation: 'release',
+            fulfillmentId: parsedFulfillmentId,
+          });
+          handleError(err, 'order.claim.release');
+        });
         claimHeldRef.current = false;
         setClaimHeld(false);
       }
     };
-  }, [accessToken, hasFulfillmentId, pairedDeviceCode, parsedFulfillmentId, tenantCode]);
+  }, [
+    accessToken,
+    handleError,
+    hasFulfillmentId,
+    pairedDeviceCode,
+    parsedFulfillmentId,
+    tenantCode,
+  ]);
 
   useDeviceHeartbeat(
     accessToken,
@@ -192,18 +245,24 @@ export function useOrderScreen(
     if (!accessToken) {
       return order;
     }
-    if (shortCode.length >= 4) {
-      const fresh = await gateway.resolveByCode(tenantCode, accessToken, shortCode);
+    try {
+      if (shortCode.length >= 4) {
+        const fresh = await gateway.resolveByCode(tenantCode, accessToken, shortCode);
+        applyOrder(fresh);
+        return fresh;
+      }
+      if (scanToken.length < 8) {
+        return order;
+      }
+      const fresh = await gateway.resolve(tenantCode, accessToken, scanToken);
       applyOrder(fresh);
       return fresh;
+    } catch (err) {
+      mutationsLog.error('Order refresh failed', err, { operation: 'refresh' });
+      handleError(err, 'order.mutations.refresh');
+      throw err;
     }
-    if (scanToken.length < 8) {
-      return order;
-    }
-    const fresh = await gateway.resolve(tenantCode, accessToken, scanToken);
-    applyOrder(fresh);
-    return fresh;
-  }, [accessToken, applyOrder, gateway, order, scanToken, shortCode, tenantCode]);
+  }, [accessToken, applyOrder, gateway, handleError, order, scanToken, shortCode, tenantCode]);
 
   const mutationContext = useMemo<OrderMutationContext>(
     () => ({
@@ -299,6 +358,8 @@ export function useOrderScreen(
           setLoading(true);
           try {
             await refreshOrder();
+          } catch {
+            // refreshOrder already logged + handleError
           } finally {
             setLoading(false);
           }

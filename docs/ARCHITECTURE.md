@@ -27,7 +27,7 @@ PageHeader
 
 Page padding owned by **`PickupAppShell` only**; screen toolbars use local `PageHeader` (not `EnterpriseHeader`). List screens: `PickupListLayout` **or** checklist `banner → KPI (omit if empty) → children → sticky`.
 
-**Styling:** **ADOPT_TAILWIND** — see [`STYLING.md`](./STYLING.md) and [`../../docs/FRONTEND/PICKUP_STYLING_ADR.md`](../../docs/FRONTEND/PICKUP_STYLING_ADR.md). Legacy `.pickup-*` inventory in STYLING.md.
+**Styling:** **ADOPT_TAILWIND** — see [`STYLING.md`](./STYLING.md) and [`../../up-backend/docs/FRONTEND/PICKUP_STYLING_ADR.md`](../../up-backend/docs/FRONTEND/PICKUP_STYLING_ADR.md). Legacy `.pickup-*` inventory in STYLING.md.
 
 ## Humble object (ScreenState + ViewModel)
 
@@ -152,7 +152,7 @@ Pickup humble-object layering is promoted into the monorepo screen template for 
 |-----|------|
 | [`rpapp-admin/docs/SCREEN_TEMPLATE.md`](../../rpapp-admin/docs/SCREEN_TEMPLATE.md) | Admin gold ref **plus** appended pickup section (layering table, contrast matrix, file naming) |
 | This file | Pickup-specific depth — ScreenState unions, polling, error conventions, gateway ports |
-| [`docs/FRONTEND/PRIMITIVE_OWNERSHIP.md`](../../docs/FRONTEND/PRIMITIVE_OWNERSHIP.md) | Atom ownership, `surface` matrix, import boundaries |
+| [`up-backend/docs/FRONTEND/PRIMITIVE_OWNERSHIP.md`](../../up-backend/docs/FRONTEND/PRIMITIVE_OWNERSHIP.md) | Atom ownership, `surface` matrix, import boundaries |
 | [`docs/STYLING.md`](STYLING.md) | **ADOPT_TAILWIND** stack, token bridge, legacy `.pickup-*` until screen migration |
 
 Admin agents implementing pickup-adjacent features (devices, pickup points) stay on admin patterns; **fulfillment operator UI** in `rpapp-pickup` follows the humble-object table at the top of this doc.

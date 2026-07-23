@@ -15,6 +15,7 @@ import { useStaffPickupPointsQuery } from '../../shared/queries/useStaffPickupPo
 
 export interface StaffHubScreenActions {
   readonly setActivePickupPointId: (pickupPointId: number) => void;
+  readonly retryPickupPoints: () => void;
 }
 
 export interface UseStaffHubScreenResult {
@@ -92,6 +93,7 @@ export function useStaffHubScreen(): UseStaffHubScreenResult {
         pickupPointOptions,
         activePickupPointId,
         pickupPointsLoading: shouldLoadPickupPoints && pickupPointsQuery.isLoading,
+        pickupPointsError: shouldLoadPickupPoints && pickupPointsQuery.isError,
       }),
     [
       activePickupPointId,
@@ -101,17 +103,23 @@ export function useStaffHubScreen(): UseStaffHubScreenResult {
       isRoamingStaff,
       pairedDevice?.deviceLabel,
       pickupPointOptions,
+      pickupPointsQuery.isError,
       pickupPointsQuery.isLoading,
       shouldLoadPickupPoints,
       tenantCode,
     ],
   );
 
+  const refetchPickupPoints = pickupPointsQuery.refetch;
+
   const actions = useMemo<StaffHubScreenActions>(
     () => ({
       setActivePickupPointId,
+      retryPickupPoints: (): void => {
+        void refetchPickupPoints();
+      },
     }),
-    [setActivePickupPointId],
+    [refetchPickupPoints, setActivePickupPointId],
   );
 
   return { accessToken, viewModel, actions };

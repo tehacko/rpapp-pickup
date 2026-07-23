@@ -19,10 +19,24 @@ jest.mock('../shared/session/pickupStaffAuthNotify.js', () => ({
   notifyPickupStaffSessionExpired: jest.fn(),
 }));
 
+jest.mock('../features/order/logging.js', () => ({
+  claimLog: {
+    error: jest.fn(),
+    warn: jest.fn(),
+    info: jest.fn(),
+    debug: jest.fn(),
+  },
+  mutationsLog: {
+    error: jest.fn(),
+    warn: jest.fn(),
+    info: jest.fn(),
+    debug: jest.fn(),
+  },
+}));
+
 import {
   acquireFulfillmentClaim,
   confirmPickup,
-  PickupApiError,
   postDeviceHeartbeat,
   releaseFulfillmentClaim,
 } from './pickupApi.js';
@@ -34,7 +48,11 @@ describe('pickupApi device claim helpers', () => {
   beforeEach(() => {
     fetchMock.mockResolvedValue({
       ok: true,
+      headers: {
+        get: (): string | null => null,
+      },
       json: async () => ({
+        success: true,
         data: {
           fulfillmentId: 9,
           version: 2,
@@ -92,6 +110,7 @@ describe('pickupApi device claim helpers', () => {
       ok: false,
       status: 409,
       statusText: 'Conflict',
+      headers: { get: (): string | null => null },
       json: async () => ({ error: 'Conflict' }),
     } as Response);
 
@@ -106,6 +125,7 @@ describe('pickupApi device claim helpers', () => {
       ok: false,
       status: 409,
       statusText: 'Conflict',
+      headers: { get: (): string | null => null },
       json: async () => ({ error: 'Conflict' }),
     } as Response);
 
@@ -119,9 +139,12 @@ describe('pickupApi device claim helpers', () => {
     fetchMock.mockResolvedValueOnce({
       ok: true,
       status: 200,
+      headers: { get: (): string | null => null },
       json: async () => ({}),
     } as Response);
 
-    await expect(acquireFulfillmentClaim('tenant-a', 'tok', 9, 'TAB-TEST', 'claim-key')).rejects.toBeInstanceOf(PickupApiError);
+    await expect(acquireFulfillmentClaim('tenant-a', 'tok', 9, 'TAB-TEST', 'claim-key')).rejects.toThrow(
+      'Invalid claim response',
+    );
   });
 });

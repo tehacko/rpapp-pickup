@@ -17,6 +17,7 @@ describe('buildStaffHubViewModel', () => {
       ],
       activePickupPointId: 5,
       pickupPointsLoading: false,
+      pickupPointsError: false,
     });
 
     expect(vm.showPickupPointSwitcher).toBe(true);
@@ -36,9 +37,28 @@ describe('buildStaffHubViewModel', () => {
       pickupPointOptions: [],
       activePickupPointId: 5,
       pickupPointsLoading: false,
+      pickupPointsError: false,
     });
 
     expect(vm.showPickupPointSwitcher).toBe(false);
     expect(vm.pickupPointOptions).toEqual([]);
+  });
+
+  it('exposes pickupPointsError when points query failed', () => {
+    const vm = buildStaffHubViewModel({
+      tenantCode: 'demo',
+      canScan: true,
+      canAssign: false,
+      canSell: false,
+      showDeviceRegistry: true,
+      pairedDeviceLabel: null,
+      showPickupPointSwitcher: true,
+      pickupPointOptions: [],
+      activePickupPointId: null,
+      pickupPointsLoading: false,
+      pickupPointsError: true,
+    });
+
+    expect(vm.pickupPointsError).toBe(true);
   });
 });

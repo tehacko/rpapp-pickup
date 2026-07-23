@@ -2,7 +2,9 @@ import {
   fetchPickupStaffMe,
   type PickupStaffSessionClaims,
 } from '../../api/pickupApi.js';
+import { reportPickupError } from '../hooks/usePickupErrorHandler.js';
 import { publishPickupStaffAuth } from '../crossTab/pickupStaffCrossTab.js';
+import { staffLog } from './logging.js';
 
 const inFlightRefresh = new Map<string, Promise<PickupStaffSessionClaims | null>>();
 
@@ -21,6 +23,11 @@ export async function refreshPickupStaffSession(
         publishPickupStaffAuth({ type: 'session-refreshed', tenantCode });
       }
       return claims;
+    })
+    .catch((err: unknown) => {
+      staffLog.error('Pickup staff session refresh failed', err, { operation: 'refresh' });
+      reportPickupError(err, 'session.staff.refresh');
+      throw err;
     })
     .finally(() => {
       inFlightRefresh.delete(tenantCode);

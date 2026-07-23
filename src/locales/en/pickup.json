@@ -37,6 +37,9 @@
   "pwa.updateFailed": "Refresh failed. Try again.",
   "pwa.offlineBanner": "You're offline. Reconnect to continue.",
   "pwa.forceRefresh": "Force refresh",
+  "pickup.shell.entitlementLoadFailed": "Could not load staff access. Try again.",
+  "pickup.shell.pickupPointsLoadFailed": "Could not load pickup points. Try again.",
+  "pickup.shell.sellConfigLoadFailed": "Could not load sell settings. Sell may be unavailable until retry.",
   "pickup.login.title": "Pickup staff login",
   "pickup.login.salesPointId": "Sales point ID",
   "pickup.login.salesPointIdPlaceholder": "sales point ID or superpickuper",
@@ -93,6 +96,7 @@
   "pickup.hub.pickupPointLabel": "Serving at",
   "pickup.hub.pickupPointHint": "Queue and scan use this pickup point for this session. Other tabs sync when you switch.",
   "pickup.hub.pickupPointsLoading": "Loading pickup points…",
+  "pickup.hub.pickupPointsLoadFailed": "Could not load pickup points. Try again.",
   "pickup.hub.staffSell": "Sell at counter",
   "pickup.hub.actionsTitle": "Staff actions",
   "pickup.hub.noActionsTitle": "No staff functions",
@@ -252,6 +256,7 @@
   "pickup.sell.searchLabel": "Search products",
   "pickup.sell.loading": "Loading catalog…",
   "pickup.sell.catalogLoadFailed": "Could not load sell catalog.",
+  "pickup.sell.configLoadFailed": "Could not load sell configuration.",
   "pickup.sell.catalogTitle": "Products",
   "pickup.sell.outOfStock": "Out of stock",
   "pickup.sell.cartTitle": "Cart",
@@ -268,5 +273,8 @@
   "pickup.sell.dismiss": "Dismiss",
   "app.errorBoundary.title": "Something went wrong",
   "app.errorBoundary.message": "Please reload the page or try again.",
-  "app.errorBoundary.retry": "Try again"
+  "app.errorBoundary.retry": "Try again",
+  "pickup.routeError.title": "This screen failed to load",
+  "pickup.routeError.message": "Try again, or open another section from the navigation.",
+  "pickup.routeError.retry": "Try again"
 }

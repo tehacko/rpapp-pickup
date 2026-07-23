@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { computePollRetryDelayMs } from 'pi-kiosk-shared';
+import { shouldEmitLogRepeat } from 'pi-kiosk-shared/logging';
 import { usePickupEntitlement } from '../../hooks/usePickupEntitlement.js';
 import { useStaffToken, useTenantCode } from '../../hooks/useStaffToken.js';
 import { getPairedDevice } from '../../lib/deviceStorage.js';
+import { usePickupErrorHandler } from '../../shared/hooks/usePickupErrorHandler.js';
 import { usePickupStaffSession } from '../../shared/session/PickupStaffSessionProvider.js';
 import { useOnlineStatus } from '../../shared/network/useOnlineStatus.js';
 import type { QueueItem } from '../../types.js';
@@ -16,6 +18,7 @@ import type { IQueueGateway, QueueFetchResult } from './IQueueGateway.js';
 import { queueGateway } from './queueGateway.js';
 import { resolveQueueScreenState, type QueueScreenState } from './queueScreenState.js';
 import { usePickupQueueSubscription } from './usePickupQueueSubscription.js';
+import { pollLog } from './logging.js';
 
 export const QUEUE_POLL_INTERVAL_MS = 30_000;
 export const QUEUE_POLL_DEGRADED_MIN_MS = 15_000;
@@ -81,6 +84,7 @@ export interface UseQueueScreenResult {
 export function useQueueScreen(gateway: IQueueGateway = queueGateway): UseQueueScreenResult {
   const tenantCode = useTenantCode();
   const accessToken = useStaffToken();
+  const { handleError } = usePickupErrorHandler();
   const { snapshot: entitlementSnapshot } = usePickupEntitlement(tenantCode);
   const queuePushStrategy = entitlementSnapshot?.queueConfig.pushStrategy ?? 'poll';
   const degradedQueuePolling =
@@ -103,8 +107,18 @@ export function useQueueScreen(gateway: IQueueGateway = queueGateway): UseQueueS
     isRoamingStaff && sessionActivePoint !== null ? sessionActivePoint : localFilter;
 
   const applyQueueResult = useCallback(
-    (result: { items: readonly QueueItem[]; ok: boolean }, isInitial: boolean): void => {
+    (result: { items: readonly QueueItem[]; ok: boolean; httpStatus?: number }, isInitial: boolean): void => {
       if (!result.ok) {
+        if (shouldEmitLogRepeat(`pickup-queue-poll-ui:${tenantCode}`, 5)) {
+          pollLog.warn('Pickup queue load failed', {
+            operation: isInitial ? 'initial' : 'refresh',
+            httpStatus: result.httpStatus,
+          });
+          handleError(
+            new Error(`Queue load failed (${result.httpStatus ?? 'unknown'})`),
+            'queue.poll',
+          );
+        }
         if (isInitial) {
           setLoadFailed(true);
           setItems([]);
@@ -120,7 +134,7 @@ export function useQueueScreen(gateway: IQueueGateway = queueGateway): UseQueueS
       setItems([...result.items]);
       setLastUpdatedAt(Date.now());
     },
-    [t],
+    [handleError, t, tenantCode],
   );
 
   const applySnapshotItems = useCallback((snapshotItems: readonly QueueItem[]): void => {

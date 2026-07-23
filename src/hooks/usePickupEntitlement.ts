@@ -1,6 +1,7 @@
 /**
  * Pickup staff app entitlement hook (ENT-PR-18, BAR-PR-12 OR login).
  */
+import { useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   fetchPickupStaffEntitlement,
@@ -24,6 +25,7 @@ export interface UsePickupEntitlementResult {
   readonly entitledFunctions: readonly PickupStaffFunctionKey[];
   readonly deviceFlags: PickupStaffEntitlementSnapshot['deviceFlags'];
   readonly denialReason: 'staff_pickup_scan' | 'assign_barcode' | 'order_pickup_infrastructure' | null;
+  readonly refetch: () => void;
 }
 
 function buildEntitledFunctions(
@@ -72,6 +74,11 @@ export function usePickupEntitlement(tenantCode: string): UsePickupEntitlementRe
     return null;
   })();
 
+  const refetchQuery = query.refetch;
+  const refetch = useCallback((): void => {
+    void refetchQuery();
+  }, [refetchQuery]);
+
   return {
     snapshot,
     isLoading: query.isLoading,
@@ -81,5 +88,6 @@ export function usePickupEntitlement(tenantCode: string): UsePickupEntitlementRe
     entitledFunctions,
     deviceFlags,
     denialReason,
+    refetch,
   };
 }

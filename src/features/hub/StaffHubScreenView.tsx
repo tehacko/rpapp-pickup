@@ -52,7 +52,15 @@ export function StaffHubScreenView({ viewModel, actions }: StaffHubScreenViewPro
         <SectionCard title={t('pickup.hub.pickupPointTitle')} data-testid="hub-pickup-point-card">
           {viewModel.pickupPointsLoading ? (
             <ScreenState variant="loading" message={t('pickup.hub.pickupPointsLoading')} />
-          ) : (
+          ) : null}
+          {!viewModel.pickupPointsLoading && viewModel.pickupPointsError ? (
+            <ScreenState
+              variant="error"
+              message={t('pickup.hub.pickupPointsLoadFailed')}
+              onRetry={actions.retryPickupPoints}
+            />
+          ) : null}
+          {!viewModel.pickupPointsLoading && !viewModel.pickupPointsError ? (
             <>
               <label className="sr-only" htmlFor="pickup-hub-active-point">
                 {t('pickup.hub.pickupPointLabel')}
@@ -71,7 +79,7 @@ export function StaffHubScreenView({ viewModel, actions }: StaffHubScreenViewPro
                 {t('pickup.hub.pickupPointHint')}
               </p>
             </>
-          )}
+          ) : null}
         </SectionCard>
       ) : null}
 

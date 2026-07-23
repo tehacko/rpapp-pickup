@@ -5,11 +5,13 @@ import { useTranslation } from 'react-i18next';
 import { useQrScanner } from '../../hooks/useQrScanner.js';
 import { useStaffToken, useTenantCode } from '../../hooks/useStaffToken.js';
 import { normalizeScanToken } from '../../lib/scanToken.js';
+import { usePickupErrorHandler } from '../../shared/hooks/usePickupErrorHandler.js';
 import { usePickupStaffSession } from '../../shared/session/PickupStaffSessionProvider.js';
 import type { ResolveResponse } from '../../types.js';
 import { buildScanOrderPath, buildScanPageViewModel } from './buildScanPageViewModel.js';
 import type { ScanPageViewModel } from './buildScanPageViewModel.js';
 import type { IScanGateway } from './IScanGateway.js';
+import { resolveLog } from './logging.js';
 import { scanGateway } from './scanGateway.js';
 import {
   resolveScanScreenState,
@@ -40,6 +42,7 @@ export function useScanScreen(gateway: IScanGateway = scanGateway): UseScanScree
   const accessToken = useStaffToken();
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const { handleError } = usePickupErrorHandler();
   const { activePickupPointId, isRoamingStaff } = usePickupStaffSession();
   const videoRef = useRef<HTMLVideoElement>(null);
   const [cameraEnabled, setCameraEnabled] = useState(true);
@@ -73,18 +76,26 @@ export function useScanScreen(gateway: IScanGateway = scanGateway): UseScanScree
       setErrorMessage(null);
       setIsResolving(true);
       void (async () => {
-        const normalized = normalizeScanToken(scanToken);
-        const data = await gateway.resolve(tenantCode, accessToken, normalized);
-        if (!data) {
-          setErrorMessage(t('pickup.toast.resolveTokenFailed'));
+        try {
+          const normalized = normalizeScanToken(scanToken);
+          const data = await gateway.resolve(tenantCode, accessToken, normalized);
+          if (!data) {
+            setErrorMessage(t('pickup.toast.resolveTokenFailed'));
+            setResolvedOrder(null);
+          } else {
+            setResolvedOrder(data);
+          }
+        } catch (err: unknown) {
+          resolveLog.error('Scan token resolve failed', err, { operation: 'resolve' });
+          handleError(err, 'scan.resolve.resolve');
+          setErrorMessage(err instanceof Error ? err.message : t('pickup.toast.resolveTokenFailed'));
           setResolvedOrder(null);
-        } else {
-          setResolvedOrder(data);
+        } finally {
+          setIsResolving(false);
         }
-        setIsResolving(false);
       })();
     },
-    [accessToken, gateway, scanToken, t, tenantCode],
+    [accessToken, gateway, handleError, scanToken, t, tenantCode],
   );
 
   const resolveShortCode = useCallback(
@@ -96,17 +107,25 @@ export function useScanScreen(gateway: IScanGateway = scanGateway): UseScanScree
       setErrorMessage(null);
       setIsResolving(true);
       void (async () => {
-        const data = await gateway.resolveByCode(tenantCode, accessToken, shortCode);
-        if (!data) {
-          setErrorMessage(t('pickup.toast.resolveCodeFailed'));
+        try {
+          const data = await gateway.resolveByCode(tenantCode, accessToken, shortCode);
+          if (!data) {
+            setErrorMessage(t('pickup.toast.resolveCodeFailed'));
+            setResolvedOrder(null);
+          } else {
+            setResolvedOrder(data);
+          }
+        } catch (err: unknown) {
+          resolveLog.error('Scan short-code resolve failed', err, { operation: 'resolveByCode' });
+          handleError(err, 'scan.resolve.resolveByCode');
+          setErrorMessage(err instanceof Error ? err.message : t('pickup.toast.resolveCodeFailed'));
           setResolvedOrder(null);
-        } else {
-          setResolvedOrder(data);
+        } finally {
+          setIsResolving(false);
         }
-        setIsResolving(false);
       })();
     },
-    [accessToken, gateway, shortCode, t, tenantCode],
+    [accessToken, gateway, handleError, shortCode, t, tenantCode],
   );
 
   const openOrder = useCallback((): void => {

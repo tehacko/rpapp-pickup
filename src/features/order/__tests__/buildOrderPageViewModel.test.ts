@@ -3,6 +3,7 @@ import {
   buildInitialLineSelectionState,
   buildOrderPageViewModel,
   collectPartialConfirmLines,
+  collectRefuseLines,
 } from '../buildOrderPageViewModel.js';
 import type { ResolveResponse } from '../../../types.js';
 
@@ -111,5 +112,26 @@ describe('collectPartialConfirmLines', () => {
     const order = makeOrder();
     const lines = collectPartialConfirmLines(order.lines, { 1: true, 2: false }, { 1: 2, 2: 0 });
     expect(lines).toEqual([{ lineId: 1, quantityToCollectThisConfirm: 2 }]);
+  });
+});
+
+describe('collectRefuseLines', () => {
+  it('returns only selected refuse lines with positive quantity', () => {
+    const order = makeOrder();
+    const lines = collectRefuseLines(order.lines, { 1: true, 2: true }, { 1: 1, 2: 0 });
+    expect(lines).toEqual([{ lineId: 1, quantityToRefuse: 1 }]);
+  });
+});
+
+describe('buildOrderPageViewModel canConfirm', () => {
+  it('allows confirm when allowedForStaff is null and payment is not required', () => {
+    const vm = buildOrderPageViewModel(
+      makeOrder({ allowedForStaff: null }),
+      '42',
+      'demo',
+      baseUi,
+    );
+    expect(vm.canConfirm).toBe(true);
+    expect(vm.isOnHold).toBe(false);
   });
 });

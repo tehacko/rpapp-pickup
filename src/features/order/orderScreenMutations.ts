@@ -7,12 +7,14 @@ import {
 } from 'pi-kiosk-shared';
 import { PickupApiError } from '../../api/pickupApi.js';
 import { capturePickupConflictBreadcrumb } from '../../lib/observability/sentry.js';
+import { reportPickupError } from '../../shared/hooks/usePickupErrorHandler.js';
 import type { ResolveResponse } from '../../types.js';
 import {
   collectPartialConfirmLines,
   collectRefuseLines,
 } from './buildOrderPageViewModel.js';
 import type { IOrderFulfillmentGateway } from './IOrderFulfillmentGateway.js';
+import { mutationsLog } from './logging.js';
 
 export interface OrderMutationContext {
   readonly tenantCode: string;
@@ -54,6 +56,8 @@ export function handleOrderMutationError(
   ctx: Pick<OrderMutationContext, 'showToast' | 't' | 'refreshOrder' | 'submitCooldown' | 'order'>,
   operation?: string,
 ): boolean {
+  mutationsLog.error('Order mutation failed', err, { operation: operation ?? 'mutation' });
+  reportPickupError(err, operation !== undefined ? `order.mutations.${operation}` : 'order.mutations');
   if (handleOrderRateLimit(err, ctx)) {
     return true;
   }
@@ -200,6 +204,8 @@ export async function reprintOrderCredentials(ctx: OrderMutationContext): Promis
     );
     await ctx.refreshOrder();
   } catch (err) {
+    mutationsLog.error('Order reprint failed', err, { operation: 'reprint' });
+    reportPickupError(err, 'order.mutations.reprint');
     if (!handleOrderRateLimit(err, ctx)) {
       ctx.showToast(ctx.t('pickup.toast.reprintFailed'), 'error');
     }

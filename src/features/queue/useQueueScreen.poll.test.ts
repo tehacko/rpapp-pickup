@@ -94,6 +94,7 @@ function entitlementSnapshot(degradedQueuePolling = false) {
     entitledFunctions: ['fulfillment_scan'] as const,
     deviceFlags: { softClaimEnabled: false },
     denialReason: null,
+    refetch: jest.fn(),
   };
 }
 

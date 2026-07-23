@@ -15,4 +15,4 @@ Do not claim Full DoD until Scan/Sell/Barcode match hub/queue/order density and 
 
 **ContextBar (≥md):** for roaming / multi-point staff only; fixed-point staff use Hub point switcher when shown — no mobile ContextBar.
 
-**Related:** `STYLING.md` · `ARCHITECTURE.md` · `docs/FRONTEND/MFE_COMPLETED_WORK_INVENTORY.md` · `docs/FRONTEND/PRIMITIVE_OWNERSHIP.md` §4.1 / §9.1
+**Related:** `STYLING.md` · `ARCHITECTURE.md` · `up-backend/docs/FRONTEND/MFE_COMPLETED_WORK_INVENTORY.md` · `up-backend/docs/FRONTEND/PRIMITIVE_OWNERSHIP.md` §4.1 / §9.1

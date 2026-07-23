@@ -15,11 +15,13 @@ import {
   type PairedDeviceCredentials,
 } from '../../lib/deviceStorage.js';
 import { useStaffToken, useTenantCode } from '../../hooks/useStaffToken.js';
+import { usePickupErrorHandler } from '../../shared/hooks/usePickupErrorHandler.js';
 import { usePickupStaffRePin } from '../../shared/security/usePickupStaffRePin.js';
 import { Button, FormField } from '../../shared/ui/surfacePrimitives.js';
 import { AlertBanner } from '../../shared/ui/AlertBanner.js';
 import { SailorMark } from '../../shared/ui/SailorMark.js';
 import { SectionCard } from '../../shared/ui/SectionCard.js';
+import { pairingLog } from './logging.js';
 
 export function DevicePairingPage(): JSX.Element {
   const tenantCode = useTenantCode();
@@ -28,6 +30,7 @@ export function DevicePairingPage(): JSX.Element {
   const { t } = useTranslation();
   const submitCooldown = useSubmitCooldown();
   const { requestRePin, rePinModal } = usePickupStaffRePin();
+  const { handleError } = usePickupErrorHandler();
   const [pairingCode, setPairingCode] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -68,6 +71,8 @@ export function DevicePairingPage(): JSX.Element {
       navigate(hubPath, { replace: true });
     } catch (err) {
       if (isRateLimitError(err) || (err instanceof PickupApiError && err.status === 429)) {
+        pairingLog.warn('Device pairing rate limited', err, { operation: 'pair' });
+        handleError(err, 'device.pairing.pair');
         const retryAfterMs =
           err instanceof PickupApiError && err.retryAfterMs !== undefined
             ? err.retryAfterMs
@@ -77,9 +82,13 @@ export function DevicePairingPage(): JSX.Element {
         return;
       }
       if (err instanceof PickupApiError && err.code === 'PICKUP_DEVICE_PAIRING_INVALID') {
+        pairingLog.warn('Device pairing invalid code', err, { operation: 'pair' });
+        handleError(err, 'device.pairing.pair');
         setError(t('pickup.device.pairingInvalid'));
         return;
       }
+      pairingLog.error('Device pairing failed', err, { operation: 'pair' });
+      handleError(err, 'device.pairing.pair');
       setError(t('pickup.device.pairingFailed'));
     } finally {
       setIsSubmitting(false);

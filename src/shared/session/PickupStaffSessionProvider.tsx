@@ -24,11 +24,13 @@ import {
   publishPickupStaffAuth,
 } from '../crossTab/pickupStaffCrossTab.js';
 import { clearPickupPwaClientState } from '../../app/pwa/clearPickupPwaClientState.js';
+import { usePickupErrorHandler } from '../hooks/usePickupErrorHandler.js';
 import {
   invalidatePickupStaffSessionRefresh,
   refreshPickupStaffSession,
 } from './pickupStaffSessionRefresh.js';
 import { resolvePickupTenantCodeFromPath } from './pickupStaffSessionPath.js';
+import { staffLog } from './logging.js';
 
 interface PickupStaffSessionContextValue {
   readonly accessToken: string | null;
@@ -67,6 +69,7 @@ export function PickupStaffSessionProvider({
 }: PickupStaffSessionProviderProps): JSX.Element {
   const location = useLocation();
   const navigate = useNavigate();
+  const { handleError } = usePickupErrorHandler();
   const tenantCode = resolvePickupTenantCodeFromPath(location.pathname);
   const pathnameRef = useRef(location.pathname);
   const sessionClaimsRef = useRef<PickupStaffSessionClaims | null>(null);
@@ -140,23 +143,34 @@ export function PickupStaffSessionProvider({
         clearLegacyStoredToken(code);
         const claims = await refreshPickupStaffSession(code, options);
         applySessionClaims(claims, code);
+      } catch {
+        // refreshPickupStaffSession already staffLog.error + reportPickupError;
+        // clear local claims so background hydrate cannot leave a stale UI session.
+        clearSessionForTenant(code);
       } finally {
         hydrateInFlightRef.current = false;
         setSessionHydrated(true);
       }
     },
-    [applySessionClaims],
+    [applySessionClaims, clearSessionForTenant],
   );
 
   const establishSession = useCallback(
     async (code: string): Promise<void> => {
       clearLegacyStoredToken(code);
-      const claims = await refreshPickupStaffSession(code);
-      applySessionClaims(claims, code);
-      setSessionHydrated(true);
-      publishPickupStaffAuth({ type: 'login', tenantCode: code });
+      try {
+        const claims = await refreshPickupStaffSession(code);
+        applySessionClaims(claims, code);
+        setSessionHydrated(true);
+        publishPickupStaffAuth({ type: 'login', tenantCode: code });
+      } catch (err) {
+        // refreshPickupStaffSession already logged; surface to login UI via throw.
+        clearSessionForTenant(code);
+        setSessionHydrated(true);
+        throw err;
+      }
     },
-    [applySessionClaims],
+    [applySessionClaims, clearSessionForTenant],
   );
 
   const setActivePickupPointId = useCallback(
@@ -185,8 +199,10 @@ export function PickupStaffSessionProvider({
       clearPairedDevice(code);
       try {
         await logoutPickupStaff(code);
-      } catch {
+      } catch (err) {
         // Cookie may already be cleared; local state is authoritative for UI.
+        staffLog.warn('Pickup staff logout request failed', err, { operation: 'logout' });
+        handleError(err, 'session.staff.logout');
       }
       await clearPickupPwaClientState();
       if (hadSession) {
@@ -196,7 +212,7 @@ export function PickupStaffSessionProvider({
         navigate(`/${encodeURIComponent(code)}/login`, { replace: true });
       }
     },
-    [clearSessionForTenant, navigate, tenantCode],
+    [clearSessionForTenant, handleError, navigate, tenantCode],
   );
 
   useEffect(() => {

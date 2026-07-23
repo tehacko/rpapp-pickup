@@ -1,5 +1,4 @@
 import { useTranslation } from 'react-i18next';
-import { AlertBanner } from '../../shared/ui/AlertBanner.js';
 import { Button } from '../../shared/ui/surfacePrimitives.js';
 import { ScreenState } from '../../shared/ui/ScreenState.js';
 import type { BarcodeAssignCatalogViewModel } from './buildBarcodeAssignViewModel.js';
@@ -36,36 +35,42 @@ export function BarcodeAssignScreenView({
       {viewModel.loading ? (
         <ScreenState variant="loading" message={t('pickup.barcodeAssign.loading')} />
       ) : null}
-      {viewModel.errorMessage ? (
-        <AlertBanner tone="danger" role="alert" message={viewModel.errorMessage} />
+      {!viewModel.loading && viewModel.errorMessage ? (
+        <ScreenState
+          variant="error"
+          message={viewModel.errorMessage}
+          onRetry={actions.retry}
+        />
       ) : null}
-      <ul className="m-0 flex list-none flex-col gap-3 p-0">
-        {viewModel.rows.map((row) => (
-          <li key={row.key} className="list-none">
-            {row.showInactiveBanner ? (
-              <p className="m-0 text-sm text-[var(--color-on-surface-muted)]">
-                {t('pickup.barcodeAssign.inactiveBanner')}
-              </p>
-            ) : null}
-            {row.showArchivedRow ? (
-              <p
-                className="m-0 text-sm text-[var(--color-on-surface-muted)]"
-                title={t('pickup.barcodeAssign.archivedTooltip')}
+      {!viewModel.loading && !viewModel.errorMessage ? (
+        <ul className="m-0 flex list-none flex-col gap-3 p-0">
+          {viewModel.rows.map((row) => (
+            <li key={row.key} className="list-none">
+              {row.showInactiveBanner ? (
+                <p className="m-0 text-sm text-[var(--color-on-surface-muted)]">
+                  {t('pickup.barcodeAssign.inactiveBanner')}
+                </p>
+              ) : null}
+              {row.showArchivedRow ? (
+                <p
+                  className="m-0 text-sm text-[var(--color-on-surface-muted)]"
+                  title={t('pickup.barcodeAssign.archivedTooltip')}
+                >
+                  {t('pickup.barcodeAssign.archivedRow')}
+                </p>
+              ) : null}
+              <Button
+                intent="secondary"
+                type="button"
+                disabled={row.disabled}
+                onClick={() => actions.openRow(row.productId, row.variantId)}
               >
-                {t('pickup.barcodeAssign.archivedRow')}
-              </p>
-            ) : null}
-            <Button
-              intent="secondary"
-              type="button"
-              disabled={row.disabled}
-              onClick={() => actions.openRow(row.productId, row.variantId)}
-            >
-              {row.label}
-            </Button>
-          </li>
-        ))}
-      </ul>
+                {row.label}
+              </Button>
+            </li>
+          ))}
+        </ul>
+      ) : null}
     </div>
   );
 }

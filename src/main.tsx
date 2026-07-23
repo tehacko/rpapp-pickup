@@ -3,11 +3,12 @@ import ReactDOM from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { I18nextProvider } from 'react-i18next';
 import { BrowserRouter } from 'react-router-dom';
-import { initSentry } from 'pi-kiosk-shared/sentry';
+import { captureException, initSentry } from 'pi-kiosk-shared/sentry';
 import { App } from './App';
 import { applyInitialPickupTheme, ThemeProvider } from './app/ThemeProvider.js';
 import { PickupPwaLifecycle } from './app/pwa/PickupPwaLifecycle.js';
 import { PickupErrorBoundary } from './shared/components/PickupErrorBoundary.js';
+import { pickupLogger } from './shared/logging/pickupLogger.js';
 import { PickupStaffSessionProvider } from './shared/session/PickupStaffSessionProvider.js';
 import { ConfirmApiProvider } from './shared/ui/confirm/confirmApi.js';
 import { AlertApiProvider } from './shared/ui/AlertDialog/alertApi.js';
@@ -57,6 +58,31 @@ try {
 } catch {
   // Sentry is optional in pickup staff UI
 }
+
+window.addEventListener('error', (event: ErrorEvent): void => {
+  const error =
+    event.error instanceof Error ? event.error : new Error(event.message || 'Unhandled window error');
+  pickupLogger.error('Unhandled window error', error, {
+    module: 'main',
+    feature: 'window',
+    operation: 'error',
+    filename: event.filename,
+    lineno: event.lineno,
+    colno: event.colno,
+  });
+  captureException(error, { source: 'window.error' });
+});
+
+window.addEventListener('unhandledrejection', (event: PromiseRejectionEvent): void => {
+  const reason = event.reason;
+  const error = reason instanceof Error ? reason : new Error(String(reason ?? 'Unhandled rejection'));
+  pickupLogger.error('Unhandled promise rejection', error, {
+    module: 'main',
+    feature: 'window',
+    operation: 'unhandledrejection',
+  });
+  captureException(error, { source: 'window.unhandledrejection' });
+});
 
 capturePickupPwaPendingShortcut();
 

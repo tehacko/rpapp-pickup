@@ -44,7 +44,15 @@ export function BarcodeAssignDetailScreenView({
         </Button>
       </div>
 
-      {viewModel.needsVariantPicker ? (
+      {!viewModel.catalogLoading && viewModel.catalogError !== null ? (
+        <ScreenState
+          variant="error"
+          message={viewModel.catalogError}
+          onRetry={actions.retryCatalog}
+        />
+      ) : null}
+
+      {viewModel.catalogError === null && viewModel.needsVariantPicker ? (
         <Card className="flex flex-col gap-3">
           <h2 className="m-0 text-base font-semibold text-[var(--color-on-surface)]">
             {t('pickup.barcodeAssign.chooseVariant')}
@@ -70,7 +78,7 @@ export function BarcodeAssignDetailScreenView({
         </Card>
       ) : null}
 
-      {!viewModel.needsVariantPicker ? (
+      {viewModel.catalogError === null && !viewModel.needsVariantPicker ? (
         <>
           <Card className="flex flex-col gap-3">
             <video

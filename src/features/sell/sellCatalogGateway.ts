@@ -1,6 +1,8 @@
 import { authHeaders } from '../../lib/auth.js';
 import { PickupApiError } from '../../api/pickupApi.js';
+import { reportPickupError } from '../../shared/hooks/usePickupErrorHandler.js';
 import type { ISellCatalogGateway } from './ISellCatalogGateway.js';
+import { catalogLog } from './logging.js';
 import type {
   SellCatalogItem,
   SellCashCompleteResult,
@@ -30,12 +32,28 @@ async function parseJson<T>(res: Response): Promise<T> {
   return body.data;
 }
 
+async function withCatalogLog<T>(operation: string, fn: () => Promise<T>): Promise<T> {
+  try {
+    return await fn();
+  } catch (err) {
+    if (err instanceof PickupApiError && err.status >= 400 && err.status < 500) {
+      catalogLog.warn(`Sell ${operation} failed`, err, { operation });
+    } else {
+      catalogLog.error(`Sell ${operation} failed`, err, { operation });
+    }
+    reportPickupError(err, `sell.catalog.${operation}`);
+    throw err;
+  }
+}
+
 export const sellCatalogGateway: ISellCatalogGateway = {
   async fetchConfig(tenantCode: string, accessToken: string): Promise<SellConfig> {
-    const res = await fetch(`${sellBase(tenantCode)}/config`, {
-      headers: authHeaders(accessToken),
+    return withCatalogLog('fetchConfig', async () => {
+      const res = await fetch(`${sellBase(tenantCode)}/config`, {
+        headers: authHeaders(accessToken),
+      });
+      return parseJson<SellConfig>(res);
     });
-    return parseJson<SellConfig>(res);
   },
 
   async fetchCatalog(
@@ -43,16 +61,18 @@ export const sellCatalogGateway: ISellCatalogGateway = {
     accessToken: string,
     query?: string,
   ): Promise<readonly SellCatalogItem[]> {
-    const params = new URLSearchParams();
-    if (query !== undefined && query.trim().length > 0) {
-      params.set('q', query.trim());
-    }
-    const suffix = params.size > 0 ? `?${params.toString()}` : '';
-    const res = await fetch(`${sellBase(tenantCode)}/catalog${suffix}`, {
-      headers: authHeaders(accessToken),
+    return withCatalogLog('fetchCatalog', async () => {
+      const params = new URLSearchParams();
+      if (query !== undefined && query.trim().length > 0) {
+        params.set('q', query.trim());
+      }
+      const suffix = params.size > 0 ? `?${params.toString()}` : '';
+      const res = await fetch(`${sellBase(tenantCode)}/catalog${suffix}`, {
+        headers: authHeaders(accessToken),
+      });
+      const data = await parseJson<{ products: SellCatalogItem[] }>(res);
+      return data.products ?? [];
     });
-    const data = await parseJson<{ products: SellCatalogItem[] }>(res);
-    return data.products ?? [];
   },
 
   async prepareCashCheckout(
@@ -64,15 +84,17 @@ export const sellCatalogGateway: ISellCatalogGateway = {
       collectTiming?: 'NOW' | 'LATER';
     },
   ): Promise<SellCashPrepareResult> {
-    const res = await fetch(`${sellBase(tenantCode)}/cash-prepare`, {
-      method: 'POST',
-      headers: {
-        ...authHeaders(accessToken),
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(input),
+    return withCatalogLog('prepareCashCheckout', async () => {
+      const res = await fetch(`${sellBase(tenantCode)}/cash-prepare`, {
+        method: 'POST',
+        headers: {
+          ...authHeaders(accessToken),
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(input),
+      });
+      return parseJson<SellCashPrepareResult>(res);
     });
-    return parseJson<SellCashPrepareResult>(res);
   },
 
   async completeCashCheckout(
@@ -84,15 +106,17 @@ export const sellCatalogGateway: ISellCatalogGateway = {
       amountMinor: number;
     },
   ): Promise<SellCashCompleteResult> {
-    const res = await fetch(`${sellBase(tenantCode)}/cash-complete`, {
-      method: 'POST',
-      headers: {
-        ...authHeaders(accessToken),
-        'Content-Type': 'application/json',
-        'Idempotency-Key': input.idempotencyKey || generateIdempotencyKey(),
-      },
-      body: JSON.stringify(input),
+    return withCatalogLog('completeCashCheckout', async () => {
+      const res = await fetch(`${sellBase(tenantCode)}/cash-complete`, {
+        method: 'POST',
+        headers: {
+          ...authHeaders(accessToken),
+          'Content-Type': 'application/json',
+          'Idempotency-Key': input.idempotencyKey || generateIdempotencyKey(),
+        },
+        body: JSON.stringify(input),
+      });
+      return parseJson<SellCashCompleteResult>(res);
     });
-    return parseJson<SellCashCompleteResult>(res);
   },
 };

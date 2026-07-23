@@ -37,6 +37,9 @@
   "pwa.updateFailed": "Obnovení selhalo. Zkuste to znovu.",
   "pwa.offlineBanner": "Jste offline. Pro pokračování se znovu připojte.",
   "pwa.forceRefresh": "Vynutit obnovení",
+  "pickup.shell.entitlementLoadFailed": "Nepodařilo se načíst přístup personálu. Zkuste to znovu.",
+  "pickup.shell.pickupPointsLoadFailed": "Nepodařilo se načíst odběrná místa. Zkuste to znovu.",
+  "pickup.shell.sellConfigLoadFailed": "Nepodařilo se načíst nastavení prodeje. Prodej může být do opakování nedostupný.",
   "pickup.login.title": "Přihlášení obsluhy vyzvednutí",
   "pickup.login.salesPointId": "ID platebního místa",
   "pickup.login.salesPointIdPlaceholder": "ID místa nebo superpickuper",
@@ -93,6 +96,7 @@
   "pickup.hub.pickupPointLabel": "Obsluha na",
   "pickup.hub.pickupPointHint": "Fronta a sken používají toto odběrné místo v této relaci. Ostatní záložky se synchronizují při přepnutí.",
   "pickup.hub.pickupPointsLoading": "Načítání odběrných míst…",
+  "pickup.hub.pickupPointsLoadFailed": "Nepodařilo se načíst odběrná místa. Zkuste to znovu.",
   "pickup.hub.staffSell": "Prodej na přepážce",
   "pickup.hub.actionsTitle": "Akce personálu",
   "pickup.hub.noActionsTitle": "Žádné funkce personálu",
@@ -252,6 +256,7 @@
   "pickup.sell.searchLabel": "Hledat produkty",
   "pickup.sell.loading": "Načítání katalogu…",
   "pickup.sell.catalogLoadFailed": "Katalog prodeje se nepodařilo načíst.",
+  "pickup.sell.configLoadFailed": "Konfiguraci prodeje se nepodařilo načíst.",
   "pickup.sell.catalogTitle": "Produkty",
   "pickup.sell.outOfStock": "Vyprodáno",
   "pickup.sell.cartTitle": "Košík",
@@ -268,5 +273,8 @@
   "pickup.sell.dismiss": "Zavřít",
   "app.errorBoundary.title": "Něco se pokazilo",
   "app.errorBoundary.message": "Obnovte stránku nebo to zkuste znovu.",
-  "app.errorBoundary.retry": "Zkusit znovu"
+  "app.errorBoundary.retry": "Zkusit znovu",
+  "pickup.routeError.title": "Tuto obrazovku se nepodařilo načíst",
+  "pickup.routeError.message": "Zkuste to znovu, nebo otevřete jinou sekci v navigaci.",
+  "pickup.routeError.retry": "Zkusit znovu"
 }

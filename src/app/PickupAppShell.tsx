@@ -14,7 +14,9 @@ import { PickupStaffFunction } from './adapters/pickupStaffFunctions.js';
 import { fetchSellCatalogConfig } from './adapters/sellCatalogEnabled.js';
 import { PICKUP_STAFF_ALWAYS_CAN_ACCESS_QUEUE } from '../shared/entitlements/pickupQueueAccess.js';
 import { useStaffPickupPointsQuery } from '../shared/queries/useStaffPickupPointsQuery.js';
+import { AlertBanner } from '../shared/ui/AlertBanner.js';
 import { OfflineBanner } from '../shared/ui/OfflineBanner.js';
+import { ScreenState } from '../shared/ui/ScreenState.js';
 import { usePickupEntitlement } from '../hooks/usePickupEntitlement.js';
 import { getPairedDevice } from '../lib/deviceStorage.js';
 import { useOnlineStatus } from '../shared/network/useOnlineStatus.js';
@@ -28,6 +30,9 @@ import {
 } from '../shared/ui/PickupMoreShellContext.js';
 import { PickupSideNav } from '../shared/ui/PickupSideNav.js';
 import { Skeleton } from '../shared/ui/Skeleton.js';
+import { RemountBoundary } from '../shared/components/RemountBoundary.js';
+import { PickupRouteErrorFallback } from '../shared/components/PickupRouteErrorFallback.js';
+import { ErrorIsolationProbe } from '../test/e2e/errorIsolationProbe.js';
 
 const SIDE_COLLAPSED_PX = 64;
 const SIDE_EXPANDED_PX = 224;
@@ -88,7 +93,12 @@ function PickupAppShellChrome({ bottomNav }: PickupAppShellProps): JSX.Element {
     activePickupPointId,
     setActivePickupPointId,
   } = usePickupStaffSession();
-  const { entitledFunctions, deviceFlags } = usePickupEntitlement(tenantCode);
+  const {
+    entitledFunctions,
+    deviceFlags,
+    isError: entitlementIsError,
+    refetch: refetchEntitlement,
+  } = usePickupEntitlement(tenantCode);
   const [sideExpanded, setSideExpanded] = useState(false);
   const { isMoreOpen, closeMore, toggleMore } = usePickupMoreShell();
   const bottomChromeRef = useRef<HTMLDivElement | null>(null);
@@ -114,6 +124,20 @@ function PickupAppShellChrome({ bottomNav }: PickupAppShellProps): JSX.Element {
   const pickupPointsQuery = useStaffPickupPointsQuery({
     enabled: shouldLoadPickupPoints,
   });
+
+  const onRetryEntitlement = useCallback((): void => {
+    refetchEntitlement();
+  }, [refetchEntitlement]);
+
+  const refetchPickupPoints = pickupPointsQuery.refetch;
+  const onRetryPickupPoints = useCallback((): void => {
+    void refetchPickupPoints();
+  }, [refetchPickupPoints]);
+
+  const refetchSellConfig = sellConfigQuery.refetch;
+  const onRetrySellConfig = useCallback((): void => {
+    void refetchSellConfig();
+  }, [refetchSellConfig]);
 
   const contextPoints = useMemo(() => {
     const points = pickupPointsQuery.data ?? [];
@@ -313,9 +337,61 @@ function PickupAppShellChrome({ bottomNav }: PickupAppShellProps): JSX.Element {
           </div>
         ) : null}
 
+        {shouldLoadPickupPoints && pickupPointsQuery.isError ? (
+          <div className="border-b border-[var(--color-border)] px-4 py-2 md:px-6">
+            <AlertBanner
+              tone="danger"
+              role="alert"
+              message={t('pickup.shell.pickupPointsLoadFailed')}
+              action={{
+                label: t('pickup.common.retry'),
+                onClick: onRetryPickupPoints,
+              }}
+              testId="pickup-shell-pickup-points-error"
+            />
+          </div>
+        ) : null}
+
+        {sellConfigQuery.isError ? (
+          <div className="border-b border-[var(--color-border)] px-4 py-2 md:px-6">
+            <AlertBanner
+              tone="warn"
+              role="status"
+              message={t('pickup.shell.sellConfigLoadFailed')}
+              action={{
+                label: t('pickup.common.retry'),
+                onClick: onRetrySellConfig,
+              }}
+              testId="pickup-shell-sell-config-error"
+            />
+          </div>
+        ) : null}
+
         {/* Landmark: shelled routes nest under this single <main> — page views must not add another. */}
         <main id="main" className="mx-auto w-full max-w-5xl flex-1 p-4 md:p-6">
-          <Outlet />
+          {entitlementIsError ? (
+            <div className="mb-4" data-testid="pickup-shell-entitlement-error">
+              <ScreenState
+                variant="error"
+                message={t('pickup.shell.entitlementLoadFailed')}
+                onRetry={onRetryEntitlement}
+              />
+            </div>
+          ) : null}
+          <RemountBoundary
+            disabled={false}
+            feature="shell-outlet"
+            fallback={({ onRetry, feature }) => (
+              <PickupRouteErrorFallback
+                onRetry={onRetry}
+                feature={feature}
+                testId="pickup-eb-l2-fallback"
+              />
+            )}
+          >
+            <ErrorIsolationProbe feature="shell-outlet" />
+            <Outlet />
+          </RemountBoundary>
         </main>
 
         {isCompact ? (

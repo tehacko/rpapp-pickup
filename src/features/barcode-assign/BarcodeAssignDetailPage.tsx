@@ -1,5 +1,6 @@
 import { Navigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { ScreenState } from '../../shared/ui/ScreenState.js';
 import { BarcodeAssignDetailScreenView } from './BarcodeAssignDetailScreenView.js';
 import { useBarcodeAssignDetailScreen } from './useBarcodeAssignDetailScreen.js';
 
@@ -10,6 +11,8 @@ export function BarcodeAssignDetailPage(): JSX.Element {
     tenantCode,
     canAssign,
     entitlementLoading,
+    entitlementIsError,
+    retryEntitlement,
     productIdValid,
     viewModel,
     actions,
@@ -23,7 +26,19 @@ export function BarcodeAssignDetailPage(): JSX.Element {
   if (entitlementLoading) {
     return (
       <div className="mx-auto w-full max-w-[720px] px-4 py-6">
-        <p role="status">{t('pickup.login.entitlementLoading')}</p>
+        <ScreenState variant="loading" message={t('pickup.login.entitlementLoading')} />
+      </div>
+    );
+  }
+
+  if (entitlementIsError) {
+    return (
+      <div className="mx-auto w-full max-w-[720px] px-4 py-6">
+        <ScreenState
+          variant="error"
+          message={t('pickup.shell.entitlementLoadFailed')}
+          onRetry={retryEntitlement}
+        />
       </div>
     );
   }

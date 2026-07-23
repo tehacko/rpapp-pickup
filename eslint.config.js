@@ -57,9 +57,16 @@ export default [
       'jsx-a11y/click-events-have-key-events': 'warn',
       'jsx-a11y/no-autofocus': 'warn',
       'jsx-a11y/no-static-element-interactions': 'warn',
+      'no-console': ['warn', { allow: ['warn', 'error'] }],
     },
     settings: {
       react: { version: 'detect' },
+    },
+  },
+  {
+    files: ['src/shared/logging/**/*.{ts,tsx}'],
+    rules: {
+      'no-console': 'off',
     },
   },
   {

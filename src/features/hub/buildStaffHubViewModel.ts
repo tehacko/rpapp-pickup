@@ -14,6 +14,7 @@ export interface StaffHubViewModel {
   readonly pickupPointOptions: readonly StaffHubPickupPointOption[];
   readonly activePickupPointId: number | null;
   readonly pickupPointsLoading: boolean;
+  readonly pickupPointsError: boolean;
 }
 
 export function buildStaffHubViewModel(input: {
@@ -27,6 +28,7 @@ export function buildStaffHubViewModel(input: {
   pickupPointOptions: readonly StaffHubPickupPointOption[];
   activePickupPointId: number | null;
   pickupPointsLoading: boolean;
+  pickupPointsError: boolean;
 }): StaffHubViewModel {
   return {
     tenantCode: input.tenantCode,
@@ -39,5 +41,6 @@ export function buildStaffHubViewModel(input: {
     pickupPointOptions: input.pickupPointOptions,
     activePickupPointId: input.activePickupPointId,
     pickupPointsLoading: input.pickupPointsLoading,
+    pickupPointsError: input.pickupPointsError,
   };
 }

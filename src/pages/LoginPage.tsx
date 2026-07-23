@@ -25,10 +25,13 @@ import {
 } from '../lib/tenantInactive.js';
 import { usePickupStaffSession } from '../shared/session/PickupStaffSessionProvider.js';
 import { useTenantCode } from '../hooks/useStaffToken';
+import { usePickupErrorHandler } from '../shared/hooks/usePickupErrorHandler.js';
+import { loginLog } from './logging.js';
 
 export function LoginPage(): JSX.Element {
   const tenantCode = useTenantCode();
   const { establishSession } = usePickupStaffSession();
+  const { handleError } = usePickupErrorHandler();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { t } = useTranslation();
@@ -132,6 +135,8 @@ export function LoginPage(): JSX.Element {
       navigate(resolvePostLoginPath(tenantCode, entitledFunctions));
     } catch (err) {
       turnstile.resetTurnstile();
+      loginLog.error('Pickup login failed', err);
+      handleError(err, 'auth.login');
       if (isRateLimitError(err) || err instanceof PickupApiError && err.status === 429) {
         const retryAfterMs =
           err instanceof PickupApiError && err.retryAfterMs !== undefined

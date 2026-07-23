@@ -15,6 +15,7 @@ export interface BarcodeAssignDetailViewModel {
   readonly selectedVariantLabel: string | null;
   readonly needsVariantPicker: boolean;
   readonly catalogLoading: boolean;
+  readonly catalogError: string | null;
   readonly variantRows: readonly BarcodeAssignVariantPickerRow[];
   readonly draftCode: string;
   readonly cameraEnabled: boolean;
@@ -37,6 +38,7 @@ export function buildBarcodeAssignDetailViewModel(input: {
   variantId: number | undefined;
   catalogVariants: readonly BarcodeAssignCatalogItem[];
   catalogLoading: boolean;
+  catalogError: string | null;
   draftCode: string;
   cameraEnabled: boolean;
   debouncedChecking: boolean;
@@ -63,6 +65,7 @@ export function buildBarcodeAssignDetailViewModel(input: {
     input.draftCode.trim().length > 0 &&
     !input.debouncedChecking &&
     !needsVariantPicker &&
+    input.catalogError === null &&
     (input.checkResult?.available === true || input.confirmOverwrite);
 
   return {
@@ -72,6 +75,7 @@ export function buildBarcodeAssignDetailViewModel(input: {
     selectedVariantLabel,
     needsVariantPicker,
     catalogLoading: input.catalogLoading,
+    catalogError: input.catalogError,
     variantRows: input.catalogVariants
       .filter((item): item is typeof item & { variantId: number } => item.variantId !== undefined)
       .map((item) => ({

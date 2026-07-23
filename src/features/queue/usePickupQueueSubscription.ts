@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { shouldEmitLogRepeat } from 'pi-kiosk-shared/logging';
 import type { QueueItem } from '../../types.js';
+import { sseLog } from './logging.js';
 
 export type PickupQueuePushStrategy = 'poll' | 'sse';
 
@@ -120,6 +122,7 @@ export function usePickupQueueSubscription(
         }
         reconnectAttempts = 0;
         setSseConnected(true);
+        sseLog.info('Pickup queue SSE connected', { operation: 'connect' });
       };
 
       eventSource.onmessage = (event: MessageEvent<string>): void => {
@@ -150,6 +153,9 @@ export function usePickupQueueSubscription(
         setSseConnected(false);
         eventSource?.close();
         eventSource = null;
+        if (shouldEmitLogRepeat(`pickup-queue-sse:${subscriptionKey}`, 5)) {
+          sseLog.warn('Pickup queue SSE error — reconnecting', { operation: 'reconnect' });
+        }
         scheduleReconnect();
       };
     };
@@ -161,6 +167,7 @@ export function usePickupQueueSubscription(
       clearReconnectTimer();
       eventSource?.close();
       setSseConnected(false);
+      sseLog.info('Pickup queue SSE disconnected', { operation: 'disconnect' });
     };
   }, [accessToken, canUseSse, pickupPointId, subscriptionKey, tenantCode]);
 

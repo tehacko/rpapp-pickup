@@ -13,6 +13,7 @@ jest.mock('../../hooks/usePickupEntitlement.js', () => ({
     orderPickupInfrastructure: true,
     isLoading: false,
     isError: false,
+    refetch: jest.fn(),
   }),
 }));
 jest.mock('../../hooks/useStaffToken.js', () => ({

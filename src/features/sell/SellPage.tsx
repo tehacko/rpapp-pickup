@@ -9,6 +9,7 @@ export function SellPage(): JSX.Element {
     tenantCode,
     canSell,
     configLoaded,
+    configError,
     catalogViewModel,
     cartViewModel,
     checkoutLoading,
@@ -25,6 +26,18 @@ export function SellPage(): JSX.Element {
     return (
       <div className="mx-auto w-full max-w-[720px] px-4 py-6">
         <ScreenState variant="loading" />
+      </div>
+    );
+  }
+
+  if (configError !== null) {
+    return (
+      <div className="mx-auto w-full max-w-[720px] px-4 py-6">
+        <ScreenState
+          variant="error"
+          message={configError}
+          onRetry={actions.retryConfig}
+        />
       </div>
     );
   }

@@ -34,6 +34,7 @@ export interface BarcodeAssignDetailScreenActions {
   readonly cancelClear: () => void;
   readonly confirmClear: () => void;
   readonly openVariant: (variantId: number) => void;
+  readonly retryCatalog: () => void;
 }
 
 export interface UseBarcodeAssignDetailScreenResult {
@@ -41,6 +42,8 @@ export interface UseBarcodeAssignDetailScreenResult {
   readonly tenantCode: string;
   readonly canAssign: boolean;
   readonly entitlementLoading: boolean;
+  readonly entitlementIsError: boolean;
+  readonly retryEntitlement: () => void;
   readonly productIdValid: boolean;
   readonly viewModel: BarcodeAssignDetailViewModel;
   readonly actions: BarcodeAssignDetailScreenActions;
@@ -57,11 +60,14 @@ export function useBarcodeAssignDetailScreen(
   const productId = Number(productIdParam);
   const routeVariantId = parsePositiveInt(variantIdParam);
   const { t } = useTranslation();
-  const { entitledFunctions, isLoading: entitlementLoading } = usePickupEntitlement(tenantCode);
+  const { entitledFunctions, isLoading: entitlementLoading, isError: entitlementIsError, refetch: refetchEntitlement } =
+    usePickupEntitlement(tenantCode);
   const videoRef = useRef<HTMLVideoElement>(null);
 
   const [catalogVariants, setCatalogVariants] = useState<readonly BarcodeAssignCatalogItem[]>([]);
   const [catalogLoading, setCatalogLoading] = useState(true);
+  const [catalogError, setCatalogError] = useState<string | null>(null);
+  const [catalogReloadToken, setCatalogReloadToken] = useState(0);
   const [draftCode, setDraftCode] = useState('');
   const [cameraEnabled, setCameraEnabled] = useState(true);
   const [state, setState] = useState<ProductBarcodeStateDTO | null>(null);
@@ -110,29 +116,41 @@ export function useBarcodeAssignDetailScreen(
       return;
     }
     let cancelled = false;
-    void gateway
-      .listCatalog(tenantCode, accessToken)
-      .then((rows) => {
+    const loadCatalog = async (): Promise<void> => {
+      await Promise.resolve();
+      if (cancelled) {
+        return;
+      }
+      setCatalogLoading(true);
+      setCatalogError(null);
+      try {
+        const rows = await gateway.listCatalog(tenantCode, accessToken);
         if (cancelled) {
           return;
         }
-        setCatalogVariants(rows.filter((row) => row.productId === productId && row.variantId !== undefined));
-      })
-      .catch(() => {
+        setCatalogVariants(
+          rows.filter((row) => row.productId === productId && row.variantId !== undefined),
+        );
+        setCatalogError(null);
+      } catch (err: unknown) {
         if (cancelled) {
           return;
         }
         setCatalogVariants([]);
-      })
-      .finally(() => {
+        setCatalogError(
+          err instanceof Error ? err.message : t('pickup.barcodeAssign.loadFailed'),
+        );
+      } finally {
         if (!cancelled) {
           setCatalogLoading(false);
         }
-      });
+      }
+    };
+    void loadCatalog();
     return () => {
       cancelled = true;
     };
-  }, [accessToken, gateway, productId, productIdValid, tenantCode]);
+  }, [accessToken, catalogReloadToken, gateway, productId, productIdValid, t, tenantCode]);
 
   useEffect(() => {
     if (!accessToken || !productIdValid || needsVariantPicker) {
@@ -178,6 +196,7 @@ export function useBarcodeAssignDetailScreen(
         variantId,
         catalogVariants,
         catalogLoading,
+        catalogError,
         draftCode,
         cameraEnabled,
         debouncedChecking: debouncedCheck.isChecking,
@@ -194,6 +213,7 @@ export function useBarcodeAssignDetailScreen(
       artifactLinearUrl,
       artifactQrUrl,
       cameraEnabled,
+      catalogError,
       catalogLoading,
       catalogVariants,
       confirmClear,
@@ -279,6 +299,9 @@ export function useBarcodeAssignDetailScreen(
       openVariant: (nextVariantId: number) => {
         navigate(buildBarcodeAssignDetailPath(tenantCode, productId, nextVariantId));
       },
+      retryCatalog: () => {
+        setCatalogReloadToken((token) => token + 1);
+      },
     }),
     [confirmClearAction, navigate, productId, save, tenantCode],
   );
@@ -288,6 +311,8 @@ export function useBarcodeAssignDetailScreen(
     tenantCode,
     canAssign,
     entitlementLoading,
+    entitlementIsError,
+    retryEntitlement: refetchEntitlement,
     productIdValid,
     viewModel,
     actions,

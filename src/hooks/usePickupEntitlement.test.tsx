@@ -33,6 +33,7 @@ describe('usePickupEntitlement', () => {
       isSuccess: true,
       isLoading: false,
       isError: false,
+      refetch: jest.fn(),
     });
 
     const { result } = renderHook(() => usePickupEntitlement('demo-tenant'));
@@ -52,6 +53,7 @@ describe('usePickupEntitlement', () => {
       isSuccess: true,
       isLoading: false,
       isError: false,
+      refetch: jest.fn(),
     });
 
     const { result } = renderHook(() => usePickupEntitlement('demo-tenant'));
@@ -74,6 +76,7 @@ describe('usePickupEntitlement', () => {
       isLoading: false,
       isError: true,
       error: new PickupApiError(403, 'Tenant is deactivated', { code: 'TENANT_INACTIVE' }),
+      refetch: jest.fn(),
     });
 
     const { result } = renderHook(() => usePickupEntitlement('demo-tenant'));

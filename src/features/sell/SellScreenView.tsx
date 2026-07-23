@@ -51,30 +51,34 @@ export function SellScreenView({
           {catalogViewModel.loading ? (
             <ScreenState variant="loading" message={t('pickup.sell.loading')} />
           ) : null}
-          {catalogViewModel.errorMessage ? (
-            <p className="m-0 rounded-lg bg-[var(--color-surface-elevated)] p-3 text-[var(--color-danger)] shadow-[var(--shadow-card)]">
-              {catalogViewModel.errorMessage}
-            </p>
+          {!catalogViewModel.loading && catalogViewModel.errorMessage ? (
+            <ScreenState
+              variant="error"
+              message={catalogViewModel.errorMessage}
+              onRetry={actions.retryCatalog}
+            />
           ) : null}
-          <section className="flex flex-col gap-3" aria-labelledby="pickup-sell-catalog-heading">
-            <h2 id="pickup-sell-catalog-heading">{t('pickup.sell.catalogTitle')}</h2>
-            <ul className="flex flex-col gap-3">
-              {catalogViewModel.rows.map((row) => (
-                <li key={row.key}>
-                  <Button
-                    intent="secondary"
-                    type="button"
-                    className="min-h-11"
-                    disabled={row.disabled}
-                    onClick={() => actions.addItem(row.productId, row.variantId)}
-                  >
-                    {row.label} — {row.priceLabel}
-                    {row.showOutOfStock ? ` (${t('pickup.sell.outOfStock')})` : ''}
-                  </Button>
-                </li>
-              ))}
-            </ul>
-          </section>
+          {!catalogViewModel.loading && !catalogViewModel.errorMessage ? (
+            <section className="flex flex-col gap-3" aria-labelledby="pickup-sell-catalog-heading">
+              <h2 id="pickup-sell-catalog-heading">{t('pickup.sell.catalogTitle')}</h2>
+              <ul className="flex flex-col gap-3">
+                {catalogViewModel.rows.map((row) => (
+                  <li key={row.key}>
+                    <Button
+                      intent="secondary"
+                      type="button"
+                      className="min-h-11"
+                      disabled={row.disabled}
+                      onClick={() => actions.addItem(row.productId, row.variantId)}
+                    >
+                      {row.label} — {row.priceLabel}
+                      {row.showOutOfStock ? ` (${t('pickup.sell.outOfStock')})` : ''}
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ) : null}
           <section className="flex flex-col gap-3" aria-labelledby="pickup-sell-cart-heading">
             <h2 id="pickup-sell-cart-heading">{t('pickup.sell.cartTitle')}</h2>
             {cartViewModel.isEmpty ? <p>{t('pickup.sell.cartEmpty')}</p> : null}
