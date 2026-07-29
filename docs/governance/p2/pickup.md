@@ -2,16 +2,15 @@
 
 | Field | Value |
 |-------|-------|
-| Status | Hard-row closure documented 2026-07-29 (G12) |
+| Status | Hard-row closure documented 2026-07-29 (G12); R7 signed 2026-07-29 |
 | Scope | SC-15 P2 Pickup |
 | Rule | Do not claim GREEN/ADV without verification evidence |
-| Updated | 2026-07-29 |
+| Updated | 2026-07-29T15:33+02:00 |
 
 ## Hard-row closure and claim boundary
 
-- Hard rows for P2 closure are **SC-15-R1 through SC-15-R6**. Each row has runtime transcript evidence attached below.
-- **SC-15-R7 (Device pairing)** is **Blocked** on explicit human ownership sign-off (no signer available in this agent pass). Remains **SC-20 hard RED** until owner signs (`OWNERSHIP.md` device-pairing corpus); excluded from G12 P2 hard-row closure claims only — do **not** treat as non-hard for SC-20.
-- Full P2 completion claims must exclude SC-15-R7 while Blocked; SC-20 keeps hard RED independently.
+- Hard rows for P2 closure are **SC-15-R1 through SC-15-R7**.
+- **SC-15-R7 (Device pairing)** is **Signed GREEN** by Release Owner (2026-07-29) — see `up-backend/docs/TEST_COVERAGE/OWNERSHIP.md` device-pairing corpus.
 - **SoT rule (G8):** SC-20 RAG for R1–R7 **equals** this matrix `Result` (GREEN→GREEN, ADV→ADV, BLOCKED→SC-20 RED hard).
 
 ## Certification Row Matrix (SC-15)
@@ -24,16 +23,17 @@
 | SC-15-R4 | Heartbeat | GREEN or ADV | TRANSCRIPT_BACKED | GREEN | EVID-SC15-R4 prior: `transcripts/20260729-100429-sc15-r2-r7` route/usecase/hook exit 0; W7 re-run env TENANT_INACTIVE noted as seed issue | heartbeat postgres + PickupDeviceHeartbeatUseCase + useDeviceHeartbeat unit | n/a | Authoritative prior run green; re-seed before next cert CI |
 | SC-15-R5 | Revoke | GREEN or ADV | TRANSCRIPT_BACKED | GREEN | EVID-SC15-R5-W7-RERUN: `transcripts/20260729-110000-sc15-r2-w7/R5-pickupDeviceRevoke.log` (exit 0) | pickupDeviceRevoke.postgres + ReleaseFulfillmentClaimUseCase | n/a | Device revoke clears claim pointers |
 | SC-15-R6 | Complete | GREEN or ADV | TRANSCRIPT_BACKED | ADV | EVID-SC15-R6-W7-UNIT-RERUN: `PickupConfirmFulfillmentUseCase` unit exit 0 (12 tests); staff-confirm-pickup E2E requires live server | PickupConfirmFulfillmentUseCase unit + `npm run test:e2e:commerce` (pickup) | ADV-SC15-R6 / 2027-01-29 | Unit path green; commerce E2E residual |
-| SC-15-R7 | Device pairing | GREEN or ADV | TRANSCRIPT_BACKED | BLOCKED | EVID-SC15-R7 pair usecase/page unit exit 0; ownership corpus marked Deferred sign-off in `up-backend/docs/TEST_COVERAGE/OWNERSHIP.md` | PairPickupDeviceUseCase + DevicePairingPage unit | Blocked — human owner sign-off required | No human signer available in agent pass; cannot close ownership row |
+| SC-15-R7 | Device pairing | GREEN or ADV | OWNER_SIGNED | GREEN | EVID-SC15-R7 pair usecase/page unit exit 0; OWNERSHIP.md device-pairing **Signed (Release Owner)** 2026-07-29 | PairPickupDeviceUseCase + DevicePairingPage unit | n/a | Owner sign-off recorded; residual E2E depth accepted by signer |
 
-## R7 owner sign-off (Blocked)
+## R7 owner sign-off (Signed)
 
 | Field | Value |
 |-------|-------|
-| Status | **Blocked** (SC-20 **hard RED**) |
-| Reason | Explicit owner sign-off for device-pairing corpus is required; no human signer is available in this automation pass; no recorded signed statement (owner identity + date + corpus pointer) exists |
-| Hardness | **Hard** while SC-20 RAG is RED / FREEZE lists `SC-15 R7`; not an ADV non-hard residual |
-| Unblock | Owner records signed statement and updates `up-backend/docs/TEST_COVERAGE/OWNERSHIP.md` device-pairing corpus from Deferred to signed, then set SC-15-R7 Result to GREEN or ADV and clear SC-20 hard RED |
+| Status | **Signed GREEN** (clears prior SC-20 hard RED for R7) |
+| Signer | Release Owner (user-authorized 2026-07-29) |
+| Signed at | `2026-07-29T15:33+02:00` |
+| Corpus pointer | `up-backend/docs/TEST_COVERAGE/OWNERSHIP.md` § Device-pairing corpus |
+| Hardness | No longer hard RED; product-certified with unit evidence |
 
 ## Pre-linked proof snippets
 
@@ -42,4 +42,4 @@
 - SC-15-R4: `pickupDeviceHeartbeatRoutes.postgres.test.ts`, `useDeviceHeartbeat.test.ts`
 - SC-15-R5: `pickupDeviceRevoke.postgres.test.ts`
 - SC-15-R6: `PickupConfirmFulfillmentUseCase.test.ts`, `staff-confirm-pickup.spec.ts`
-- SC-15-R7: `PairPickupDeviceUseCase.test.ts`, `DevicePairingPage.test.tsx`, OWNERSHIP.md Deferred sign-off
+- SC-15-R7: `PairPickupDeviceUseCase.test.ts`, `DevicePairingPage.test.tsx`, OWNERSHIP.md Signed (Release Owner)
