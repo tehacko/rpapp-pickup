@@ -1,0 +1,133 @@
+﻿# Command: npm run test -- --runInBand --testPathPatterns=AcquireFulfillmentClaimUseCase|ReleaseFulfillmentClaimUseCase
+# Executed: 2026-07-29T10:05:15.8274369+02:00
+
+> up-backend@1.0.1 test
+> cross-env NODE_ENV=test jest --runInBand --testPathPatterns=AcquireFulfillmentClaimUseCase|ReleaseFulfillmentClaimUseCase
+
+  console.log
+    Ôùç injected env (154) from .env // tip: Ôîÿ multiple files { path: ['.env.local', '.env'] }
+
+      at _log (node_modules/dotenv/lib/main.js:131:11)
+
+­ƒöº Initializing configuration for environment: nodeEnv=test, appEnv=dev, dbHost=trolley.proxy.rlwy.net appEnv="dev" deploymentEnvironment="development" app="up-backend" environment="test"
+Ô£à Configuration schemas valid (24 warnings) appEnv="dev" deploymentEnvironment="development" app="up-backend" environment="test"
+Database TLS: relaxed certificate verification for Railway proxy (non-production runtime) appEnv="dev" deploymentEnvironment="development" nodeEnv="test" app="up-backend" environment="test"
+node.exe : ÔÜá´©Å Stripe Connect platform env is incomplete ÔÇö Connect rails disabled until all four are set 
+(STRIPE_PLATFORM_SECRET_KEY, STRIPE_PLATFORM_PUBLISHABLE_KEY, STRIPE_CONNECT_WEBHOOK_SECRET, 
+STRIPE_CONNECT_CLIENT_ID). DIRECT tenants and FIO QR still work. appEnv="dev" deploymentEnvironment="development" 
+app="up-backend" environment="test"
+At line:1 char:1
++ & "C:\Program Files\nodejs/node.exe" "C:\Users\corne\AppData\Roaming\ ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (ÔÜá´©Å Stripe C...ironment="test":String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+ÔÜá´©Å Details: STRIPE_CONNECT_CLIENT_ID (or PAYMENT_STRIPE_CONNECT_CLIENT_ID) is required when Stripe Connect 
+platform credentials are partially configured appEnv="dev" deploymentEnvironment="development" app="up-backend" 
+environment="test"
+Ô£à All configurations loaded and validated successfully appEnv="dev" deploymentEnvironment="development" app="up-backend" environment="test"
+­ƒôè Server: 0.0.0.0:3015 appEnv="dev" deploymentEnvironment="development" app="up-backend" environment="test"
+­ƒîì Environment: test appEnv="dev" deploymentEnvironment="development" app="up-backend" environment="test"
+­ƒôï Configuration loaded: appEnv="dev" deploymentEnvironment="development" app="up-backend" environment="test"
+Database: Ô£à configured appEnv="dev" deploymentEnvironment="development" app="up-backend" environment="test"
+Auth: Ô£à configured (admin auth: disabled) appEnv="dev" deploymentEnvironment="development" app="up-backend" environment="test"
+Payment: ThePay Ô£à | FIO Ô£à | Fakturoid ÔØî appEnv="dev" deploymentEnvironment="development" app="up-backend" environment="test"
+Platform slots (P2-10): mailSlot=brevo receiptSlot=internal smsSlot=bulkgate appEnv="dev" deploymentEnvironment="development" app="up-backend" environment="test"
+Email: Brevo Ô£à configured (receipts: enabled) appEnv="dev" deploymentEnvironment="development" app="up-backend" environment="test"
+SMS: BulkGate ÔØî missing appEnv="dev" deploymentEnvironment="development" app="up-backend" environment="test"
+­ƒöº Initializing configuration for environment: nodeEnv=test, appEnv=dev, dbHost=trolley.proxy.rlwy.net appEnv="dev" deploymentEnvironment="development" app="up-backend" environment="test"
+Ô£à Configuration schemas valid (24 warnings) appEnv="dev" deploymentEnvironment="development" app="up-backend" environment="test"
+Database TLS: relaxed certificate verification for Railway proxy (non-production runtime) appEnv="dev" deploymentEnvironment="development" nodeEnv="test" app="up-backend" environment="test"
+Ô£à All configurations loaded and validated successfully appEnv="dev" deploymentEnvironment="development" app="up-backend" environment="test"
+­ƒôè Server: 0.0.0.0:3015 appEnv="dev" deploymentEnvironment="development" app="up-backend" environment="test"
+­ƒîì Environment: test appEnv="dev" deploymentEnvironment="development" app="up-backend" environment="test"
+­ƒôï Configuration loaded: appEnv="dev" deploymentEnvironment="development" app="up-backend" environment="test"
+Database: Ô£à configured appEnv="dev" deploymentEnvironment="development" app="up-backend" environment="test"
+Auth: Ô£à configured (admin auth: disabled) appEnv="dev" deploymentEnvironment="development" app="up-backend" environment="test"
+Payment: ThePay Ô£à | FIO Ô£à | Fakturoid ÔØî appEnv="dev" deploymentEnvironment="development" app="up-backend" environment="test"
+Platform slots (P2-10): mailSlot=brevo receiptSlot=internal smsSlot=bulkgate appEnv="dev" deploymentEnvironment="development" app="up-backend" environment="test"
+Email: Brevo Ô£à configured (receipts: enabled) appEnv="dev" deploymentEnvironment="development" app="up-backend" environment="test"
+SMS: BulkGate ÔØî missing appEnv="dev" deploymentEnvironment="development" app="up-backend" environment="test"
+­ƒöº Initializing configuration for environment: nodeEnv=test, appEnv=dev, dbHost=trolley.proxy.rlwy.net appEnv="dev" deploymentEnvironment="development" app="up-backend" environment="test"
+Ô£à Configuration schemas valid (24 warnings) appEnv="dev" deploymentEnvironment="development" app="up-backend" environment="test"
+Database TLS: relaxed certificate verification for Railway proxy (non-production runtime) appEnv="dev" deploymentEnvironment="development" nodeEnv="test" app="up-backend" environment="test"
+Ô£à All configurations loaded and validated successfully appEnv="dev" deploymentEnvironment="development" app="up-backend" environment="test"
+­ƒôè Server: 0.0.0.0:3015 appEnv="dev" deploymentEnvironment="development" app="up-backend" environment="test"
+­ƒîì Environment: test appEnv="dev" deploymentEnvironment="development" app="up-backend" environment="test"
+­ƒôï Configuration loaded: appEnv="dev" deploymentEnvironment="development" app="up-backend" environment="test"
+Database: Ô£à configured appEnv="dev" deploymentEnvironment="development" app="up-backend" environment="test"
+Auth: Ô£à configured (admin auth: disabled) appEnv="dev" deploymentEnvironment="development" app="up-backend" environment="test"
+Payment: ThePay Ô£à | FIO Ô£à | Fakturoid ÔØî appEnv="dev" deploymentEnvironment="development" app="up-backend" environment="test"
+Platform slots (P2-10): mailSlot=brevo receiptSlot=internal smsSlot=bulkgate appEnv="dev" deploymentEnvironment="development" app="up-backend" environment="test"
+Email: Brevo Ô£à configured (receipts: enabled) appEnv="dev" deploymentEnvironment="development" app="up-backend" environment="test"
+SMS: BulkGate ÔØî missing appEnv="dev" deploymentEnvironment="development" app="up-backend" environment="test"
+­ƒöº Initializing configuration for environment: nodeEnv=test, appEnv=dev, dbHost=trolley.proxy.rlwy.net appEnv="dev" deploymentEnvironment="development" app="up-backend" environment="test"
+Ô£à Configuration schemas valid (24 warnings) appEnv="dev" deploymentEnvironment="development" app="up-backend" environment="test"
+Database TLS: relaxed certificate verification for Railway proxy (non-production runtime) appEnv="dev" deploymentEnvironment="development" nodeEnv="test" app="up-backend" environment="test"
+Ô£à All configurations loaded and validated successfully appEnv="dev" deploymentEnvironment="development" app="up-backend" environment="test"
+­ƒôè Server: 0.0.0.0:3015 appEnv="dev" deploymentEnvironment="development" app="up-backend" environment="test"
+­ƒîì Environment: test appEnv="dev" deploymentEnvironment="development" app="up-backend" environment="test"
+­ƒôï Configuration loaded: appEnv="dev" deploymentEnvironment="development" app="up-backend" environment="test"
+Database: Ô£à configured appEnv="dev" deploymentEnvironment="development" app="up-backend" environment="test"
+Auth: Ô£à configured (admin auth: disabled) appEnv="dev" deploymentEnvironment="development" app="up-backend" environment="test"
+Payment: ThePay Ô£à | FIO Ô£à | Fakturoid ÔØî appEnv="dev" deploymentEnvironment="development" app="up-backend" environment="test"
+Platform slots (P2-10): mailSlot=brevo receiptSlot=internal smsSlot=bulkgate appEnv="dev" deploymentEnvironment="development" app="up-backend" environment="test"
+Email: Brevo Ô£à configured (receipts: enabled) appEnv="dev" deploymentEnvironment="development" app="up-backend" environment="test"
+SMS: BulkGate ÔØî missing appEnv="dev" deploymentEnvironment="development" app="up-backend" environment="test"
+  console.log
+    Ôùç injected env (154) from .env // tip: Ôùê secrets for agents [www.dotenvx.com]
+
+      at _log (node_modules/dotenv/lib/main.js:131:11)
+
+­ƒöº Initializing configuration for environment: nodeEnv=test, appEnv=dev, dbHost=trolley.proxy.rlwy.net appEnv="dev" deploymentEnvironment="development" app="up-backend" environment="test"
+Ô£à Configuration schemas valid (24 warnings) appEnv="dev" deploymentEnvironment="development" app="up-backend" environment="test"
+Database TLS: relaxed certificate verification for Railway proxy (non-production runtime) appEnv="dev" deploymentEnvironment="development" nodeEnv="test" app="up-backend" environment="test"
+ÔÜá´©Å Stripe Connect platform env is incomplete ÔÇö Connect rails disabled until all four are set 
+(STRIPE_PLATFORM_SECRET_KEY, STRIPE_PLATFORM_PUBLISHABLE_KEY, STRIPE_CONNECT_WEBHOOK_SECRET, 
+STRIPE_CONNECT_CLIENT_ID). DIRECT tenants and FIO QR still work. appEnv="dev" deploymentEnvironment="development" 
+app="up-backend" environment="test"
+ÔÜá´©Å Details: STRIPE_CONNECT_CLIENT_ID (or PAYMENT_STRIPE_CONNECT_CLIENT_ID) is required when Stripe Connect 
+platform credentials are partially configured appEnv="dev" deploymentEnvironment="development" app="up-backend" 
+environment="test"
+Ô£à All configurations loaded and validated successfully appEnv="dev" deploymentEnvironment="development" app="up-backend" environment="test"
+­ƒôè Server: 0.0.0.0:3015 appEnv="dev" deploymentEnvironment="development" app="up-backend" environment="test"
+­ƒîì Environment: test appEnv="dev" deploymentEnvironment="development" app="up-backend" environment="test"
+­ƒôï Configuration loaded: appEnv="dev" deploymentEnvironment="development" app="up-backend" environment="test"
+Database: Ô£à configured appEnv="dev" deploymentEnvironment="development" app="up-backend" environment="test"
+Auth: Ô£à configured (admin auth: disabled) appEnv="dev" deploymentEnvironment="development" app="up-backend" environment="test"
+Payment: ThePay Ô£à | FIO Ô£à | Fakturoid ÔØî appEnv="dev" deploymentEnvironment="development" app="up-backend" environment="test"
+Platform slots (P2-10): mailSlot=brevo receiptSlot=internal smsSlot=bulkgate appEnv="dev" deploymentEnvironment="development" app="up-backend" environment="test"
+Email: Brevo Ô£à configured (receipts: enabled) appEnv="dev" deploymentEnvironment="development" app="up-backend" environment="test"
+SMS: BulkGate ÔØî missing appEnv="dev" deploymentEnvironment="development" app="up-backend" environment="test"
+­ƒöº Initializing configuration for environment: nodeEnv=test, appEnv=dev, dbHost=trolley.proxy.rlwy.net appEnv="dev" deploymentEnvironment="development" app="up-backend" environment="test"
+Ô£à Configuration schemas valid (24 warnings) appEnv="dev" deploymentEnvironment="development" app="up-backend" environment="test"
+Database TLS: relaxed certificate verification for Railway proxy (non-production runtime) appEnv="dev" deploymentEnvironment="development" nodeEnv="test" app="up-backend" environment="test"
+Ô£à All configurations loaded and validated successfully appEnv="dev" deploymentEnvironment="development" app="up-backend" environment="test"
+­ƒôè Server: 0.0.0.0:3015 appEnv="dev" deploymentEnvironment="development" app="up-backend" environment="test"
+­ƒîì Environment: test appEnv="dev" deploymentEnvironment="development" app="up-backend" environment="test"
+­ƒôï Configuration loaded: appEnv="dev" deploymentEnvironment="development" app="up-backend" environment="test"
+Database: Ô£à configured appEnv="dev" deploymentEnvironment="development" app="up-backend" environment="test"
+Auth: Ô£à configured (admin auth: disabled) appEnv="dev" deploymentEnvironment="development" app="up-backend" environment="test"
+Payment: ThePay Ô£à | FIO Ô£à | Fakturoid ÔØî appEnv="dev" deploymentEnvironment="development" app="up-backend" environment="test"
+Platform slots (P2-10): mailSlot=brevo receiptSlot=internal smsSlot=bulkgate appEnv="dev" deploymentEnvironment="development" app="up-backend" environment="test"
+Email: Brevo Ô£à configured (receipts: enabled) appEnv="dev" deploymentEnvironment="development" app="up-backend" environment="test"
+SMS: BulkGate ÔØî missing appEnv="dev" deploymentEnvironment="development" app="up-backend" environment="test"
+­ƒöº Initializing configuration for environment: nodeEnv=test, appEnv=dev, dbHost=trolley.proxy.rlwy.net appEnv="dev" deploymentEnvironment="development" app="up-backend" environment="test"
+Ô£à Configuration schemas valid (24 warnings) appEnv="dev" deploymentEnvironment="development" app="up-backend" environment="test"
+Database TLS: relaxed certificate verification for Railway proxy (non-production runtime) appEnv="dev" deploymentEnvironment="development" nodeEnv="test" app="up-backend" environment="test"
+Ô£à All configurations loaded and validated successfully appEnv="dev" deploymentEnvironment="development" app="up-backend" environment="test"
+­ƒôè Server: 0.0.0.0:3015 appEnv="dev" deploymentEnvironment="development" app="up-backend" environment="test"
+­ƒîì Environment: test appEnv="dev" deploymentEnvironment="development" app="up-backend" environment="test"
+­ƒôï Configuration loaded: appEnv="dev" deploymentEnvironment="development" app="up-backend" environment="test"
+Database: Ô£à configured appEnv="dev" deploymentEnvironment="development" app="up-backend" environment="test"
+Auth: Ô£à configured (admin auth: disabled) appEnv="dev" deploymentEnvironment="development" app="up-backend" environment="test"
+Payment: ThePay Ô£à | FIO Ô£à | Fakturoid ÔØî appEnv="dev" deploymentEnvironment="development" app="up-backend" environment="test"
+Platform slots (P2-10): mailSlot=brevo receiptSlot=internal smsSlot=bulkgate appEnv="dev" deploymentEnvironment="development" app="up-backend" environment="test"
+Email: Brevo Ô£à configured (receipts: enabled) appEnv="dev" deploymentEnvironment="development" app="up-backend" environment="test"
+SMS: BulkGate ÔØî missing appEnv="dev" deploymentEnvironment="development" app="up-backend" environment="test"
+Test Suites: 2 passed, 2 total
+Tests:       5 passed, 5 total
+Snapshots:   0 total
+Time:        1.821 s, estimated 2 s
+Ran all test suites matching AcquireFulfillmentClaimUseCase|ReleaseFulfillmentClaimUseCase.
+

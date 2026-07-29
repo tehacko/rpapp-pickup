@@ -56,7 +56,7 @@ test.describe('staff-confirm-pickup (integration)', () => {
     });
 
     const linesRes = await request.get(
-      `${apiBase()}${tenantV1Path(tenant, `kiosk/orders/${ticket.transactionId}/fulfillment-lines`)}`,
+      `${apiBase()}${tenantV1Path(tenant, `sales-point-device/orders/${ticket.transactionId}/fulfillment-lines`)}`,
       { headers: kioskHeaders(salesPointId) }
     );
     expect(linesRes.ok()).toBeTruthy();

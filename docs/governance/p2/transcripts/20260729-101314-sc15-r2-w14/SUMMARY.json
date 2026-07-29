@@ -1,0 +1,40 @@
+{
+  "row": "SC-15-R2",
+  "owner": "W14 replacement",
+  "timestamp": "2026-07-29T10:13:14+02:00",
+  "status": "TRANSCRIPT_BACKED_BLOCKED",
+  "result": "PENDING",
+  "commands": [
+    {
+      "name": "R2-backend-barcode-postgres",
+      "workdir": "up-backend",
+      "command": "npm run test:postgres:barcode",
+      "exitCode": 1,
+      "log": "rpapp-pickup/docs/governance/p2/transcripts/20260729-101314-sc15-r2-w14/R2-backend-barcode.log",
+      "outcome": "failed in jest postgres globalSetup during db:seed:test-db retries"
+    },
+    {
+      "name": "R2-pickup-barcode-unit",
+      "workdir": "rpapp-pickup",
+      "command": "npm run test -- src/gateway/productBarcode.gateway.test.ts src/features/barcode-assign/BarcodeAssignPage.test.tsx",
+      "exitCode": 0,
+      "log": "rpapp-pickup/docs/governance/p2/transcripts/20260729-101314-sc15-r2-w14/R2-pickup-barcode-unit.log",
+      "outcome": "passed (2 suites, 5 tests)"
+    },
+    {
+      "name": "R2-pickup-barcode-e2e",
+      "workdir": "rpapp-pickup",
+      "command": "npm run test:e2e:barcode",
+      "exitCode": 1,
+      "log": "rpapp-pickup/docs/governance/p2/transcripts/20260729-101314-sc15-r2-w14/R2-pickup-barcode-e2e.log",
+      "outcome": "failed (5 failed, 5 skipped)"
+    }
+  ],
+  "blockers": [
+    "Backend test-db reset fails in seed baseline with Prisma P2003 at tenant_compliance_configs_complianceModuleId_fkey (jest-postgres-global-setup abort).",
+    "Pickup barcode E2E could not progress past login for T-09 route assertion (expected /:tenant/barcode-assign but remained /:tenant/login).",
+    "Pickup barcode E2E webkit project missing local Playwright binary (run npx playwright install).",
+    "Pickup dev server proxy reported ECONNREFUSED for /api/demo-barcode/v1/pickup/staff/me during E2E run."
+  ],
+  "signoff": "No GREEN/ADV claim made in this evidence pass."
+}

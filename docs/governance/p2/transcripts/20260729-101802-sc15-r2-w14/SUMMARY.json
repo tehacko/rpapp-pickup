@@ -1,0 +1,54 @@
+{
+  "row": "SC-15-R2",
+  "owner": "W14 replacement",
+  "timestamp": "2026-07-29T10:18:02+02:00",
+  "status": "TRANSCRIPT_BACKED_BLOCKED",
+  "result": "PENDING",
+  "commands": [
+    {
+      "name": "R2-backend-barcode-postgres",
+      "workdir": "up-backend",
+      "command": "npm run test:postgres:barcode",
+      "exitCode": 1,
+      "log": "rpapp-pickup/docs/governance/p2/transcripts/20260729-101802-sc15-r2-w14/R2-backend-barcode.log",
+      "outcome": "failed in jest postgres globalSetup during db:seed:test-db retries with rotating FK failures"
+    },
+    {
+      "name": "R2-pickup-barcode-e2e",
+      "workdir": "rpapp-pickup",
+      "command": "npm run test:e2e:barcode",
+      "exitCode": 1,
+      "log": "rpapp-pickup/docs/governance/p2/transcripts/20260729-101802-sc15-r2-w14/R2-pickup-barcode-e2e.log",
+      "outcome": "failed (5 failed, 5 skipped)"
+    }
+  ],
+  "backendFindings": {
+    "seedFailureClass": "P2003 foreign-key violations during baseline seed",
+    "observedConstraints": [
+      "products_categoryId_fkey",
+      "receipt_document_sequences_tenantId_fkey",
+      "tenant_loyalty_config_tenantId_fkey",
+      "tenant_compliance_configs_complianceModuleId_fkey",
+      "analytics_events_tenantId_fkey"
+    ],
+    "assessment": "multi-table FK drift within one 3-attempt retry loop is consistent with concurrent TEST_DATABASE_URL mutation (parallel truncate/seed overlap), not a stable single-row compliance-module defect"
+  },
+  "deterministicReproduction": [
+    "From up-backend, run: npm run test:postgres:barcode",
+    "Observe jest-postgres-global-setup retries db:seed:test-db up to 3 times and eventually fails with one or more FK constraints",
+    "Failure signature is deterministic at the class level (P2003 during seed), while exact FK table varies per attempt"
+  ],
+  "recoverySteps": [
+    "Enforce single writer to TEST_DATABASE_URL while postgres suites run (do not run parallel workers against same test DB).",
+    "After parallel load stops, run from up-backend: npm run db:seed:test-db",
+    "Then verify baseline from up-backend: npm run audit:test-db-health",
+    "Retry target suite from up-backend: npm run test:postgres:barcode",
+    "If contention must continue, provision isolated TEST_DATABASE_URL per worker before rerun."
+  ],
+  "pickupBlockers": [
+    "T-09 route assertion fails: expected /:tenant/barcode-assign but remains /:tenant/login.",
+    "WebKit browser binary missing locally (npx playwright install).",
+    "Suite result remained 5 failed / 5 skipped in this rerun."
+  ],
+  "signoff": "No GREEN/ADV claim made; row remains blocked pending isolated test DB rerun and pickup E2E prerequisites."
+}

@@ -1,0 +1,18 @@
+{
+  "id": "sc-15-pickup-heartbeat",
+  "timestamp": "2026-07-29T11:08:00Z",
+  "worker": "W8",
+  "suite": "pickupDeviceHeartbeatRoutes.postgres.test.ts",
+  "result": "PASS",
+  "tests_passed": 1,
+  "tests_failed": 0,
+  "tests_skipped": 0,
+  "duration_s": 7.015,
+  "root_cause": "Tenant created with default status PENDING; pickupStaffAuth middleware G29 live ACTIVE check rejects non-ACTIVE tenants with 403 TENANT_INACTIVE",
+  "fix": "Added status: 'ACTIVE' to tenant.create call in test setup",
+  "file_changed": "up-backend/src/__tests__/integration/pickupDeviceHeartbeatRoutes.postgres.test.ts",
+  "commands": [
+    "npm run db:seed:test-db",
+    "RUN_FRONTEND_HARDENING_POSTGRES_TESTS=1 npm run test:postgres:file -- --testPathPatterns=pickupDeviceHeartbeatRoutes.postgres"
+  ]
+}

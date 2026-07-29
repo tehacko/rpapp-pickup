@@ -35,7 +35,7 @@ export function LoginPage(): JSX.Element {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { t } = useTranslation();
-  const { isLoginAllowed, denialReason, isLoading: entitlementLoading, entitledFunctions, isTenantInactive } =
+  const { denialReason, isLoading: entitlementLoading, entitledFunctions, isTenantInactive } =
     usePickupEntitlement(tenantCode);
   const submitCooldown = useSubmitCooldown();
   const kioskHintDefault = searchParams.get('kioskHint')?.trim() ?? '';
@@ -86,6 +86,7 @@ export function LoginPage(): JSX.Element {
     submitCooldown.isCoolingDown && submitCooldown.remainingSeconds > 0
       ? formatRateLimitMessage(t, submitCooldown.remainingSeconds)
       : null;
+  const entitlementDenied = !entitlementLoading && !isTenantInactive && denialReason !== null;
 
   async function onSubmit(event: FormEvent): Promise<void> {
     event.preventDefault();
@@ -197,7 +198,7 @@ export function LoginPage(): JSX.Element {
           </p>
         ) : null}
 
-        {!entitlementLoading && !isTenantInactive && !isLoginAllowed ? (
+        {entitlementDenied ? (
           <AlertBanner
             tone="danger"
             role="alert"
@@ -275,7 +276,7 @@ export function LoginPage(): JSX.Element {
               isSubmitting ||
               submitCooldown.isCoolingDown ||
               isTenantInactive ||
-              !isLoginAllowed
+              entitlementDenied
             }
           >
             {t('pickup.login.submit')}

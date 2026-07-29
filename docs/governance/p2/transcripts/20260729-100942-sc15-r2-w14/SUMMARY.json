@@ -1,0 +1,27 @@
+﻿{
+    "timestamp":  "2026-07-29T10:12:45.9689079+02:00",
+    "transcriptDir":  "C:\\Users\\corne\\Desktop\\rpapp1\\rpapp\\rpapp-pickup\\docs\\governance\\p2\\transcripts\\20260729-100942-sc15-r2-w14",
+    "commands":  [
+                     {
+                         "name":  "R2-backend-barcode-postgres",
+                         "command":  "npm run test:postgres:barcode",
+                         "workdir":  "up-backend",
+                         "log":  "C:\\Users\\corne\\Desktop\\rpapp1\\rpapp\\rpapp-pickup\\docs\\governance\\p2\\transcripts\\20260729-100942-sc15-r2-w14\\R2-backend-barcode.log",
+                         "exitCode":  1
+                     },
+                     {
+                         "name":  "R2-pickup-barcode-unit",
+                         "command":  "npm run test -- src/gateway/productBarcode.gateway.test.ts src/features/barcode-assign/BarcodeAssignPage.test.tsx",
+                         "workdir":  "rpapp-pickup",
+                         "log":  "C:\\Users\\corne\\Desktop\\rpapp1\\rpapp\\rpapp-pickup\\docs\\governance\\p2\\transcripts\\20260729-100942-sc15-r2-w14\\R2-pickup-barcode-unit.log",
+                         "exitCode":  0
+                     },
+                     {
+                         "name":  "R2-pickup-barcode-e2e",
+                         "command":  "npm run test:e2e:barcode",
+                         "workdir":  "rpapp-pickup",
+                         "log":  "C:\\Users\\corne\\Desktop\\rpapp1\\rpapp\\rpapp-pickup\\docs\\governance\\p2\\transcripts\\20260729-100942-sc15-r2-w14\\R2-pickup-barcode-e2e.log",
+                         "exitCode":  1
+                     }
+                 ]
+}

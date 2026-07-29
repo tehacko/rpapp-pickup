@@ -1,0 +1,67 @@
+[
+    {
+        "name":  "R2-backend-barcode",
+        "exitCode":  0,
+        "log":  "rpapp-pickup\\docs\\governance\\p2\\transcripts\\20260729-100408-sc15-r2-r7\\R2-backend-barcode.log"
+    },
+    {
+        "name":  "R2-pickup-barcode-tests",
+        "exitCode":  0,
+        "log":  "rpapp-pickup\\docs\\governance\\p2\\transcripts\\20260729-100408-sc15-r2-r7\\R2-pickup-barcode-tests.log"
+    },
+    {
+        "name":  "R3-backend-expiry",
+        "exitCode":  0,
+        "log":  "rpapp-pickup\\docs\\governance\\p2\\transcripts\\20260729-100408-sc15-r2-r7\\R3-backend-expiry.log"
+    },
+    {
+        "name":  "R4-backend-heartbeat-route",
+        "exitCode":  0,
+        "log":  "rpapp-pickup\\docs\\governance\\p2\\transcripts\\20260729-100408-sc15-r2-r7\\R4-backend-heartbeat-route.log"
+    },
+    {
+        "name":  "R4-backend-heartbeat-usecase",
+        "exitCode":  0,
+        "log":  "rpapp-pickup\\docs\\governance\\p2\\transcripts\\20260729-100408-sc15-r2-r7\\R4-backend-heartbeat-usecase.log"
+    },
+    {
+        "name":  "R4-pickup-heartbeat-hook",
+        "exitCode":  0,
+        "log":  "rpapp-pickup\\docs\\governance\\p2\\transcripts\\20260729-100408-sc15-r2-r7\\R4-pickup-heartbeat-hook.log"
+    },
+    {
+        "name":  "R5-backend-revoke",
+        "exitCode":  0,
+        "log":  "rpapp-pickup\\docs\\governance\\p2\\transcripts\\20260729-100408-sc15-r2-r7\\R5-backend-revoke.log"
+    },
+    {
+        "name":  "R5-backend-release-claim",
+        "exitCode":  0,
+        "log":  "rpapp-pickup\\docs\\governance\\p2\\transcripts\\20260729-100408-sc15-r2-r7\\R5-backend-release-claim.log"
+    },
+    {
+        "name":  "R6-backend-complete-usecase",
+        "exitCode":  0,
+        "log":  "rpapp-pickup\\docs\\governance\\p2\\transcripts\\20260729-100408-sc15-r2-r7\\R6-backend-complete-usecase.log"
+    },
+    {
+        "name":  "R6-pickup-commerce-e2e",
+        "exitCode":  0,
+        "log":  "rpapp-pickup\\docs\\governance\\p2\\transcripts\\20260729-100408-sc15-r2-r7\\R6-pickup-commerce-e2e.log"
+    },
+    {
+        "name":  "R7-backend-pair-usecase",
+        "exitCode":  0,
+        "log":  "rpapp-pickup\\docs\\governance\\p2\\transcripts\\20260729-100408-sc15-r2-r7\\R7-backend-pair-usecase.log"
+    },
+    {
+        "name":  "R7-pickup-pair-page",
+        "exitCode":  0,
+        "log":  "rpapp-pickup\\docs\\governance\\p2\\transcripts\\20260729-100408-sc15-r2-r7\\R7-pickup-pair-page.log"
+    },
+    {
+        "name":  "R7-ownership-deferred-proof",
+        "exitCode":  0,
+        "log":  "rpapp-pickup\\docs\\governance\\p2\\transcripts\\20260729-100408-sc15-r2-r7\\R7-ownership-deferred-proof.log"
+    }
+]

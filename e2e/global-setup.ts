@@ -3,6 +3,11 @@ import { existsSync, readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { assertCommerceIntegrationEnv } from '../../up-backend/e2e/helpers/assertIntegrationEnv.js';
+import { assertSeededCommerceArtifacts } from '../../up-backend/e2e/helpers/assertSeededCommerceState.js';
+import {
+  DEFAULT_E2E_STATE_PATH,
+  UP_BACKEND_ROOT,
+} from '../../up-backend/e2e/helpers/commerceE2eState.js';
 
 function ensureSharedDist(): void {
   if (process.env.E2E_SHARED_PREBUILT === '1') {
@@ -51,4 +56,20 @@ export default async function globalSetup(): Promise<void> {
   }
   loadBackendEnvForE2e();
   await assertCommerceIntegrationEnv({ skipManualCompleteProbe: true });
+  if (process.env['E2E_SKIP_SEED'] !== '1') {
+    execSync(
+      `npx tsx scripts/seed-e2e-commerce.ts --with-artifacts --write-state "${DEFAULT_E2E_STATE_PATH}"`,
+      {
+        cwd: UP_BACKEND_ROOT,
+        stdio: 'inherit',
+        env: {
+          ...process.env,
+          E2E_INTEGRATION: '1',
+          COMMERCE_E2E_USE_TEST_DATABASE: '1',
+          REQUEST_SIZE_LIMIT: '1mb',
+        },
+      },
+    );
+  }
+  assertSeededCommerceArtifacts();
 }

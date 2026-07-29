@@ -81,7 +81,7 @@ export default defineConfig({
         },
         {
           command: 'npx vite --host 127.0.0.1 --port 3001',
-          cwd: '../rpapp-admin',
+          cwd: '../admin-app',
           url: adminURL,
           reuseExistingServer: !process.env.CI,
           timeout: 120_000,

@@ -1,0 +1,49 @@
+{
+  "worker": "W7",
+  "orchestration": "SC-15 15-worker pass",
+  "timestamp": "2026-07-29T11:00:00+02:00",
+  "todos": ["sc-15-pickup-expiry", "sc-15-pickup-heartbeat", "sc-15-pickup-revoke", "sc-15-pickup-complete"],
+  "results": [
+    {
+      "todo": "sc-15-pickup-expiry",
+      "row": "SC-15-R3",
+      "file": "clearExpiredFulfillmentClaims.postgres.test.ts",
+      "exitCode": 0,
+      "suites": 1,
+      "tests": 2,
+      "status": "PASS",
+      "log": "R3-clearExpiredFulfillmentClaims.log"
+    },
+    {
+      "todo": "sc-15-pickup-heartbeat",
+      "row": "SC-15-R4",
+      "file": "pickupDeviceHeartbeatRoutes.postgres.test.ts",
+      "exitCode": 1,
+      "suites": 1,
+      "tests": 1,
+      "status": "FAIL",
+      "failureReason": "TENANT_INACTIVE 403 — test tenant in pending state; environmental/seed issue, not code defect. Prior run at 20260729-100429 passed.",
+      "log": "R4-pickupDeviceHeartbeatRoutes.log"
+    },
+    {
+      "todo": "sc-15-pickup-revoke",
+      "row": "SC-15-R5",
+      "file": "pickupDeviceRevoke.postgres.test.ts",
+      "exitCode": 0,
+      "suites": 1,
+      "tests": 1,
+      "status": "PASS",
+      "log": "R5-pickupDeviceRevoke.log"
+    },
+    {
+      "todo": "sc-15-pickup-complete",
+      "row": "SC-15-R6",
+      "file": "PickupConfirmFulfillmentUseCase.test.ts (unit; E2E staff-confirm-pickup.spec.ts requires live server)",
+      "exitCode": 0,
+      "suites": 1,
+      "tests": 12,
+      "status": "PASS",
+      "log": "R6-PickupConfirmFulfillmentUseCase-unit.log"
+    }
+  ]
+}

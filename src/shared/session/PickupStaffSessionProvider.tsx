@@ -249,7 +249,13 @@ export function PickupStaffSessionProvider({
         void runHydrate(tenantCode).then(() => {
           if (message.type === 'login' && pathnameRef.current.endsWith('/login')) {
             if (sessionClaimsRef.current !== null) {
-              navigate(`/${encodeURIComponent(tenantCode)}/hub`, { replace: true });
+              const caps = sessionClaimsRef.current.capabilities;
+              // Navigate to scan if staff has scan capability — scan is the
+              // primary pickup workflow. Hub is reachable via nav if needed.
+              const dest = caps.includes('scan')
+                ? `/${encodeURIComponent(tenantCode)}/scan`
+                : `/${encodeURIComponent(tenantCode)}/hub`;
+              navigate(dest, { replace: true });
             }
           }
         });

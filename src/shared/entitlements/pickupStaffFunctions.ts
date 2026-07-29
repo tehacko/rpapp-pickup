@@ -22,5 +22,10 @@ export function resolvePostLoginPath(
     }
     return `${base}/scan`;
   }
+  // When staff has FULFILLMENT_SCAN among multiple entitlements, go directly to
+  // scan — the primary pickup workflow. Hub is reachable via nav if needed.
+  if (entitledFunctions.includes(PickupStaffFunction.FULFILLMENT_SCAN)) {
+    return `${base}/scan`;
+  }
   return `${base}/hub`;
 }

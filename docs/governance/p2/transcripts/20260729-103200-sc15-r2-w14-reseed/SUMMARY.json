@@ -1,0 +1,32 @@
+{
+  "worker": "W14",
+  "runId": "sc15-r2-w14-reseed",
+  "timestamp": "2026-07-29T10:32:00+02:00",
+  "context": "Follow-up after seed serialization fix (POSTGRES_TEST_SKIP_RESEED=1). Seed is now stable — no P2003 FK errors.",
+  "suites": [
+    {
+      "label": "R2-backend-barcode",
+      "command": "npm run test:postgres:barcode",
+      "exitCode": 1,
+      "summary": "16 suites (13 passed, 3 failed), 31 tests (28 passed, 3 failed)",
+      "failures": [
+        {
+          "file": "productBarcodeArtifactLazyGet.postgres.test.ts",
+          "test": "GET linear artifact sync-renders and populates storage keys after assign",
+          "cause": "Stale artifact storage key from prior test run — expects null after assign but row already has barcodeLinearImageStorageKey populated"
+        },
+        {
+          "file": "pickupProductBarcode.postgres.test.ts",
+          "test": "pickup staff assigns primary barcode (T-06 / AC-BAR-21)",
+          "cause": "hasArtifacts=true instead of expected false — stale artifact keys from prior run contaminating fresh assign"
+        },
+        {
+          "file": "listProductsBarcodeAssign.postgres.test.ts",
+          "test": "includes inactive products as assignable (OQ-13b / AC-BAR-05)",
+          "cause": "Unique constraint on (tenantId, barcode) — test barcode collides with row left by prior suite in same runInBand session"
+        }
+      ],
+      "failureClass": "Test-data contamination (stale artifact keys + barcode uniqueness collision across suites sharing runInBand). NOT seed P2003 — seed serialization fix is confirmed working (SKIP_RESEED honoured, no FK errors)."
+    }
+  ]
+}
