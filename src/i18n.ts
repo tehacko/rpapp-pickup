@@ -2,12 +2,33 @@ import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 import csPickup from './locales/cs/pickup.json';
 import enPickup from './locales/en/pickup.json';
+import skPickup from './locales/sk/pickup.json';
 import pseudoPickup from './locales/pseudo/pickup.json';
 import {
   readStoredPickupLocale,
   writeStoredPickupLocale,
   type PickupSupportedLocale,
 } from './shared/pickupLocaleStorage.js';
+
+function normalizePickupLocale(lng: string): PickupSupportedLocale {
+  if (lng.startsWith('en')) {
+    return 'en';
+  }
+  if (lng.startsWith('sk')) {
+    return 'sk';
+  }
+  return 'cs';
+}
+
+function defaultLocaleFromEnv(envLocale: string): PickupSupportedLocale {
+  if (envLocale.startsWith('en')) {
+    return 'en';
+  }
+  if (envLocale.startsWith('sk')) {
+    return 'sk';
+  }
+  return 'cs';
+}
 
 const envLocale =
   typeof import.meta.env.VITE_DEFAULT_LOCALE === 'string'
@@ -20,17 +41,18 @@ const urlLng =
     ? new URLSearchParams(window.location.search).get('lng')
     : null;
 const initialLng: PickupSupportedLocale | 'pseudo' =
-  urlLng === 'pseudo' ? 'pseudo' : storedLocale ?? (envLocale.startsWith('en') ? 'en' : 'cs');
+  urlLng === 'pseudo' ? 'pseudo' : storedLocale ?? defaultLocaleFromEnv(envLocale);
 
 void i18n.use(initReactI18next).init({
   lng: initialLng,
   fallbackLng: 'cs',
-  supportedLngs: ['cs', 'en', 'pseudo'],
+  supportedLngs: ['cs', 'en', 'sk', 'pseudo'],
   defaultNS: 'pickup',
   ns: ['pickup'],
   resources: {
     cs: { pickup: csPickup },
     en: { pickup: enPickup },
+    sk: { pickup: skPickup },
     pseudo: { pickup: pseudoPickup },
   },
   interpolation: { escapeValue: false },
@@ -42,10 +64,7 @@ if (typeof document !== 'undefined') {
     if (initialLng === 'pseudo') {
       return 'pseudo';
     }
-    if (initialLng === 'en') {
-      return 'en';
-    }
-    return 'cs';
+    return initialLng;
   })();
 }
 
@@ -56,7 +75,7 @@ i18n.on('languageChanged', (lng) => {
     }
     return;
   }
-  const normalized: PickupSupportedLocale = lng.startsWith('en') ? 'en' : 'cs';
+  const normalized = normalizePickupLocale(lng);
   writeStoredPickupLocale(normalized);
   if (typeof document !== 'undefined') {
     document.documentElement.lang = normalized;

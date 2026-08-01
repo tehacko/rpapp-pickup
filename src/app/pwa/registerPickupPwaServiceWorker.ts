@@ -5,6 +5,7 @@ import {
 } from './scanActiveGate.js';
 
 export const PICKUP_PWA_RELOAD_CHANNEL = 'rpapp-pickup-pwa-reload';
+const CONTROLLING_RELOAD_FALLBACK_MS = 4_000;
 
 export interface PickupPwaUpdateHandlers {
   readonly setUpdateReady: (ready: boolean) => void;
@@ -36,11 +37,24 @@ export function registerPickupPwaServiceWorker(handlers: PickupPwaUpdateHandlers
   const workbox = new Workbox('/sw.js', { type: 'classic' });
 
   workbox.addEventListener('waiting', () => {
-    const refresh = (): void => {
-      void workbox.messageSkipWaiting();
+    let reloadScheduled = false;
+    const reloadOnce = (): void => {
+      if (reloadScheduled) {
+        return;
+      }
+      reloadScheduled = true;
       broadcastReload();
       window.location.reload();
     };
+
+    const refresh = (): void => {
+      workbox.addEventListener('controlling', () => {
+        reloadOnce();
+      });
+      void workbox.messageSkipWaiting();
+      window.setTimeout(reloadOnce, CONTROLLING_RELOAD_FALLBACK_MS);
+    };
+
     if (isPickupCriticalFlowActive()) {
       queuePickupPwaRefreshWhenIdle(refresh);
       handlers.setUpdateReady(true);

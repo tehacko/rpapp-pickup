@@ -1,7 +1,7 @@
-/** Persisted UI locale for pickup staff shell (cs | en). */
+/** Persisted UI locale for pickup staff shell (cs | en | sk). */
 export const PICKUP_LOCALE_STORAGE_KEY = 'rpapp-pickup-locale';
 
-export type PickupSupportedLocale = 'cs' | 'en';
+export type PickupSupportedLocale = 'cs' | 'en' | 'sk';
 
 export function readStoredPickupLocale(): PickupSupportedLocale | null {
   if (typeof window === 'undefined' || typeof window.localStorage === 'undefined') {
@@ -9,7 +9,7 @@ export function readStoredPickupLocale(): PickupSupportedLocale | null {
   }
   try {
     const raw = window.localStorage.getItem(PICKUP_LOCALE_STORAGE_KEY);
-    if (raw === 'cs' || raw === 'en') {
+    if (raw === 'cs' || raw === 'en' || raw === 'sk') {
       return raw;
     }
     return null;
@@ -28,4 +28,3 @@ export function writeStoredPickupLocale(locale: PickupSupportedLocale): void {
     // Quota or private mode — ignore
   }
 }
-

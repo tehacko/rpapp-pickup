@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useStaffToken, useTenantCode } from '../../hooks/useStaffToken.js';
 import { usePickupErrorHandler } from '../../shared/hooks/usePickupErrorHandler.js';
+import { usePickupLocaleTag } from '../../shared/hooks/usePickupLocaleTag.js';
 import { usePickupStaffSession } from '../../shared/session/PickupStaffSessionProvider.js';
 import { buildSellCartViewModel } from './buildSellCartViewModel.js';
 import { buildSellCatalogViewModel } from './buildSellCatalogViewModel.js';
@@ -59,6 +60,7 @@ export function useSellScreen(
   const accessToken = useStaffToken();
   const { t } = useTranslation();
   const { handleError } = usePickupErrorHandler();
+  const localeTag = usePickupLocaleTag();
   const { activePickupPointId } = usePickupStaffSession();
   const [config, setConfig] = useState<SellConfig>(DEFAULT_CONFIG);
   const [configLoaded, setConfigLoaded] = useState(false);
@@ -152,8 +154,9 @@ export function useSellScreen(
         sellingEnabled: canSell,
         currency: config.currency,
         items,
+        localeTag,
       }),
-    [canSell, config.currency, errorMessage, items, loading, query, tenantCode],
+    [canSell, config.currency, errorMessage, items, loading, localeTag, query, tenantCode],
   );
 
   const cartViewModel = useMemo(
@@ -162,8 +165,9 @@ export function useSellScreen(
         lines: [...cartLines],
         currency: config.currency,
         cashEnabled: config.cashEnabled,
+        localeTag,
       }),
-    [cartLines, config.cashEnabled, config.currency],
+    [cartLines, config.cashEnabled, config.currency, localeTag],
   );
 
   const addItem = useCallback((productId: number, variantId?: number): void => {

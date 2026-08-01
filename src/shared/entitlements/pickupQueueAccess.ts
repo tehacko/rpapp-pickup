@@ -1,5 +1,8 @@
 /**
- * Product rule: authenticated staff always get queue chrome (parity with PickupAppShell nav).
- * Not scan-gated.
+ * Queue chrome is scan-gated — aligns with BE ListPickupStaffQueueUseCase
+ * (`staff_pickup_scan`) and login/JWT mint (`staff_pickup_scan` ∧ `order_pickup_infrastructure`).
+ * `canScan` must already encode infra ∧ staff_pickup_scan (see usePickupEntitlement).
  */
-export const PICKUP_STAFF_ALWAYS_CAN_ACCESS_QUEUE = true as const;
+export function canAccessPickupStaffQueue(canScan: boolean): boolean {
+  return canScan;
+}

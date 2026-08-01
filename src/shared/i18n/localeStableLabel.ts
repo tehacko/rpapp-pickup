@@ -1,7 +1,7 @@
 import i18n from '../../i18n.js';
 
 /** Production locales — reserve width for the longest label across these only. */
-export const LOCALE_STABLE_SIZING_LOCALES = ['cs', 'en'] as const;
+export const LOCALE_STABLE_SIZING_LOCALES = ['cs', 'en', 'sk'] as const;
 
 export type LocaleStableSizingLocale = (typeof LOCALE_STABLE_SIZING_LOCALES)[number];
 

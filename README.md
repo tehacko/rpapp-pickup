@@ -20,6 +20,10 @@ npm run dev   # http://localhost:3005
 
 Requires `up-backend` on port **3015**. Leave API base empty in local Vite proxy mode when using same-origin `/api/...`.
 
+## Content Security Policy (CSP)
+
+`index.html` ships a Spec-compatible CSP meta (G4): `script-src`/`worker-src` `'self'` (no inline scripts; PWA SW), `connect-src` `'self'` plus local API `3015`/`ws`, Vite HMR `ws://*:3005`, and Sentry ingest hosts for `VITE_SENTRY_DSN`, `style-src` `'self' 'unsafe-inline'` (Tailwind), `font-src`/`img-src` for self-hosted fonts and `data:`/`blob:` images. No Stripe (unlike kiosk). Deploy HTTP `Content-Security-Policy` headers can supersede this meta.
+
 ## Docs
 
 | Doc | Purpose |

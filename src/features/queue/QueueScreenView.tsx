@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Clock, RefreshCw } from 'lucide-react';
+import { usePickupLocaleTag } from '../../shared/hooks/usePickupLocaleTag.js';
 import { ClaimBadge } from '../../shared/ui/ClaimBadge.js';
 import { EmptyState } from '../../shared/ui/EmptyState.js';
 import { OfflineBanner } from '../../shared/ui/OfflineBanner.js';
@@ -47,12 +48,13 @@ function resolveAgeDisplayLabel(
 
 function formatLastUpdated(
   lastUpdatedAt: number | null,
+  localeTag: string,
   t: (key: string, opts?: Record<string, unknown>) => string,
 ): string | null {
   if (lastUpdatedAt === null) {
     return null;
   }
-  const time = new Date(lastUpdatedAt).toLocaleTimeString(undefined, {
+  const time = new Date(lastUpdatedAt).toLocaleTimeString(localeTag, {
     hour: '2-digit',
     minute: '2-digit',
     second: '2-digit',
@@ -74,6 +76,7 @@ export function QueueScreenView({
   tenantCode,
 }: QueueScreenViewProps): JSX.Element {
   const { t } = useTranslation('pickup');
+  const localeTag = usePickupLocaleTag();
   const navigate = useNavigate();
   const encodedTenant = encodeURIComponent(tenantCode);
 
@@ -133,7 +136,7 @@ export function QueueScreenView({
     );
   }
 
-  const lastUpdatedLabel = formatLastUpdated(viewModel.lastUpdatedAt, t);
+  const lastUpdatedLabel = formatLastUpdated(viewModel.lastUpdatedAt, localeTag, t);
   const activeSegmentId = String(viewModel.activePickupPointId);
 
   return (

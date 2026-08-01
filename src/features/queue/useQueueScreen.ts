@@ -5,6 +5,7 @@ import { shouldEmitLogRepeat } from 'pi-kiosk-shared/logging';
 import { usePickupEntitlement } from '../../hooks/usePickupEntitlement.js';
 import { useStaffToken, useTenantCode } from '../../hooks/useStaffToken.js';
 import { getPairedDevice } from '../../lib/deviceStorage.js';
+import { PickupStaffFunction } from '../../shared/entitlements/pickupStaffFunctions.js';
 import { usePickupErrorHandler } from '../../shared/hooks/usePickupErrorHandler.js';
 import { usePickupStaffSession } from '../../shared/session/PickupStaffSessionProvider.js';
 import { useOnlineStatus } from '../../shared/network/useOnlineStatus.js';
@@ -76,6 +77,15 @@ export interface QueueScreenActions {
 export interface UseQueueScreenResult {
   readonly accessToken: string | null;
   readonly tenantCode: string;
+  /** True when FE scan/queue entitled (infra ∧ staff_pickup_scan). */
+  readonly canScan: boolean;
+  /**
+   * True while staff entitlement is unsettled (RQ `isPending`, fetchStatus paused,
+   * or no snapshot yet without error). Mirrors `usePickupEntitlement.isLoading`.
+   */
+  readonly entitlementLoading: boolean;
+  readonly entitlementIsError: boolean;
+  readonly retryEntitlement: () => void;
   readonly screenState: QueueScreenState;
   readonly viewModel: QueuePageViewModel | null;
   readonly actions: QueueScreenActions;
@@ -85,7 +95,14 @@ export function useQueueScreen(gateway: IQueueGateway = queueGateway): UseQueueS
   const tenantCode = useTenantCode();
   const accessToken = useStaffToken();
   const { handleError } = usePickupErrorHandler();
-  const { snapshot: entitlementSnapshot } = usePickupEntitlement(tenantCode);
+  const {
+    snapshot: entitlementSnapshot,
+    entitledFunctions,
+    isLoading: entitlementLoading,
+    isError: entitlementIsError,
+    refetch: retryEntitlement,
+  } = usePickupEntitlement(tenantCode);
+  const canScan = entitledFunctions.includes(PickupStaffFunction.FULFILLMENT_SCAN);
   const queuePushStrategy = entitlementSnapshot?.queueConfig.pushStrategy ?? 'poll';
   const degradedQueuePolling =
     entitlementSnapshot?.queueConfig.degradedQueuePolling ?? false;
@@ -289,5 +306,15 @@ export function useQueueScreen(gateway: IQueueGateway = queueGateway): UseQueueS
     [refreshQueue],
   );
 
-  return { accessToken, tenantCode, screenState, viewModel, actions };
+  return {
+    accessToken,
+    tenantCode,
+    canScan,
+    entitlementLoading,
+    entitlementIsError,
+    retryEntitlement,
+    screenState,
+    viewModel,
+    actions,
+  };
 }

@@ -2,7 +2,7 @@
  * Hermetic mocks for enterprise UX MVP visual/smoke specs (G-PW / G2-PW).
  * Pattern aligned with e2e/visual/pickup-hub.spec.ts + e2e/helpers/pickupResponsiveMocks.ts.
  */
-import type { Page } from '@playwright/test';
+import type { Page, Route } from '@playwright/test';
 import { expect } from '@playwright/test';
 import { mockTurnstileDisabled } from './barcodeE2eMocks.js';
 
@@ -18,10 +18,24 @@ const staffSessionClaims = {
   allowedPickupPointIds: [5],
 };
 
-const staffEntitlement = {
+export type PickupStaffEntitlementSnapshot = {
+  revision: number;
+  staffPickupScan: boolean;
+  assignBarcode: boolean;
+  orderPickupInfrastructure: boolean;
+  promotionsProgram: boolean;
+  deviceFlags: {
+    registryEnabled: boolean;
+    softClaimEnabled: boolean;
+  };
+  queueConfig: {
+    pushStrategy: 'poll';
+    devicesPerPointThreshold: number;
+  };
+};
+
+const staffEntitlementBase = {
   revision: 1,
-  staffPickupScan: true,
-  assignBarcode: true,
   orderPickupInfrastructure: true,
   promotionsProgram: false,
   deviceFlags: {
@@ -32,6 +46,35 @@ const staffEntitlement = {
     pushStrategy: 'poll' as const,
     devicesPerPointThreshold: 5,
   },
+} satisfies Omit<PickupStaffEntitlementSnapshot, 'staffPickupScan' | 'assignBarcode'>;
+
+/** Default enterprise-UX entitlement (scan + labeling). */
+const staffEntitlement: PickupStaffEntitlementSnapshot = {
+  ...staffEntitlementBase,
+  staffPickupScan: true,
+  assignBarcode: true,
+};
+
+/** G3: settled success with queue/scan access. */
+export const scanEntitled: PickupStaffEntitlementSnapshot = {
+  ...staffEntitlementBase,
+  staffPickupScan: true,
+  assignBarcode: false,
+};
+
+/** G3: settled success without scan — hub redirect, not queue chrome. */
+export const labelingOnly: PickupStaffEntitlementSnapshot = {
+  ...staffEntitlementBase,
+  staffPickupScan: false,
+  assignBarcode: true,
+};
+
+export type HeldEntitlementHandle = {
+  /**
+   * Fulfills any in-flight entitlement requests and serves this snapshot for
+   * subsequent hits. Safe to call once; later calls update the snapshot.
+   */
+  readonly release: (snapshot: PickupStaffEntitlementSnapshot) => Promise<void>;
 };
 
 function pickupSessionCookie(token: string): string {
@@ -98,7 +141,15 @@ export const MOCK_ORDER = {
   ],
 } as const;
 
-export async function installPickupEnterpriseUxAuthMocks(page: Page): Promise<void> {
+export type InstallPickupEnterpriseUxAuthMocksOptions = {
+  /** When true, skip immediate entitlement fulfill (caller registers hold / override). */
+  readonly omitEntitlement?: boolean;
+};
+
+export async function installPickupEnterpriseUxAuthMocks(
+  page: Page,
+  options: InstallPickupEnterpriseUxAuthMocksOptions = {},
+): Promise<void> {
   await mockTurnstileDisabled(page);
 
   await page.addInitScript(
@@ -114,13 +165,15 @@ export async function installPickupEnterpriseUxAuthMocks(page: Page): Promise<vo
     },
   );
 
-  await page.route(`**/api/${PICKUP_EUX_TENANT}/v1/pickup/staff/entitlement`, async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({ success: true, data: staffEntitlement }),
+  if (options.omitEntitlement !== true) {
+    await page.route(`**/api/${PICKUP_EUX_TENANT}/v1/pickup/staff/entitlement`, async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ success: true, data: staffEntitlement }),
+      });
     });
-  });
+  }
 
   await page.route(`**/api/${PICKUP_EUX_TENANT}/v1/pickup/staff/me`, async (route) => {
     await route.fulfill({
@@ -177,9 +230,7 @@ export async function installPickupEnterpriseUxAuthMocks(page: Page): Promise<vo
   });
 }
 
-export async function installPickupQueueMocks(page: Page): Promise<void> {
-  await installPickupEnterpriseUxAuthMocks(page);
-
+async function installPickupQueueDataRoutes(page: Page): Promise<void> {
   await page.route(`**/api/${PICKUP_EUX_TENANT}/v1/pickup/staff/queue**`, async (route) => {
     if (route.request().url().includes('/queue/stream')) {
       await route.fulfill({ status: 204, body: '' });
@@ -195,6 +246,61 @@ export async function installPickupQueueMocks(page: Page): Promise<void> {
     });
   });
 }
+
+export async function installPickupQueueMocks(page: Page): Promise<void> {
+  await installPickupEnterpriseUxAuthMocks(page);
+  await installPickupQueueDataRoutes(page);
+}
+
+/**
+ * Queue + auth mocks with entitlement held until `release(snapshot)`.
+ * Uses `omitEntitlement: true` so auth mocks do not register an immediate
+ * entitlement fulfill (no double-fulfill / no LIFO race).
+ *
+ * Parks Playwright `Route` objects and fulfills on release — do not `await`
+ * a gate Promise inside the handler (that stalls other page network).
+ */
+export async function installPickupQueueMocksHeldEntitlement(
+  page: Page,
+): Promise<HeldEntitlementHandle> {
+  let released: PickupStaffEntitlementSnapshot | null = null;
+  const pendingRoutes: Route[] = [];
+
+  await installPickupEnterpriseUxAuthMocks(page, { omitEntitlement: true });
+
+  const fulfillEntitlement = async (
+    route: Route,
+    snapshot: PickupStaffEntitlementSnapshot,
+  ): Promise<void> => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ success: true, data: snapshot }),
+    });
+  };
+
+  await page.route(`**/api/${PICKUP_EUX_TENANT}/v1/pickup/staff/entitlement`, (route) => {
+    if (released !== null) {
+      void fulfillEntitlement(route, released);
+      return;
+    }
+    pendingRoutes.push(route);
+  });
+
+  await installPickupQueueDataRoutes(page);
+
+  return {
+    async release(snapshot: PickupStaffEntitlementSnapshot): Promise<void> {
+      released = snapshot;
+      const queued = pendingRoutes.splice(0, pendingRoutes.length);
+      await Promise.all(queued.map((route) => fulfillEntitlement(route, snapshot)));
+    },
+  };
+}
+
+/** Alias — same as `installPickupQueueMocksHeldEntitlement`. */
+export const installPickupQueueMocksWithHeldEntitlement =
+  installPickupQueueMocksHeldEntitlement;
 
 export async function installPickupOrderMocks(page: Page): Promise<void> {
   await installPickupEnterpriseUxAuthMocks(page);

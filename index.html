@@ -9,6 +9,10 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="Pickup" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; worker-src 'self'; connect-src 'self' http://localhost:3015 http://127.0.0.1:3015 ws://localhost:3015 ws://127.0.0.1:3015 ws://localhost:3005 ws://127.0.0.1:3005 https://*.ingest.sentry.io https://*.ingest.de.sentry.io; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob:;"
+    />
     <title>rpapp-pickup</title>
   </head>
   <body>

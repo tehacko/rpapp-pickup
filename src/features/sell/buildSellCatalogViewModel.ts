@@ -21,8 +21,8 @@ export interface SellCatalogViewModel {
   readonly rows: readonly SellCatalogRowViewModel[];
 }
 
-function formatPrice(price: number, currency: string): string {
-  return new Intl.NumberFormat(undefined, {
+function formatPrice(price: number, currency: string, localeTag?: string): string {
+  return new Intl.NumberFormat(localeTag, {
     style: 'currency',
     currency,
     minimumFractionDigits: 0,
@@ -33,6 +33,7 @@ function formatPrice(price: number, currency: string): string {
 export function buildSellCatalogRowViewModel(
   item: SellCatalogItem,
   currency: string,
+  localeTag?: string,
 ): SellCatalogRowViewModel {
   const outOfStock =
     item.quantityInStock !== undefined && item.quantityInStock <= 0;
@@ -41,7 +42,7 @@ export function buildSellCatalogRowViewModel(
     productId: item.productId,
     variantId: item.variantId,
     label: item.name,
-    priceLabel: formatPrice(item.price, currency),
+    priceLabel: formatPrice(item.price, currency, localeTag),
     disabled: !item.sellable || outOfStock,
     showOutOfStock: outOfStock,
     thumbnailUrl: item.thumbnailUrl ?? item.imageUrl ?? null,
@@ -56,6 +57,7 @@ export function buildSellCatalogViewModel(input: {
   sellingEnabled: boolean;
   currency: string;
   items: readonly SellCatalogItem[];
+  localeTag?: string;
 }): SellCatalogViewModel {
   return {
     tenantCode: input.tenantCode,
@@ -63,6 +65,8 @@ export function buildSellCatalogViewModel(input: {
     loading: input.loading,
     errorMessage: input.errorMessage,
     sellingEnabled: input.sellingEnabled,
-    rows: input.items.map((item) => buildSellCatalogRowViewModel(item, input.currency)),
+    rows: input.items.map((item) =>
+      buildSellCatalogRowViewModel(item, input.currency, input.localeTag),
+    ),
   };
 }

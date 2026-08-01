@@ -12,7 +12,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useResponsiveTier } from 'pi-kiosk-shared/responsive';
 import { PickupStaffFunction } from './adapters/pickupStaffFunctions.js';
 import { fetchSellCatalogConfig } from './adapters/sellCatalogEnabled.js';
-import { PICKUP_STAFF_ALWAYS_CAN_ACCESS_QUEUE } from '../shared/entitlements/pickupQueueAccess.js';
+import { canAccessPickupStaffQueue } from '../shared/entitlements/pickupQueueAccess.js';
 import { useStaffPickupPointsQuery } from '../shared/queries/useStaffPickupPointsQuery.js';
 import { AlertBanner } from '../shared/ui/AlertBanner.js';
 import { OfflineBanner } from '../shared/ui/OfflineBanner.js';
@@ -247,13 +247,13 @@ function PickupAppShellChrome({ bottomNav }: PickupAppShellProps): JSX.Element {
 
   const sideWidth = railExpanded ? SIDE_EXPANDED_PX : SIDE_COLLAPSED_PX;
 
-  // Queue nav: SSOT PICKUP_STAFF_ALWAYS_CAN_ACCESS_QUEUE (authed staff; not scan-gated).
+  // Queue/scan nav: entitledFunctions already require infra ∧ staff_pickup_scan (G4).
   const navItems: readonly { id: string; to: string; labelKey: string }[] = [
     { id: 'hub', to: buildTenantPath(tenantCode, 'hub'), labelKey: 'nav.bottom.hub' },
     ...(canScan
       ? [{ id: 'scan', to: buildTenantPath(tenantCode, 'scan'), labelKey: 'nav.bottom.scan' }]
       : []),
-    ...(PICKUP_STAFF_ALWAYS_CAN_ACCESS_QUEUE
+    ...(canAccessPickupStaffQueue(canScan)
       ? [{ id: 'queue', to: buildTenantPath(tenantCode, 'queue'), labelKey: 'nav.bottom.queue' }]
       : []),
     ...(sellingEnabled

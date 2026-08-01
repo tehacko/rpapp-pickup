@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { PICKUP_STAFF_ALWAYS_CAN_ACCESS_QUEUE } from '../../shared/entitlements/pickupQueueAccess.js';
+import { canAccessPickupStaffQueue } from '../../shared/entitlements/pickupQueueAccess.js';
 import { ActionTile } from '../../shared/ui/ActionTile.js';
 import { Badge } from '../../shared/ui/Badge.js';
 import { EmptyState } from '../../shared/ui/EmptyState.js';
@@ -39,7 +39,7 @@ const emptyIconClass = 'h-10 w-10 stroke-[1.75]';
 export function StaffHubScreenView({ viewModel, actions }: StaffHubScreenViewProps): JSX.Element {
   const { t } = useTranslation('pickup');
   const encodedTenant = encodeURIComponent(viewModel.tenantCode);
-  const canAccessQueue = PICKUP_STAFF_ALWAYS_CAN_ACCESS_QUEUE;
+  const canAccessQueue = canAccessPickupStaffQueue(viewModel.canScan);
   const hasActions =
     canAccessQueue || viewModel.canScan || viewModel.canAssign || viewModel.canSell;
   const devicePairingPath = `/${encodedTenant}/device-pairing`;

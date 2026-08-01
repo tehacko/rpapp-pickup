@@ -24,8 +24,8 @@ export interface SellCartViewModel {
   readonly cashEnabled: boolean;
 }
 
-function formatPrice(price: number, currency: string): string {
-  return new Intl.NumberFormat(undefined, {
+function formatPrice(price: number, currency: string, localeTag?: string): string {
+  return new Intl.NumberFormat(localeTag, {
     style: 'currency',
     currency,
     minimumFractionDigits: 0,
@@ -33,13 +33,17 @@ function formatPrice(price: number, currency: string): string {
   }).format(price);
 }
 
-function buildSellCartLineViewModel(line: SellCartLine, currency: string): SellCartLineViewModel {
+function buildSellCartLineViewModel(
+  line: SellCartLine,
+  currency: string,
+  localeTag?: string,
+): SellCartLineViewModel {
   return {
     key: line.key,
     label: line.label,
     quantity: line.quantity,
-    unitPriceLabel: formatPrice(line.unitPrice, currency),
-    lineTotalLabel: formatPrice(line.lineTotal, currency),
+    unitPriceLabel: formatPrice(line.unitPrice, currency, localeTag),
+    lineTotalLabel: formatPrice(line.lineTotal, currency, localeTag),
   };
 }
 
@@ -47,15 +51,18 @@ export function buildSellCartViewModel(input: {
   lines: readonly SellCartLine[];
   currency: string;
   cashEnabled: boolean;
+  localeTag?: string;
 }): SellCartViewModel {
   const subtotalMajor = sellCartSubtotalMajor(input.lines);
   const itemCount = sellCartItemCount(input.lines);
   const isEmpty = input.lines.length === 0;
   return {
     currency: input.currency,
-    lines: input.lines.map((line) => buildSellCartLineViewModel(line, input.currency)),
+    lines: input.lines.map((line) =>
+      buildSellCartLineViewModel(line, input.currency, input.localeTag),
+    ),
     itemCount,
-    subtotalLabel: formatPrice(subtotalMajor, input.currency),
+    subtotalLabel: formatPrice(subtotalMajor, input.currency, input.localeTag),
     subtotalMinor: sellCartSubtotalMinor(input.lines),
     isEmpty,
     canCheckout: !isEmpty && input.cashEnabled,

@@ -241,6 +241,22 @@ describe('confirmOrderPickup', () => {
     await confirmOrderPickup(ctx, false);
     expect(ctx.showToast).toHaveBeenCalledWith('pickup.toast.confirmFailed', 'error');
   });
+
+  it('surfaces version conflict on confirm and refreshes order', async () => {
+    const ctx = makeCtx({
+      gateway: {
+        confirmPickup: jest.fn(async () => {
+          throw new PickupApiError(409, 'stale', { code: 'FULFILLMENT_VERSION_CONFLICT' });
+        }),
+      },
+    });
+    await confirmOrderPickup(ctx, false);
+    expect(ctx.showToast).toHaveBeenCalledWith('pickup.toast.versionConflict', 'error');
+    expect(ctx.refreshOrder).toHaveBeenCalledTimes(1);
+    expect(capturePickupConflictBreadcrumb).toHaveBeenCalledWith(
+      expect.objectContaining({ code: 'FULFILLMENT_VERSION_CONFLICT', operation: 'confirm' }),
+    );
+  });
 });
 
 describe('refuseOrderLines', () => {
@@ -297,6 +313,23 @@ describe('holdOrderMutation', () => {
     });
     await holdOrderMutation(fail);
     expect(fail.showToast).toHaveBeenCalledWith('pickup.toast.holdFailed', 'error');
+  });
+
+  it('surfaces version conflict on hold and refreshes order', async () => {
+    const ctx = makeCtx({
+      holdReason: 'waiting',
+      gateway: {
+        holdOrder: jest.fn(async () => {
+          throw new PickupApiError(409, 'stale', { code: 'FULFILLMENT_VERSION_CONFLICT' });
+        }),
+      },
+    });
+    await holdOrderMutation(ctx);
+    expect(ctx.showToast).toHaveBeenCalledWith('pickup.toast.versionConflict', 'error');
+    expect(ctx.refreshOrder).toHaveBeenCalledTimes(1);
+    expect(capturePickupConflictBreadcrumb).toHaveBeenCalledWith(
+      expect.objectContaining({ code: 'FULFILLMENT_VERSION_CONFLICT', operation: 'hold' }),
+    );
   });
 });
 

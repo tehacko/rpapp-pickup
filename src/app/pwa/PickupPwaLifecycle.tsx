@@ -8,6 +8,7 @@ import { ANALYTICS_PWA_EVENTS } from 'pi-kiosk-shared/analyticsEvents';
 import { Button } from '../../shared/ui/surfacePrimitives.js';
 import { emitPickupPwaAnalytics } from './emitPickupPwaAnalytics.js';
 import { isPickupCriticalFlowActive } from './scanActiveGate.js';
+import { PwaRefreshBlockingOverlay } from './PwaRefreshBlockingOverlay.js';
 import {
   PICKUP_PWA_RELOAD_CHANNEL,
   registerPickupPwaServiceWorker,
@@ -48,11 +49,15 @@ export function PickupPwaLifecycle(): JSX.Element | null {
   const [showIosGuide] = useState(() => readIosGuideEligible());
   const [updateReady, setUpdateReady] = useState(false);
   const [applyUpdate, setApplyUpdate] = useState<(() => void) | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [updateFailed, setUpdateFailed] = useState(false);
   const [offline, setOffline] = useState(
     () => (typeof navigator !== 'undefined' ? !navigator.onLine : false),
   );
   const forceUpdateEnabled = readPwaForceUpdateEnabled();
   const updateShownEmittedRef = useRef(false);
+  const refreshLockRef = useRef(false);
+  const criticalFlowActive = isPickupCriticalFlowActive();
 
   useEffect(() => {
     const onBeforeInstall = (event: Event): void => {
@@ -119,8 +124,48 @@ export function PickupPwaLifecycle(): JSX.Element | null {
     });
   }, [updateReady]);
 
+  const beginSafeRefresh = (options?: {
+    readonly outcome?: string;
+    readonly bypassCritical?: boolean;
+  }): void => {
+    if (refreshLockRef.current || isRefreshing) {
+      return;
+    }
+
+    const critical = isPickupCriticalFlowActive();
+    if (critical && options?.bypassCritical !== true) {
+      // Queue for idle — no blocking overlay (reload is deferred).
+      emitPickupPwaAnalytics({
+        eventName: ANALYTICS_PWA_EVENTS.PWA_UPDATE_APPLIED,
+        metadata: { outcome: 'queued_critical' },
+      });
+      applyUpdate?.();
+      return;
+    }
+
+    refreshLockRef.current = true;
+    setUpdateFailed(false);
+    setIsRefreshing(true);
+    emitPickupPwaAnalytics({
+      eventName: ANALYTICS_PWA_EVENTS.PWA_UPDATE_APPLIED,
+      metadata: options?.outcome !== undefined ? { outcome: options.outcome } : undefined,
+    });
+
+    try {
+      if (applyUpdate !== null) {
+        applyUpdate();
+        return;
+      }
+      window.location.reload();
+    } catch {
+      refreshLockRef.current = false;
+      setIsRefreshing(false);
+      setUpdateFailed(true);
+    }
+  };
+
   const handleInstall = async (): Promise<void> => {
-    if (deferredPrompt === null) {
+    if (deferredPrompt === null || isRefreshing) {
       return;
     }
     await deferredPrompt.prompt();
@@ -136,93 +181,105 @@ export function PickupPwaLifecycle(): JSX.Element | null {
   };
 
   const handleApplyUpdate = (): void => {
-    emitPickupPwaAnalytics({
-      eventName: ANALYTICS_PWA_EVENTS.PWA_UPDATE_APPLIED,
-    });
-    if (applyUpdate !== null) {
-      applyUpdate();
-    }
+    beginSafeRefresh();
   };
 
   const handleForceRefresh = (): void => {
-    emitPickupPwaAnalytics({
-      eventName: ANALYTICS_PWA_EVENTS.PWA_UPDATE_APPLIED,
-      metadata: { outcome: 'force_refresh' },
-    });
-    if (applyUpdate !== null) {
-      applyUpdate();
-      return;
-    }
-    window.location.reload();
+    beginSafeRefresh({ outcome: 'force_refresh', bypassCritical: true });
   };
 
-  if (!deferredPrompt && !showIosGuide && !updateReady && !offline && !forceUpdateEnabled) {
+  if (
+    !deferredPrompt &&
+    !showIosGuide &&
+    !updateReady &&
+    !offline &&
+    !forceUpdateEnabled &&
+    !isRefreshing
+  ) {
     return null;
   }
 
+  const applyDisabled = isRefreshing || criticalFlowActive;
+
   return (
-    <div
-      className="fixed inset-x-0 bottom-[var(--pickup-bottom-chrome,0px)] z-[var(--pickup-z-50)] mx-auto max-w-xl px-3"
-      data-testid="pickup-pwa-lifecycle"
-    >
-      {offline ? (
-        <div className="mb-2 rounded-md border border-[var(--color-border)] bg-[var(--color-surface-elevated)] p-3 shadow-sm">
-          <p className="text-sm text-[var(--color-on-surface)]">{t('pwa.offlineBanner')}</p>
-        </div>
+    <>
+      {isRefreshing ? (
+        <PwaRefreshBlockingOverlay label={t('pwa.refreshing')} />
       ) : null}
-      {deferredPrompt !== null ? (
-        <div className="mb-2 rounded-md border border-[var(--color-border)] bg-[var(--color-surface-elevated)] p-3 shadow-sm">
-          <p className="text-sm text-[var(--color-on-surface)]">{t('pwa.installPrompt')}</p>
-          <Button
-            type="button"
-            className="mt-2"
-            onClick={() => void handleInstall()}
-            data-testid="pickup-pwa-install-button"
+      <div
+        className="fixed inset-x-0 bottom-[var(--pickup-bottom-chrome,0px)] z-[var(--pickup-z-50)] mx-auto max-w-xl px-3"
+        data-testid="pickup-pwa-lifecycle"
+        aria-hidden={isRefreshing || undefined}
+      >
+        {offline ? (
+          <div className="mb-2 rounded-md border border-[var(--color-border)] bg-[var(--color-surface-elevated)] p-3 shadow-sm">
+            <p className="text-sm text-[var(--color-on-surface)]">{t('pwa.offlineBanner')}</p>
+          </div>
+        ) : null}
+        {deferredPrompt !== null ? (
+          <div className="mb-2 rounded-md border border-[var(--color-border)] bg-[var(--color-surface-elevated)] p-3 shadow-sm">
+            <p className="text-sm text-[var(--color-on-surface)]">{t('pwa.installPrompt')}</p>
+            <Button
+              type="button"
+              className="mt-2"
+              onClick={() => void handleInstall()}
+              disabled={isRefreshing}
+              data-testid="pickup-pwa-install-button"
+            >
+              {t('pwa.installAction')}
+            </Button>
+          </div>
+        ) : null}
+        {showIosGuide && deferredPrompt === null ? (
+          <div
+            className="mb-2 rounded-md border border-[var(--color-border)] bg-[var(--color-surface-elevated)] p-3 shadow-sm"
+            data-testid="pickup-pwa-ios-guide"
           >
-            {t('pwa.installAction')}
-          </Button>
-        </div>
-      ) : null}
-      {showIosGuide && deferredPrompt === null ? (
-        <div
-          className="mb-2 rounded-md border border-[var(--color-border)] bg-[var(--color-surface-elevated)] p-3 shadow-sm"
-          data-testid="pickup-pwa-ios-guide"
-        >
-          <p className="text-sm text-[var(--color-on-surface)]">{t('pwa.iosInstallGuide')}</p>
-        </div>
-      ) : null}
-      {updateReady ? (
-        <div
-          className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface-elevated)] p-3 shadow-sm"
-          data-testid="pickup-pwa-update-ready"
-        >
-          <p className="text-sm text-[var(--color-on-surface)]">
-            {isPickupCriticalFlowActive()
-              ? t('pwa.updateDeferredCritical')
-              : t('pwa.updateReady')}
-          </p>
-          <Button
-            type="button"
-            className="mt-2"
-            onClick={handleApplyUpdate}
-            data-testid="pickup-pwa-apply-update"
+            <p className="text-sm text-[var(--color-on-surface)]">{t('pwa.iosInstallGuide')}</p>
+          </div>
+        ) : null}
+        {updateReady ? (
+          <div
+            className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface-elevated)] p-3 shadow-sm"
+            data-testid="pickup-pwa-update-ready"
           >
-            {t('pwa.updateAction')}
-          </Button>
-        </div>
-      ) : null}
-      {forceUpdateEnabled ? (
-        <div className="mt-2 rounded-md border border-[var(--color-border)] bg-[var(--color-surface-elevated)] p-3 shadow-sm">
-          <Button
-            type="button"
-            className="mt-0"
-            onClick={handleForceRefresh}
-            data-testid="pwa-force-refresh"
-          >
-            {t('pwa.forceRefresh')}
-          </Button>
-        </div>
-      ) : null}
-    </div>
+            <p className="text-sm text-[var(--color-on-surface)]">
+              {criticalFlowActive
+                ? t('pwa.updateDeferredCritical')
+                : t('pwa.updateReady')}
+            </p>
+            {updateFailed ? (
+              <p className="mt-1 text-xs text-[var(--color-danger,var(--color-error))]" role="alert">
+                {t('pwa.updateFailed')}
+              </p>
+            ) : null}
+            <Button
+              type="button"
+              className="mt-2"
+              onClick={handleApplyUpdate}
+              disabled={applyDisabled}
+              aria-busy={isRefreshing || undefined}
+              data-testid="pickup-pwa-apply-update"
+            >
+              {isRefreshing ? t('pwa.refreshing') : t('pwa.updateAction')}
+            </Button>
+          </div>
+        ) : null}
+        {forceUpdateEnabled ? (
+          <div className="mt-2 rounded-md border border-[var(--color-border)] bg-[var(--color-surface-elevated)] p-3 shadow-sm">
+            <Button
+              type="button"
+              className="mt-0"
+              onClick={handleForceRefresh}
+              disabled={isRefreshing}
+              aria-busy={isRefreshing || undefined}
+              data-testid="pwa-force-refresh"
+            >
+              {isRefreshing ? t('pwa.refreshing') : t('pwa.forceRefresh')}
+            </Button>
+          </div>
+        ) : null}
+      </div>
+    </>
   );
 }

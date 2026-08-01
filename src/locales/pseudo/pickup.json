@@ -3,7 +3,9 @@
     "language": {
       "groupLabel": "[!! Interface language !!]",
       "cs": "[!! Čeština !!]",
-      "en": "[!! English !!]"
+      "en": "[!! English !!]",
+      "sk": "[!! Slovak !!]",
+      "skShort": "[!! SK !!]"
     }
   },
   "nav.bottom.hub": "[!! Hub !!]",
@@ -34,6 +36,7 @@
   "pwa.updateReady": "[!! A new version is available. Unsaved drafts may be lost. !!]",
   "pwa.updateDeferredCritical": "[!! Update will apply when you finish this flow. !!]",
   "pwa.updateAction": "[!! Refresh now !!]",
+  "pwa.refreshing": "[!! Refreshing… !!]",
   "pwa.updateFailed": "[!! Refresh failed. Try again. !!]",
   "pwa.offlineBanner": "[!! You're offline. Reconnect to continue. !!]",
   "pwa.forceRefresh": "[!! Force refresh !!]",
@@ -276,5 +279,9 @@
   "app.errorBoundary.retry": "[!! Try again !!]",
   "pickup.routeError.title": "[!! This screen failed to load !!]",
   "pickup.routeError.message": "[!! Try again, or open another section from the navigation. !!]",
-  "pickup.routeError.retry": "[!! Try again !!]"
+  "pickup.routeError.retry": "[!! Try again !!]",
+  "pickup.common.emptyTitle": "[!! Nothing here !!]",
+  "pickup.common.empty": "[!! No items to show. !!]",
+  "pickup.partial.qty": "[!! Line quantity !!]",
+  "pickup.refuse.qty": "[!! Refuse quantity !!]"
 }

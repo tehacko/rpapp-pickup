@@ -81,6 +81,7 @@ function entitlementSnapshot(degradedQueuePolling = false) {
       staffPickupScan: true,
       assignBarcode: false,
       orderPickupInfrastructure: true,
+      promotionsProgram: false,
       deviceFlags: { softClaimEnabled: false },
       queueConfig: {
         pushStrategy: 'poll' as const,
@@ -90,6 +91,7 @@ function entitlementSnapshot(degradedQueuePolling = false) {
     },
     isLoading: false,
     isError: false,
+    isTenantInactive: false,
     isLoginAllowed: true,
     entitledFunctions: ['fulfillment_scan'] as const,
     deviceFlags: { softClaimEnabled: false },
