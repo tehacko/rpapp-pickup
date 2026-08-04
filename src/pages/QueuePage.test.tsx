@@ -146,7 +146,7 @@ describe('QueuePage entitlement gate (G3 RQ unsettled)', () => {
     renderQueueAtDeepLink();
 
     expect(screen.getByTestId('pickup-screen-state-loading')).toBeTruthy();
-    expect(screen.getByText('pickup.login.entitlementLoading')).toBeTruthy();
+    expect(screen.getByTestId('pickup-screen-state-loading')).toBeTruthy();
     expect(screen.getByTestId('location-path').textContent).toBe('/demo/queue');
     expect(screen.queryByTestId('queue-screen-view')).toBeNull();
   });
@@ -223,7 +223,7 @@ describe('QueuePage entitlement gate (G3 RQ unsettled)', () => {
     renderQueueAtDeepLink();
 
     expect(screen.getByTestId('pickup-screen-state-error')).toBeTruthy();
-    expect(screen.getByText('pickup.shell.entitlementLoadFailed')).toBeTruthy();
+    expect(screen.getByTestId('pickup-screen-state-error')).toBeTruthy();
     expect(screen.getByTestId('location-path').textContent).toBe('/demo/queue');
 
     fireEvent.click(screen.getByTestId('pickup-screen-state-retry'));

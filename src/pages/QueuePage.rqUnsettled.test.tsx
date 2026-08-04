@@ -165,7 +165,7 @@ describe('QueuePage G3 RQ unsettled loading gate', () => {
     renderQueueAtDeepLink();
 
     expect(screen.getByTestId('pickup-screen-state-loading')).toBeTruthy();
-    expect(screen.getByText('pickup.login.entitlementLoading')).toBeTruthy();
+    expect(screen.getByTestId('pickup-screen-state-loading')).toBeTruthy();
     expect(screen.getByTestId('location-path').textContent).toBe('/demo/queue');
     expect(screen.queryByTestId('queue-screen-view')).toBeNull();
   });

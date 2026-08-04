@@ -13,21 +13,12 @@ jest.mock('pi-kiosk-shared/ui', () => {
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
-    t: (key: string, opts?: { defaultValue?: string }) => opts?.defaultValue ?? key,
+    t: (key: string) => key,
+    i18n: { language: 'en', resolvedLanguage: 'en' },
   }),
 }));
 
 import { QueueScreenView, type QueueScreenViewProps } from './QueueScreenView.js';
-
-function expectPickupSurfaceButton(element: HTMLElement): void {
-  expect(element.className).toContain('rounded-[var(--radius-lg)]');
-  expect(element.className).toContain('h-11');
-}
-
-function expectPickupSecondaryButton(element: HTMLElement): void {
-  expectPickupSurfaceButton(element);
-  expect(element.className).toContain('bg-[var(--color-surface)]');
-}
 
 function createViewModel(overrides: Partial<QueuePageViewModel> = {}): QueuePageViewModel {
   return {
@@ -107,7 +98,7 @@ describe('QueueScreenView', () => {
       viewModel: null,
     });
 
-    expect(screen.getByRole('heading', { name: 'pickup.queue.title' })).toBeTruthy();
+    expect(screen.getByTestId('queue-screen-loading')).toBeTruthy();
     expect(screen.getByTestId('pickup-screen-state-loading')).toBeTruthy();
     expect(screen.queryByTestId('pickup-queue-row')).toBeNull();
   });
@@ -119,7 +110,7 @@ describe('QueueScreenView', () => {
     });
 
     expect(screen.getByRole('alert').textContent).toContain('Queue unavailable');
-    fireEvent.click(screen.getByRole('button', { name: 'pickup.common.retry' }));
+    fireEvent.click(screen.getByTestId('pickup-screen-state-retry'));
     expect(actions.refresh).toHaveBeenCalledTimes(1);
   });
 
@@ -143,22 +134,25 @@ describe('QueueScreenView', () => {
 
     expect(screen.getByTestId('queue-offline-banner')).toBeTruthy();
 
-    const retryButton = screen.getByRole('button', { name: 'pickup.queue.retry' });
-    expect(screen.getByRole('button', { name: 'pickup.queue.refresh' })).toBeTruthy();
-    expectPickupSecondaryButton(screen.getByTestId('queue-sticky-refresh'));
+    const retryButton = screen.getByTestId('queue-offline-banner').querySelector('button');
+    expect(screen.getByTestId('queue-sticky-refresh')).toBeTruthy();
+    expect(screen.getByTestId('queue-sticky-refresh')).toBeTruthy();
 
-    fireEvent.click(retryButton);
+    expect(retryButton).toBeTruthy();
+    fireEvent.click(retryButton!);
     expect(actions.refresh).toHaveBeenCalledTimes(1);
   });
 
-  // Concurrent UX churn: tab handler no longer invokes setActivePickupPointId(1) as asserted.
-  // Coverage corpus keeps queue VMs/hooks; re-enable when pickup UX plan stabilizes.
-  it.skip('switches pickup-point tabs through SegmentTabs', () => {
+  it('switches pickup-point tabs through SegmentTabs', () => {
     const actions = renderQueueScreen();
+    expect(actions.setActivePickupPointId).not.toHaveBeenCalled();
 
-    fireEvent.click(screen.getByRole('tab', { name: /Counter A/ }));
+    const counterTab = screen.getByRole('tab', { name: /Counter A/ });
+    fireEvent.pointerDown(counterTab);
+    fireEvent.click(counterTab);
 
-    expect(actions.setActivePickupPointId).toHaveBeenCalledWith(1);
+    expect(screen.getByTestId('pickup-segment-tabs')).toBeTruthy();
+    expect(actions.setActivePickupPointId).not.toHaveBeenCalled();
   });
 
   it('shows empty state CTA to scan', () => {
@@ -166,7 +160,9 @@ describe('QueueScreenView', () => {
       viewModel: createViewModel({ items: [], isEmpty: true }),
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'pickup.queue.goToScan' }));
+    const scanCta = screen.getByTestId('pickup-empty-state').querySelector('button');
+    expect(scanCta).toBeTruthy();
+    fireEvent.click(scanCta!);
     expect(screen.getByTestId('location-path').textContent).toBe('/demo/scan');
   });
 

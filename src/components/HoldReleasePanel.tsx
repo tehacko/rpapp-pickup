@@ -32,7 +32,13 @@ export function HoldReleasePanel({
         disabled={isOnHold}
       />
       <div className="mt-3">
-        <Button type="button" intent="secondary" onClick={onRelease} disabled={!isOnHold}>
+        <Button
+          type="button"
+          intent="secondary"
+          onClick={onRelease}
+          disabled={!isOnHold}
+          data-testid="pickup-hold-release"
+        >
           {t('pickup.hold.release')}
         </Button>
       </div>
@@ -54,7 +60,13 @@ export function HoldReleasePanel({
       elevated
       data-testid="pickup-hold-release-panel"
       footer={
-        <Button type="button" intent="secondary" onClick={onRelease} disabled={!isOnHold}>
+        <Button
+          type="button"
+          intent="secondary"
+          onClick={onRelease}
+          disabled={!isOnHold}
+          data-testid="pickup-hold-release"
+        >
           {t('pickup.hold.release')}
         </Button>
       }
