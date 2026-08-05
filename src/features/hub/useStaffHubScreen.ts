@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { PickupStaffFunction } from '../../shared/entitlements/pickupStaffFunctions.js';
+import { PickupStaffFunction, PICKUP_SELL_CAPABILITY } from '../../shared/entitlements/pickupStaffFunctions.js';
 import { getPairedDevice } from '../../lib/deviceStorage.js';
 import { usePickupEntitlement } from '../../hooks/usePickupEntitlement.js';
 import { useStaffToken, useTenantCode } from '../../hooks/useStaffToken.js';
@@ -48,10 +48,13 @@ export function useStaffHubScreen(): UseStaffHubScreenResult {
     activePickupPointId,
     setActivePickupPointId,
     allowedPickupPointIds,
+    sessionClaims,
   } = usePickupStaffSession();
   const { entitledFunctions, deviceFlags } = usePickupEntitlement(tenantCode);
   const pairedDevice = getPairedDevice(tenantCode);
   const shouldLoadPickupPoints = isRoamingStaff && accessToken !== null;
+  const canProbeSell =
+    sessionClaims?.capabilities.includes(PICKUP_SELL_CAPABILITY) === true;
 
   const pickupPointsQuery = useStaffPickupPointsQuery({
     enabled: shouldLoadPickupPoints,
@@ -65,7 +68,7 @@ export function useStaffHubScreen(): UseStaffHubScreenResult {
       }
       return sellCatalogGateway.fetchConfig(tenantCode, accessToken);
     },
-    enabled: accessToken !== null,
+    enabled: accessToken !== null && canProbeSell,
     staleTime: 60_000,
     retry: 0,
   });
@@ -87,6 +90,7 @@ export function useStaffHubScreen(): UseStaffHubScreenResult {
         canScan: entitledFunctions.includes(PickupStaffFunction.FULFILLMENT_SCAN),
         canAssign: entitledFunctions.includes(PickupStaffFunction.BARCODE_ASSIGN),
         canSell,
+        canResupply: entitledFunctions.includes(PickupStaffFunction.STOCK_RESUPPLY),
         showDeviceRegistry: deviceFlags.registryEnabled,
         pairedDeviceLabel: pairedDevice?.deviceLabel ?? null,
         showPickupPointSwitcher: isRoamingStaff,

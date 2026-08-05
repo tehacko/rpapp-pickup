@@ -139,7 +139,7 @@ describe('QueueScreenView', () => {
     expect(screen.getByTestId('queue-sticky-refresh')).toBeTruthy();
 
     expect(retryButton).toBeTruthy();
-    fireEvent.click(retryButton!);
+    fireEvent.click(retryButton as HTMLButtonElement);
     expect(actions.refresh).toHaveBeenCalledTimes(1);
   });
 
@@ -162,7 +162,7 @@ describe('QueueScreenView', () => {
 
     const scanCta = screen.getByTestId('pickup-empty-state').querySelector('button');
     expect(scanCta).toBeTruthy();
-    fireEvent.click(scanCta!);
+    fireEvent.click(scanCta as HTMLButtonElement);
     expect(screen.getByTestId('location-path').textContent).toBe('/demo/scan');
   });
 

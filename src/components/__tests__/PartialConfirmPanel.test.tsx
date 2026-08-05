@@ -42,10 +42,14 @@ describe('PartialConfirmPanel', () => {
       />,
     );
 
-    fireEvent.click(screen.getByTestId('pickup-partial-line-7').querySelector('input')!);
+    fireEvent.click(
+      screen.getByTestId('pickup-partial-line-7').querySelector('input') as HTMLInputElement,
+    );
     expect(onToggleLine).toHaveBeenCalledWith(7, true);
 
-    fireEvent.click(screen.getByTestId('pickup-partial-line-9').querySelector('input')!);
+    fireEvent.click(
+      screen.getByTestId('pickup-partial-line-9').querySelector('input') as HTMLInputElement,
+    );
     expect(onToggleLine).toHaveBeenCalledWith(9, true);
   });
 

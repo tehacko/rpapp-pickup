@@ -15,11 +15,43 @@ jest.mock('../api/pickupApi.js', () => {
   };
 });
 
+jest.mock('../shared/session/PickupStaffSessionProvider.js', () => ({
+  usePickupStaffSession: jest.fn(() => ({
+    sessionClaims: null,
+    accessToken: null,
+    tenantCode: null,
+    sessionHydrated: true,
+    allowedPickupPointIds: [],
+    isRoamingStaff: false,
+    activePickupPointId: null,
+    establishSession: jest.fn(),
+    setActivePickupPointId: jest.fn(),
+    signOut: jest.fn(),
+  })),
+}));
+
 import { usePickupEntitlement } from './usePickupEntitlement.js';
+import { usePickupStaffSession } from '../shared/session/PickupStaffSessionProvider.js';
+
+const mockUsePickupStaffSession = usePickupStaffSession as jest.MockedFunction<
+  typeof usePickupStaffSession
+>;
 
 describe('usePickupEntitlement', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockUsePickupStaffSession.mockReturnValue({
+      sessionClaims: null,
+      accessToken: null,
+      tenantCode: null,
+      sessionHydrated: true,
+      allowedPickupPointIds: [],
+      isRoamingStaff: false,
+      activePickupPointId: null,
+      establishSession: jest.fn(),
+      setActivePickupPointId: jest.fn(),
+      signOut: jest.fn(),
+    } as ReturnType<typeof usePickupStaffSession>);
   });
 
   it('allows login when assignBarcode is true even if staffPickupScan is false', () => {
@@ -204,5 +236,47 @@ describe('usePickupEntitlement', () => {
 
     expect(result.current.snapshot).toBeNull();
     expect(result.current.isLoading).toBe(true);
+  });
+
+  it('grants STOCK_RESUPPLY when pickupResupplyEnabled and session has resupply', () => {
+    mockUsePickupStaffSession.mockReturnValue({
+      sessionClaims: {
+        tenantId: 1,
+        salesPointId: 10,
+        role: 'pickup_staff',
+        capabilities: ['resupply'],
+        allowedPickupPointIds: [],
+      },
+      accessToken: 'cookie',
+      tenantCode: 'demo-tenant',
+      sessionHydrated: true,
+      allowedPickupPointIds: [],
+      isRoamingStaff: false,
+      activePickupPointId: 10,
+      establishSession: jest.fn(),
+      setActivePickupPointId: jest.fn(),
+      signOut: jest.fn(),
+    } as ReturnType<typeof usePickupStaffSession>);
+
+    mockUseQuery.mockReturnValue({
+      data: {
+        revision: 1,
+        staffPickupScan: false,
+        assignBarcode: false,
+        orderPickupInfrastructure: false,
+        pickupResupplyEnabled: true,
+      },
+      isSuccess: true,
+      isPending: false,
+      isLoading: false,
+      isError: false,
+      refetch: jest.fn(),
+    });
+
+    const { result } = renderHook(() => usePickupEntitlement('demo-tenant'));
+
+    expect(result.current.isLoginAllowed).toBe(true);
+    expect(result.current.entitledFunctions).toContain('stock_resupply');
+    expect(result.current.denialReason).toBeNull();
   });
 });

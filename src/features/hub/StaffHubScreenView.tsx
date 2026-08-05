@@ -1,7 +1,9 @@
 import {
   Barcode,
+  ClipboardCheck,
   ListOrdered,
   Lock,
+  PackagePlus,
   ScanLine,
   ShoppingCart,
   Tablet,
@@ -41,7 +43,11 @@ export function StaffHubScreenView({ viewModel, actions }: StaffHubScreenViewPro
   const encodedTenant = encodeURIComponent(viewModel.tenantCode);
   const canAccessQueue = canAccessPickupStaffQueue(viewModel.canScan);
   const hasActions =
-    canAccessQueue || viewModel.canScan || viewModel.canAssign || viewModel.canSell;
+    canAccessQueue ||
+    viewModel.canScan ||
+    viewModel.canAssign ||
+    viewModel.canSell ||
+    viewModel.canResupply;
   const devicePairingPath = `/${encodedTenant}/device-pairing`;
 
   return (
@@ -156,6 +162,22 @@ export function StaffHubScreenView({ viewModel, actions }: StaffHubScreenViewPro
                 icon={ShoppingCart}
                 label={t('pickup.hub.staffSell')}
                 testId="hub-action-sell"
+              />
+            ) : null}
+            {viewModel.canResupply ? (
+              <ActionTile
+                to={`/${encodedTenant}/restock`}
+                icon={PackagePlus}
+                label={t('pickup.hub.prepareRestock')}
+                testId="hub-action-restock"
+              />
+            ) : null}
+            {viewModel.canResupply ? (
+              <ActionTile
+                to={`/${encodedTenant}/checkup`}
+                icon={ClipboardCheck}
+                label={t('pickup.hub.stockCheckup')}
+                testId="hub-action-checkup"
               />
             ) : null}
             {canAccessQueue ? (

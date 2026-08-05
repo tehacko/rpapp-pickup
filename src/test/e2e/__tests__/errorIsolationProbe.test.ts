@@ -14,6 +14,8 @@ describe('errorIsolationProbe', () => {
       expect(isErrorIsolationProbeFeature('order')).toBe(true);
       expect(isErrorIsolationProbeFeature('barcode')).toBe(true);
       expect(isErrorIsolationProbeFeature('barcode-detail')).toBe(true);
+      expect(isErrorIsolationProbeFeature('restock')).toBe(true);
+      expect(isErrorIsolationProbeFeature('checkup')).toBe(true);
     });
 
     it('rejects unknown strings', () => {

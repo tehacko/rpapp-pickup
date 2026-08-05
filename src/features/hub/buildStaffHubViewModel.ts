@@ -8,6 +8,7 @@ export interface StaffHubViewModel {
   readonly canScan: boolean;
   readonly canAssign: boolean;
   readonly canSell: boolean;
+  readonly canResupply: boolean;
   readonly showDeviceRegistry: boolean;
   readonly pairedDeviceLabel: string | null;
   readonly showPickupPointSwitcher: boolean;
@@ -22,6 +23,7 @@ export function buildStaffHubViewModel(input: {
   canScan: boolean;
   canAssign: boolean;
   canSell: boolean;
+  canResupply: boolean;
   showDeviceRegistry: boolean;
   pairedDeviceLabel: string | null;
   showPickupPointSwitcher: boolean;
@@ -35,6 +37,7 @@ export function buildStaffHubViewModel(input: {
     canScan: input.canScan,
     canAssign: input.canAssign,
     canSell: input.canSell,
+    canResupply: input.canResupply,
     showDeviceRegistry: input.showDeviceRegistry,
     pairedDeviceLabel: input.pairedDeviceLabel,
     showPickupPointSwitcher: input.showPickupPointSwitcher,

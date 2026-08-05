@@ -15,6 +15,21 @@ jest.mock('../api/pickupApi.js', () => {
   };
 });
 
+jest.mock('../shared/session/PickupStaffSessionProvider.js', () => ({
+  usePickupStaffSession: jest.fn(() => ({
+    sessionClaims: null,
+    accessToken: null,
+    tenantCode: null,
+    sessionHydrated: true,
+    allowedPickupPointIds: [],
+    isRoamingStaff: false,
+    activePickupPointId: null,
+    establishSession: jest.fn(),
+    setActivePickupPointId: jest.fn(),
+    signOut: jest.fn(),
+  })),
+}));
+
 import { usePickupEntitlement } from './usePickupEntitlement.js';
 
 describe('usePickupEntitlement device flags', () => {

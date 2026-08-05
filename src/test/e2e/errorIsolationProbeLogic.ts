@@ -10,6 +10,8 @@ export const ERROR_ISOLATION_PROBE_FEATURES = [
   'order',
   'barcode',
   'barcode-detail',
+  'restock',
+  'checkup',
 ] as const;
 
 export type ErrorIsolationProbeFeature =

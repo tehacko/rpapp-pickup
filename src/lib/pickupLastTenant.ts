@@ -1,4 +1,4 @@
-/** SSOT key for RootPage last-tenant cold start (plan P0-PICKUP-SHORTCUTS). */
+/** SSOT key remembered when an org is chosen on `/` (landing → login). */
 export const PICKUP_LAST_TENANT_CODE_KEY = 'pickup_last_tenant_code' as const;
 
 export function rememberPickupLastTenant(tenantCode: string): void {

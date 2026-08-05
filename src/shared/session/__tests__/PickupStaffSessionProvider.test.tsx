@@ -8,6 +8,7 @@ import type { PickupStaffAuthCrossTabMessage } from 'pi-kiosk-shared/crossTab';
 
 const mockFetchPickupStaffMe = jest.fn();
 const mockLogoutPickupStaff = jest.fn();
+const mockFetchPickupStaffEntitlement = jest.fn();
 
 jest.mock('../../../lib/auth.js', () => ({
   PICKUP_COOKIE_SESSION: '__pickup_cookie_session__',
@@ -17,6 +18,7 @@ jest.mock('../../../lib/auth.js', () => ({
 jest.mock('../../../api/pickupApi.js', () => ({
   fetchPickupStaffMe: (...args: unknown[]) => mockFetchPickupStaffMe(...args),
   logoutPickupStaff: (...args: unknown[]) => mockLogoutPickupStaff(...args),
+  fetchPickupStaffEntitlement: (...args: unknown[]) => mockFetchPickupStaffEntitlement(...args),
 }));
 
 let crossTabListener: ((message: PickupStaffAuthCrossTabMessage) => void) | null = null;
@@ -98,6 +100,8 @@ function TestShell({ initialPath = '/demo/login' }: { initialPath?: string }): J
         <Routes>
           <Route path="/:tenantCode/login" element={<><TokenReader /><LocationReader /><SessionActions /></>} />
           <Route path="/:tenantCode/hub" element={<><TokenReader /><LocationReader /><SessionActions /><ActivePointReader /></>} />
+          <Route path="/:tenantCode/scan" element={<><TokenReader /><LocationReader /><SessionActions /></>} />
+          <Route path="/:tenantCode/restock" element={<><TokenReader /><LocationReader /><SessionActions /></>} />
         </Routes>
       </PickupStaffSessionProvider>
     </MemoryRouter>
@@ -111,6 +115,15 @@ describe('PickupStaffSessionProvider', () => {
     crossTabListener = null;
     mockFetchPickupStaffMe.mockResolvedValue(null);
     mockLogoutPickupStaff.mockResolvedValue(undefined);
+    mockFetchPickupStaffEntitlement.mockResolvedValue({
+      revision: 1,
+      staffPickupScan: true,
+      assignBarcode: false,
+      orderPickupInfrastructure: true,
+      pickupResupplyEnabled: false,
+      deviceFlags: { registryEnabled: false },
+      queueConfig: { pushStrategy: 'poll', devicesPerPointThreshold: 5 },
+    });
   });
 
   it('hydrates cookie session from GET /pickup/staff/me on mount', async () => {

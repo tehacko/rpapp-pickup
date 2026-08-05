@@ -26,13 +26,26 @@ export class PickupApiError extends Error {
   public readonly status: number;
   public readonly retryAfterMs: number | undefined;
   public readonly code: string | undefined;
+  public readonly recoverable: boolean | undefined;
+  public readonly nextAction: string | undefined;
 
-  public constructor(status: number, message: string, options?: { retryAfterMs?: number; code?: string }) {
+  public constructor(
+    status: number,
+    message: string,
+    options?: {
+      retryAfterMs?: number;
+      code?: string;
+      recoverable?: boolean;
+      nextAction?: string;
+    },
+  ) {
     super(message);
     this.name = 'PickupApiError';
     this.status = status;
     this.retryAfterMs = options?.retryAfterMs;
     this.code = options?.code;
+    this.recoverable = options?.recoverable;
+    this.nextAction = options?.nextAction;
   }
 }
 
@@ -54,11 +67,39 @@ function generateIdempotencyKey(): string {
   return `idem-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
 }
 
-async function parseErrorBody(res: Response): Promise<{ message: string; code?: string }> {
+async function parseErrorBody(
+  res: Response,
+): Promise<{ message: string; code?: string; recoverable?: boolean; nextAction?: string }> {
   try {
-    const json = (await res.json()) as { error?: string; code?: string; message?: string };
-    const message = json.error ?? json.message ?? res.statusText;
-    return { message, code: json.code };
+    const json = (await res.json()) as {
+      error?: string | { code?: string; message?: string; recoverable?: boolean; nextAction?: string };
+      code?: string;
+      message?: string;
+      recoverable?: boolean;
+      nextAction?: string;
+    };
+    const nested =
+      typeof json.error === 'object' && json.error !== null ? json.error : null;
+    const message =
+      (nested !== null && typeof nested.message === 'string' ? nested.message : undefined) ??
+      (typeof json.error === 'string' ? json.error : undefined) ??
+      json.message ??
+      res.statusText;
+    const code =
+      (nested !== null && typeof nested.code === 'string' ? nested.code : undefined) ?? json.code;
+    const recoverable =
+      (nested !== null && typeof nested.recoverable === 'boolean'
+        ? nested.recoverable
+        : undefined) ?? (typeof json.recoverable === 'boolean' ? json.recoverable : undefined);
+    const nextAction =
+      (nested !== null && typeof nested.nextAction === 'string' ? nested.nextAction : undefined) ??
+      (typeof json.nextAction === 'string' ? json.nextAction : undefined);
+    return {
+      message,
+      ...(code !== undefined ? { code } : {}),
+      ...(recoverable !== undefined ? { recoverable } : {}),
+      ...(nextAction !== undefined ? { nextAction } : {}),
+    };
   } catch {
     return { message: res.statusText };
   }
@@ -94,8 +135,12 @@ async function handleMutationFailure(res: Response, path: string, method: string
   if (res.status === 429) {
     throw new PickupApiError(429, 'Rate limited', { retryAfterMs: getRetryAfterMs({ response: res }) });
   }
-  const { message, code } = await parseErrorBody(res);
-  throw new PickupApiError(res.status, message, { code: fallbackErrorCode(res.status, code) });
+  const { message, code, recoverable, nextAction } = await parseErrorBody(res);
+  throw new PickupApiError(res.status, message, {
+    code: fallbackErrorCode(res.status, code),
+    ...(recoverable !== undefined ? { recoverable } : {}),
+    ...(nextAction !== undefined ? { nextAction } : {}),
+  });
 }
 
 function pickupFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
@@ -172,6 +217,12 @@ export interface PickupStaffEntitlementSnapshot {
   readonly assignBarcode: boolean;
   readonly orderPickupInfrastructure: boolean;
   readonly promotionsProgram: boolean;
+  /**
+   * Tenant flag for field restock/checkup. Combined with session capability
+   * `resupply` in `usePickupEntitlement` to grant `stock_resupply`.
+   * Exposed on GET /pickup/staff/entitlement (`surfaceEntitlementSnapshot`).
+   */
+  readonly pickupResupplyEnabled?: boolean;
   readonly deviceFlags: PickupStaffDeviceFlags;
   readonly queueConfig: {
     readonly pushStrategy: 'poll' | 'sse';

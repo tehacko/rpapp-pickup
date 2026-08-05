@@ -1,7 +1,7 @@
 import { FormEvent, useEffect, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { LogIn } from 'lucide-react';
+import { ArrowLeft, LogIn } from 'lucide-react';
 import {
   formatRateLimitMessage,
   getRetryAfterMs,
@@ -16,7 +16,10 @@ import { SailorMark } from '../shared/ui/SailorMark.js';
 import { SectionCard } from '../shared/ui/SectionCard.js';
 import { fetchSalesPointById, loginPickupStaff, PickupApiError } from '../api/pickupApi';
 import { resolvePostLoginPath } from '../shared/entitlements/pickupStaffFunctions.js';
-import { usePickupEntitlement } from '../hooks/usePickupEntitlement';
+import {
+  buildEntitledFunctions,
+  usePickupEntitlement,
+} from '../hooks/usePickupEntitlement';
 import { isDevicePaired, setPairedDevice } from '../lib/deviceStorage.js';
 import { rememberPickupLastTenant } from '../lib/pickupLastTenant.js';
 import {
@@ -35,8 +38,12 @@ export function LoginPage(): JSX.Element {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { t } = useTranslation();
-  const { denialReason, isLoading: entitlementLoading, entitledFunctions, isTenantInactive } =
-    usePickupEntitlement(tenantCode);
+  const {
+    denialReason,
+    isLoading: entitlementLoading,
+    snapshot: entitlementSnapshot,
+    isTenantInactive,
+  } = usePickupEntitlement(tenantCode);
   const submitCooldown = useSubmitCooldown();
   const kioskHintDefault = searchParams.get('kioskHint')?.trim() ?? '';
   const [salesPointId, setSalesPointId] = useState(kioskHintDefault);
@@ -124,7 +131,7 @@ export function LoginPage(): JSX.Element {
         return;
       }
       turnstile.resetTurnstile();
-      await establishSession(tenantCode);
+      const claims = await establishSession(tenantCode);
       rememberPickupLastTenant(tenantCode);
       const trimmedDeviceCode = deviceCode.trim().toUpperCase();
       if (showDeviceCodeField && trimmedDeviceCode.length > 0) {
@@ -133,7 +140,12 @@ export function LoginPage(): JSX.Element {
           deviceLabel: trimmedDeviceCode,
         });
       }
-      navigate(resolvePostLoginPath(tenantCode, entitledFunctions));
+      // Rebuild with post-login capabilities so stock_resupply is visible to Part 5 pathing.
+      const postLoginFunctions =
+        entitlementSnapshot !== null
+          ? buildEntitledFunctions(entitlementSnapshot, claims.capabilities)
+          : [];
+      navigate(resolvePostLoginPath(tenantCode, postLoginFunctions));
     } catch (err) {
       turnstile.resetTurnstile();
       loginLog.error('Pickup login failed', err);
@@ -175,6 +187,14 @@ export function LoginPage(): JSX.Element {
             />
             {t('pickup.login.title')}
           </h1>
+          <Link
+            to="/"
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-[var(--color-on-surface-muted)] underline-offset-2 hover:text-[var(--color-on-surface)] hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus-ring)]"
+            data-testid="pickup-login-back-to-organizations"
+          >
+            <ArrowLeft className="h-4 w-4 shrink-0 stroke-[1.75]" aria-hidden />
+            {t('pickup.login.backToOrganizations')}
+          </Link>
         </div>
 
         {isTenantInactive ? (

@@ -11,7 +11,9 @@ import {
 import { useLocation, useNavigate } from 'react-router-dom';
 import type { PickupStaffAuthCrossTabMessage } from 'pi-kiosk-shared/crossTab';
 import type { PickupStaffSessionClaims } from '../../api/pickupApi.js';
-import { logoutPickupStaff } from '../../api/pickupApi.js';
+import { fetchPickupStaffEntitlement, logoutPickupStaff } from '../../api/pickupApi.js';
+import { buildEntitledFunctions } from '../../hooks/usePickupEntitlement.js';
+import { resolvePostLoginPath } from '../entitlements/pickupStaffFunctions.js';
 import {
   clearActivePickupPointId,
   writeActivePickupPointId,
@@ -40,7 +42,9 @@ interface PickupStaffSessionContextValue {
   readonly allowedPickupPointIds: readonly number[];
   readonly isRoamingStaff: boolean;
   readonly activePickupPointId: number | null;
-  readonly establishSession: (tenantCode: string) => Promise<void>;
+  readonly establishSession: (
+    tenantCode: string,
+  ) => Promise<PickupStaffSessionClaims>;
   readonly setActivePickupPointId: (pickupPointId: number) => void;
   readonly signOut: (tenantCode: string) => Promise<void>;
 }
@@ -156,13 +160,19 @@ export function PickupStaffSessionProvider({
   );
 
   const establishSession = useCallback(
-    async (code: string): Promise<void> => {
+    async (code: string): Promise<PickupStaffSessionClaims> => {
       clearLegacyStoredToken(code);
       try {
         const claims = await refreshPickupStaffSession(code);
+        if (claims === null) {
+          clearSessionForTenant(code);
+          setSessionHydrated(true);
+          throw new Error('Pickup staff session missing after login');
+        }
         applySessionClaims(claims, code);
         setSessionHydrated(true);
         publishPickupStaffAuth({ type: 'login', tenantCode: code });
+        return claims;
       } catch (err) {
         // refreshPickupStaffSession already logged; surface to login UI via throw.
         clearSessionForTenant(code);
@@ -246,16 +256,24 @@ export function PickupStaffSessionProvider({
         return;
       }
       if (message.type === 'login' || message.type === 'session-refreshed') {
-        void runHydrate(tenantCode).then(() => {
+        void runHydrate(tenantCode).then(async () => {
           if (message.type === 'login' && pathnameRef.current.endsWith('/login')) {
             if (sessionClaimsRef.current !== null) {
-              const caps = sessionClaimsRef.current.capabilities;
-              // Navigate to scan if staff has scan capability — scan is the
-              // primary pickup workflow. Hub is reachable via nav if needed.
-              const dest = caps.includes('scan')
-                ? `/${encodeURIComponent(tenantCode)}/scan`
-                : `/${encodeURIComponent(tenantCode)}/hub`;
-              navigate(dest, { replace: true });
+              try {
+                const snapshot = await fetchPickupStaffEntitlement(tenantCode);
+                const entitled = buildEntitledFunctions(
+                  snapshot,
+                  sessionClaimsRef.current.capabilities,
+                );
+                navigate(resolvePostLoginPath(tenantCode, entitled), { replace: true });
+              } catch (err) {
+                staffLog.warn(
+                  'Post-login entitlement resolve failed; falling back to hub',
+                  err,
+                  { operation: 'resolvePostLoginPath' },
+                );
+                navigate(`/${encodeURIComponent(tenantCode)}/hub`, { replace: true });
+              }
             }
           }
         });

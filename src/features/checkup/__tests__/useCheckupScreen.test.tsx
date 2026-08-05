@@ -1,0 +1,353 @@
+/**
+ * @jest-environment jsdom
+ */
+import { describe, expect, it, jest, beforeEach } from '@jest/globals';
+import { act, renderHook, waitFor } from '@testing-library/react';
+import { useCheckupScreen } from '../useCheckupScreen.js';
+import type { ICheckupGateway } from '../ICheckupGateway.js';
+import { InventoryConflictError } from '../../../shared/inventory/inventoryApiError.js';
+import { PickupStaffFunction } from '../../../shared/entitlements/pickupStaffFunctions.js';
+
+jest.mock('../../../hooks/useStaffToken.js', () => ({
+  useTenantCode: (): string => 'demo',
+  useStaffToken: (): string => 'staff-token',
+}));
+
+jest.mock('../../../hooks/usePickupEntitlement.js', () => ({
+  usePickupEntitlement: jest.fn(() => ({
+    entitledFunctions: [PickupStaffFunction.STOCK_RESUPPLY],
+  })),
+}));
+
+jest.mock('../../../shared/session/PickupStaffSessionProvider.js', () => ({
+  usePickupStaffSession: jest.fn(() => ({
+    sessionClaims: {
+      salesPointId: 7,
+      capabilities: ['resupply', 'ops:inventory:checkup.hold_floor_override'],
+    },
+  })),
+}));
+
+jest.mock('../../../shared/inventory/inventoryDraftStore.js', () => ({
+  isPickupOnline: (): boolean => true,
+  readInventoryDraft: jest.fn(() => ({
+    payload: {
+      clientDraftKey: 'draft-1',
+      serverCheckupId: 'checkup-1',
+      scopeMode: 'ACTIVE_STOCK',
+      status: 'IN_PROGRESS',
+      lines: [
+        {
+          lineId: 'line-1',
+          productId: 11,
+          variantId: null,
+          productLabel: 'Tea',
+          expectedQuantity: 5,
+          expectedStockOnHold: 0,
+          countedQuantity: 5,
+          shrinkageReason: null,
+          included: true,
+        },
+      ],
+    },
+  })),
+  writeInventoryDraft: jest.fn(),
+  clearInventoryDraft: jest.fn(),
+}));
+
+jest.mock('../../../shared/ui/confirm/confirmApi.js', () => ({
+  confirmApi: jest.fn(async () => true),
+}));
+
+jest.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (key: string) => key,
+  }),
+}));
+
+function createGatewayMock(): jest.Mocked<ICheckupGateway> {
+  return {
+    listOpen: jest.fn().mockResolvedValue([]),
+    startFresh: jest.fn(),
+    patchLine: jest.fn(),
+    applyCheckup: jest.fn(),
+    refreshSnapshot: jest.fn(),
+    cancelCheckup: jest.fn(),
+  };
+}
+
+describe('useCheckupScreen', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    const sessionMock = jest.requireMock(
+      '../../../shared/session/PickupStaffSessionProvider.js',
+    ) as {
+      usePickupStaffSession: jest.Mock;
+    };
+    sessionMock.usePickupStaffSession.mockReturnValue({
+      sessionClaims: {
+        salesPointId: 7,
+        capabilities: ['resupply', 'ops:inventory:checkup.hold_floor_override'],
+      },
+    });
+    const inventoryDraftStore = jest.requireMock('../../../shared/inventory/inventoryDraftStore.js') as {
+      readInventoryDraft: jest.Mock;
+    };
+    inventoryDraftStore.readInventoryDraft.mockReturnValue({
+      payload: {
+        clientDraftKey: 'draft-1',
+        serverCheckupId: 'checkup-1',
+        scopeMode: 'ACTIVE_STOCK',
+        status: 'IN_PROGRESS',
+        lines: [
+          {
+            lineId: 'line-1',
+            productId: 11,
+            variantId: null,
+            productLabel: 'Tea',
+            expectedQuantity: 5,
+            expectedStockOnHold: 0,
+            countedQuantity: 5,
+            shrinkageReason: null,
+            included: true,
+          },
+        ],
+      },
+    });
+  });
+
+  it('retries stock-moved conflict with override payload on apply replay', async () => {
+    const gateway = createGatewayMock();
+    gateway.listOpen.mockResolvedValue([]);
+    gateway.applyCheckup
+      .mockRejectedValueOnce(
+        new InventoryConflictError('stock moved', {
+          status: 409,
+          code: 'CHECKUP_MOVED_CONFLICT',
+          staleLines: [],
+        }),
+      )
+      .mockResolvedValueOnce({
+        applied: true,
+        incidentOpened: false,
+        checkup: {
+          id: 'checkup-1',
+          clientDraftKey: 'draft-1',
+          status: 'APPLIED',
+          scopeMode: 'ACTIVE_STOCK',
+          lines: [],
+        },
+      });
+
+    const { result } = renderHook(() => useCheckupScreen(gateway));
+
+    await act(async () => {
+      result.current.actions.attemptApply();
+    });
+
+    await waitFor(() => {
+      expect(result.current.viewModel.conflict?.kind).toBe('STOCK_MOVED');
+      expect(result.current.viewModel.overrideVisible).toBe(true);
+    });
+
+    act(() => {
+      result.current.actions.setOverrideReason('manager approved recount delta');
+    });
+
+    await act(async () => {
+      result.current.actions.retryApplyWithOverride();
+    });
+
+    await waitFor(() => {
+      expect(gateway.applyCheckup).toHaveBeenCalledTimes(2);
+    });
+    expect(gateway.applyCheckup).toHaveBeenNthCalledWith(
+      2,
+      'demo',
+      'staff-token',
+      'checkup-1',
+      expect.any(String),
+      {
+        overrideMovedLines: true,
+        overrideReason: 'manager approved recount delta',
+      },
+    );
+  });
+
+  it('allows override replay for BELOW_HOLD conflict with required reason', async () => {
+    const gateway = createGatewayMock();
+    gateway.listOpen.mockResolvedValue([]);
+    gateway.applyCheckup
+      .mockRejectedValueOnce(
+        new InventoryConflictError('below hold', {
+          status: 409,
+          code: 'CHECKUP_BELOW_HOLD_CONFLICT',
+          holdFloorLines: [{ lineId: 'line-1', countedQuantity: 1, stockOnHold: 2 }],
+        }),
+      )
+      .mockResolvedValueOnce({
+        applied: true,
+        incidentOpened: true,
+        checkup: {
+          id: 'checkup-1',
+          clientDraftKey: 'draft-1',
+          status: 'APPLIED',
+          scopeMode: 'ACTIVE_STOCK',
+          lines: [],
+        },
+      });
+
+    const { result } = renderHook(() => useCheckupScreen(gateway));
+    await act(async () => {
+      result.current.actions.attemptApply();
+    });
+    await waitFor(() => {
+      expect(result.current.viewModel.conflict?.kind).toBe('BELOW_HOLD');
+      expect(result.current.viewModel.overrideVisible).toBe(true);
+    });
+
+    act(() => {
+      result.current.actions.setOverrideReason('manager accepted hold-floor exception');
+    });
+    await act(async () => {
+      result.current.actions.retryApplyWithOverride();
+    });
+
+    await waitFor(() => {
+      expect(gateway.applyCheckup).toHaveBeenCalledTimes(2);
+    });
+    expect(gateway.applyCheckup).toHaveBeenNthCalledWith(
+      2,
+      'demo',
+      'staff-token',
+      'checkup-1',
+      expect.any(String),
+      {
+        overrideMovedLines: true,
+        overrideReason: 'manager accepted hold-floor exception',
+      },
+    );
+  });
+
+  it('blocks override submit when reason is empty', async () => {
+    const gateway = createGatewayMock();
+    gateway.listOpen.mockResolvedValue([]);
+    gateway.applyCheckup.mockRejectedValue(
+      new InventoryConflictError('stock moved', {
+        status: 409,
+        code: 'CHECKUP_STOCK_MOVED',
+        staleLines: [],
+      }),
+    );
+
+    const { result } = renderHook(() => useCheckupScreen(gateway));
+
+    await act(async () => {
+      result.current.actions.attemptApply();
+    });
+
+    await waitFor(() => {
+      expect(result.current.viewModel.conflict?.kind).toBe('STOCK_MOVED');
+    });
+
+    act(() => {
+      result.current.actions.setOverrideReason('   ');
+      result.current.actions.retryApplyWithOverride();
+    });
+
+    await waitFor(() => {
+      expect(result.current.viewModel.statusMessage).toBe('pickup.checkup.overrideReasonRequired');
+    });
+    expect(gateway.applyCheckup).toHaveBeenCalledTimes(1);
+  });
+
+  it('hides override controls when session lacks hold_floor capability', async () => {
+    const sessionMock = jest.requireMock(
+      '../../../shared/session/PickupStaffSessionProvider.js',
+    ) as {
+      usePickupStaffSession: jest.Mock;
+    };
+    sessionMock.usePickupStaffSession.mockReturnValue({
+      sessionClaims: { salesPointId: 7, capabilities: ['resupply'] },
+    });
+
+    const gateway = createGatewayMock();
+    gateway.listOpen.mockResolvedValue([]);
+    gateway.applyCheckup.mockRejectedValue(
+      new InventoryConflictError('below hold', {
+        status: 409,
+        code: 'CHECKUP_BELOW_HOLD_CONFLICT',
+        holdFloorLines: [{ lineId: 'line-1', countedQuantity: 1, stockOnHold: 2 }],
+      }),
+    );
+
+    const { result } = renderHook(() => useCheckupScreen(gateway));
+    await act(async () => {
+      result.current.actions.attemptApply();
+    });
+    await waitFor(() => {
+      expect(result.current.viewModel.conflict?.kind).toBe('BELOW_HOLD');
+      expect(result.current.viewModel.overrideVisible).toBe(false);
+    });
+
+    act(() => {
+      result.current.actions.setOverrideReason('should not submit');
+      result.current.actions.retryApplyWithOverride();
+    });
+    expect(gateway.applyCheckup).toHaveBeenCalledTimes(1);
+  });
+  it('requires explicit reopen when only server draft exists', async () => {
+    const inventoryDraftStore = jest.requireMock('../../../shared/inventory/inventoryDraftStore.js') as {
+      readInventoryDraft: jest.Mock;
+    };
+    inventoryDraftStore.readInventoryDraft.mockReturnValue({
+      payload: {
+        clientDraftKey: 'local-checkup-draft',
+        serverCheckupId: null,
+        scopeMode: 'ACTIVE_STOCK',
+        status: 'DRAFT',
+        lines: [],
+      },
+    });
+    const gateway = createGatewayMock();
+    gateway.listOpen.mockResolvedValue([
+      {
+        id: 'checkup-7',
+        clientDraftKey: 'local-checkup-draft',
+        status: 'IN_PROGRESS',
+        scopeMode: 'ACTIVE_STOCK',
+        lines: [
+          {
+            id: 'line-1',
+            productId: 12,
+            variantId: null,
+            expectedQuantity: 5,
+            expectedStockOnHold: 0,
+            countedQuantity: 5,
+            shrinkageReason: null,
+            included: true,
+            productLabel: 'Croissant',
+          },
+        ],
+      },
+    ]);
+
+    const { result } = renderHook(() => useCheckupScreen(gateway));
+
+    await waitFor(() => {
+      expect(gateway.listOpen).toHaveBeenCalledWith('demo', 'staff-token');
+      expect(result.current.viewModel.started).toBe(false);
+      expect(result.current.viewModel.resumeChoiceVisible).toBe(true);
+    });
+
+    act(() => {
+      result.current.actions.selectResumeCheckup('checkup-7');
+      result.current.actions.resumeSelectedCheckup();
+    });
+
+    await waitFor(() => {
+      expect(result.current.viewModel.started).toBe(true);
+      expect(result.current.viewModel.resumeChoiceVisible).toBe(false);
+    });
+  });
+});

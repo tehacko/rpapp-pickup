@@ -13,6 +13,7 @@ import { useResponsiveTier } from 'pi-kiosk-shared/responsive';
 import { PickupStaffFunction } from './adapters/pickupStaffFunctions.js';
 import { fetchSellCatalogConfig } from './adapters/sellCatalogEnabled.js';
 import { canAccessPickupStaffQueue } from '../shared/entitlements/pickupQueueAccess.js';
+import { PICKUP_SELL_CAPABILITY } from '../shared/entitlements/pickupStaffFunctions.js';
 import { useStaffPickupPointsQuery } from '../shared/queries/useStaffPickupPointsQuery.js';
 import { AlertBanner } from '../shared/ui/AlertBanner.js';
 import { OfflineBanner } from '../shared/ui/OfflineBanner.js';
@@ -28,6 +29,7 @@ import {
   PickupMoreShellProvider,
   usePickupMoreShell,
 } from '../shared/ui/PickupMoreShellContext.js';
+import { PickupSettingsSheet } from '../shared/ui/PickupSettingsSheet.js';
 import { PickupSideNav } from '../shared/ui/PickupSideNav.js';
 import { Skeleton } from '../shared/ui/Skeleton.js';
 import { RemountBoundary } from '../shared/components/RemountBoundary.js';
@@ -100,6 +102,7 @@ function PickupAppShellChrome({ bottomNav }: PickupAppShellProps): JSX.Element {
     refetch: refetchEntitlement,
   } = usePickupEntitlement(tenantCode);
   const [sideExpanded, setSideExpanded] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const { isMoreOpen, closeMore, toggleMore } = usePickupMoreShell();
   const bottomChromeRef = useRef<HTMLDivElement | null>(null);
   const moreButtonRef = useRef<HTMLButtonElement | null>(null);
@@ -114,7 +117,11 @@ function PickupAppShellChrome({ bottomNav }: PickupAppShellProps): JSX.Element {
       }
       return fetchSellCatalogConfig(tenantCode, accessToken);
     },
-    enabled: accessToken !== null && tenantCode.length > 0,
+    // Avoid 403 console spam when JWT lacks `sell` (resupply-only / scan-only PINs).
+    enabled:
+      accessToken !== null &&
+      tenantCode.length > 0 &&
+      sessionClaims?.capabilities.includes(PICKUP_SELL_CAPABILITY) === true,
     staleTime: 60_000,
     retry: 0,
   });
@@ -154,6 +161,7 @@ function PickupAppShellChrome({ bottomNav }: PickupAppShellProps): JSX.Element {
   const sellingEnabled = sellConfigQuery.data?.sellingEnabled === true;
   const canScan = entitledFunctions.includes(PickupStaffFunction.FULFILLMENT_SCAN);
   const canAssign = entitledFunctions.includes(PickupStaffFunction.BARCODE_ASSIGN);
+  const canResupply = entitledFunctions.includes(PickupStaffFunction.STOCK_RESUPPLY);
 
   useEffect(() => {
     if (accessToken === null || !sessionHydrated || tenantCode.length === 0) {
@@ -261,15 +269,31 @@ function PickupAppShellChrome({ bottomNav }: PickupAppShellProps): JSX.Element {
       : []),
   ];
 
-  const moreItems: readonly { id: string; to: string; labelKey: string }[] = canAssign
-    ? [
-        {
-          id: 'barcode-assign',
-          to: buildTenantPath(tenantCode, 'barcode-assign'),
-          labelKey: 'nav.bottom.barcodeAssign',
-        },
-      ]
-    : [];
+  const moreItems: readonly { id: string; to: string; labelKey: string }[] = [
+    ...(canAssign
+      ? [
+          {
+            id: 'barcode-assign',
+            to: buildTenantPath(tenantCode, 'barcode-assign'),
+            labelKey: 'nav.bottom.barcodeAssign',
+          },
+        ]
+      : []),
+    ...(canResupply
+      ? [
+          {
+            id: 'restock',
+            to: buildTenantPath(tenantCode, 'restock'),
+            labelKey: 'nav.bottom.restock',
+          },
+          {
+            id: 'checkup',
+            to: buildTenantPath(tenantCode, 'checkup'),
+            labelKey: 'nav.bottom.checkup',
+          },
+        ]
+      : []),
+  ];
 
   const deviceItems: readonly { id: string; to: string; labelKey: string }[] =
     deviceFlags.registryEnabled
@@ -313,6 +337,7 @@ function PickupAppShellChrome({ bottomNav }: PickupAppShellProps): JSX.Element {
           onToggleExpanded={() => {
             setSideExpanded((value) => !value);
           }}
+          onOpenSettings={() => setSettingsOpen(true)}
           onSignOut={onSignOut}
           salesPointId={sessionClaims?.salesPointId ?? null}
           role={sessionClaims?.role ?? null}
@@ -413,6 +438,7 @@ function PickupAppShellChrome({ bottomNav }: PickupAppShellProps): JSX.Element {
           onSignOut={onSignOut}
         />
       ) : null}
+      <PickupSettingsSheet open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </div>
   );
 }

@@ -1,15 +1,13 @@
 import { useEffect, createElement, type ReactNode } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import * as Separator from '@radix-ui/react-separator';
-import { Info, Languages, LogOut, Smartphone } from 'lucide-react';
+import { Info, LogOut, Smartphone } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { NavLink } from 'react-router-dom';
-import { LanguageToggle } from 'pi-kiosk-shared/ui';
 import { PICKUP_BUILD_LABEL } from './pickupBuildLabel.js';
 import { resolvePickupBottomNavIcon } from './PickupBottomNavIcons.js';
 import { cn } from './cn.js';
-import { IconButton } from './IconButton.js';
-import { ThemeSwitch } from './ThemeSwitch.js';
+import { PickupSettingsPanel } from './PickupSettingsPanel.js';
 
 export interface PickupMoreDrawerItem {
   readonly id: string;
@@ -214,27 +212,17 @@ export function PickupMoreDrawer({
                 </span>
               </SectionHeading>
               <div className="flex flex-col gap-2">
-                <div className="flex items-center gap-2 px-1">
-                  <Languages
-                    className="h-4 w-4 shrink-0 stroke-[1.75] text-[var(--color-on-surface-muted)]"
-                    aria-hidden
-                  />
-                  <LanguageToggle surface="pickup" i18nNamespace="pickup" placement="inline" />
-                </div>
-                <div className="flex items-center gap-2 px-1">
-                  <ThemeSwitch />
-                </div>
+                <PickupSettingsPanel />
                 {footer}
-                <div className="flex items-center px-1">
-                  <IconButton
-                    icon={LogOut}
-                    tone="danger"
-                    aria-label={signOutLabel}
-                    title={signOutLabel}
-                    data-testid="pickup-more-sign-out"
-                    onClick={onSignOut}
-                  />
-                </div>
+                <button
+                  type="button"
+                  className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg px-3 text-sm font-medium text-[var(--color-danger)] hover:bg-[var(--color-danger-foreground)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus-ring)]"
+                  data-testid="pickup-more-sign-out"
+                  onClick={onSignOut}
+                >
+                  <LogOut className="h-4 w-4 shrink-0 stroke-[1.75]" aria-hidden />
+                  {signOutLabel}
+                </button>
               </div>
             </section>
           </div>

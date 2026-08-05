@@ -13,7 +13,11 @@
     "strict": true,
     "noEmit": true,
     "resolveJsonModule": true,
-    "isolatedModules": true
+    "isolatedModules": true,
+    "baseUrl": ".",
+    "paths": {
+      "pi-kiosk-shared/contracts/inventory": ["../shared/src/contracts/inventory/index.ts"]
+    }
   },
   "include": [
     "src"

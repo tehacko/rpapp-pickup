@@ -51,6 +51,14 @@ const SellPage = lazy(async () => {
   const mod = await import('./features/sell/SellPage');
   return { default: mod.SellPage };
 });
+const RestockPage = lazy(async () => {
+  const mod = await import('./features/restock/RestockPage');
+  return { default: mod.RestockPage };
+});
+const CheckupPage = lazy(async () => {
+  const mod = await import('./features/checkup/CheckupPage');
+  return { default: mod.CheckupPage };
+});
 
 function RouteFallback(): JSX.Element {
   const { t } = useTranslation('pickup');
@@ -144,6 +152,14 @@ export function App(): JSX.Element {
           <Route
             path="sell"
             element={withPickupRouteBoundary('sell', 'pickup-eb-l3-sell', <SellPage />)}
+          />
+          <Route
+            path="restock"
+            element={withPickupRouteBoundary('restock', 'pickup-eb-l3-restock', <RestockPage />)}
+          />
+          <Route
+            path="checkup"
+            element={withPickupRouteBoundary('checkup', 'pickup-eb-l3-checkup', <CheckupPage />)}
           />
           <Route
             path="order/:fulfillmentId"

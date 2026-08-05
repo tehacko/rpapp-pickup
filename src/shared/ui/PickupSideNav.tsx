@@ -1,14 +1,12 @@
 import { createElement } from 'react';
 import * as Tooltip from '@radix-ui/react-tooltip';
-import { ChevronLeft, ChevronRight, LogOut, PanelLeft, WifiOff } from 'lucide-react';
+import { ChevronLeft, ChevronRight, LogOut, PanelLeft, Settings, WifiOff } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { LanguageToggle } from 'pi-kiosk-shared/ui';
 import { cn } from './cn.js';
 import { IconButton } from './IconButton.js';
 import { resolvePickupBottomNavIcon } from './PickupBottomNavIcons.js';
 import { SailorMark } from './SailorMark.js';
-import { ThemeSwitch } from './ThemeSwitch.js';
 
 const MINT_SOFT_ACTIVE =
   'bg-[var(--brand-consumer-accent-soft)] font-semibold text-[var(--brand-consumer-accent)]';
@@ -26,6 +24,7 @@ export interface PickupSideNavProps {
   readonly navItems: readonly PickupSideNavItem[];
   readonly moreItems: readonly PickupSideNavItem[];
   readonly onToggleExpanded: () => void;
+  readonly onOpenSettings: () => void;
   readonly onSignOut: () => void;
   readonly salesPointId?: number | null;
   readonly role?: string | null;
@@ -67,6 +66,7 @@ export function PickupSideNav({
   navItems,
   moreItems,
   onToggleExpanded,
+  onOpenSettings,
   onSignOut,
   salesPointId = null,
   role = null,
@@ -89,12 +89,13 @@ export function PickupSideNav({
   const expandLabel = railExpanded
     ? t('nav.side.collapse', { defaultValue: 'Collapse navigation' })
     : t('nav.side.expand', { defaultValue: 'Expand navigation' });
+  const settingsLabel = t('nav.side.settings', { defaultValue: 'Settings' });
   const signOutLabel = t('pickup.hub.signOut');
 
   return (
     <Tooltip.Provider delayDuration={300}>
       <aside
-        className="relative flex shrink-0 flex-col bg-[var(--brand-consumer-accent)] text-[var(--brand-consumer-accent-soft)] transition-[width] duration-200 ease-[var(--motion-easing-standard,ease)]"
+        className="relative flex shrink-0 flex-col overflow-x-hidden bg-[var(--brand-consumer-accent)] text-[var(--brand-consumer-accent-soft)] transition-[width] duration-200 ease-[var(--motion-easing-standard,ease)]"
         style={{ width: sideWidth }}
         aria-label={t('nav.bottom.sideAria')}
         data-testid="pickup-side-nav"
@@ -208,13 +209,17 @@ export function PickupSideNav({
           <div
             className={cn(
               'flex items-center gap-2',
-              railExpanded ? 'justify-between' : 'flex-col justify-center',
+              railExpanded ? 'flex-row justify-center' : 'flex-col justify-center',
             )}
           >
-            <div className={railExpanded ? 'min-w-0 flex-1' : ''}>
-              <LanguageToggle surface="pickup" i18nNamespace="pickup" placement="inline" />
-            </div>
-            <ThemeSwitch />
+            <IconButton
+              icon={Settings}
+              aria-label={settingsLabel}
+              title={settingsLabel}
+              data-testid="pickup-side-nav-settings"
+              className="border-transparent bg-transparent text-[var(--brand-consumer-accent-soft)] hover:bg-white/10"
+              onClick={onOpenSettings}
+            />
             <IconButton
               icon={LogOut}
               tone="danger"
