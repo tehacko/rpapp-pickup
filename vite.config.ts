@@ -4,7 +4,7 @@ import { defineConfig, loadEnv, type HttpProxy, type ProxyOptions } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { VitePWA } from 'vite-plugin-pwa';
-import { buildMonorepoPiKioskSharedAlias } from '../shared/vite/monorepoPiKioskSharedAlias.js';
+import { buildMonorepoPiKioskSharedAlias } from './src/shared/vite/monorepoPiKioskSharedAlias.js';
 
 const appRoot = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(appRoot, '..');
