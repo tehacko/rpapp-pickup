@@ -143,8 +143,17 @@ export function BarcodeAssignDetailScreenView({
               <p className="m-0 text-sm text-[var(--color-on-surface)]">
                 {t('pickup.barcodeAssign.current', { value: viewModel.currentBarcode })}
               </p>
-              <img src={viewModel.artifactLinearUrl} alt={t('pickup.barcodeAssign.artifactLinear')} />
-              <img src={viewModel.artifactQrUrl} alt={t('pickup.barcodeAssign.artifactQr')} />
+              <img
+                src={viewModel.artifactLinearUrl}
+                alt={t('pickup.barcodeAssign.artifactLinear')}
+                className="max-w-full rounded border border-[var(--color-border)] bg-white object-contain p-2"
+              />
+              <img
+                src={viewModel.artifactQrUrl}
+                alt={t('pickup.barcodeAssign.artifactQr')}
+                className="max-w-[10rem] rounded border border-[var(--color-border)] bg-white object-contain p-2"
+              />
+
               {viewModel.confirmClear ? (
                 <div className="flex flex-col gap-3">
                   <p className="m-0 text-sm text-[var(--color-on-surface)]">
