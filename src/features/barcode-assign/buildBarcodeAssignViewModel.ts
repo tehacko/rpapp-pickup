@@ -1,3 +1,4 @@
+import { resolveLocalizedName } from 'pi-kiosk-shared';
 import type { BarcodeAssignCatalogItem } from '../../gateway/productBarcode.gateway.js';
 
 export interface BarcodeAssignCatalogRowViewModel {
@@ -20,14 +21,16 @@ export interface BarcodeAssignCatalogViewModel {
 
 export function buildBarcodeAssignCatalogRowViewModel(
   item: BarcodeAssignCatalogItem,
+  localeTag?: string,
 ): BarcodeAssignCatalogRowViewModel {
   const variantId = item.variantId;
   const barcodeSuffix = item.barcode ? ` — ${item.barcode}` : '';
+  const localizedName = resolveLocalizedName(item.name, item.nameLocales, localeTag ?? '');
   return {
     key: `${item.productId}-${variantId ?? 'base'}`,
     productId: item.productId,
     variantId,
-    label: `${item.name}${barcodeSuffix}`,
+    label: `${localizedName}${barcodeSuffix}`,
     disabled: !item.assignable || item.isArchived,
     showInactiveBanner: !item.isActive && !item.isArchived,
     showArchivedRow: item.isArchived,
@@ -40,13 +43,16 @@ export function buildBarcodeAssignCatalogViewModel(input: {
   loading: boolean;
   errorMessage: string | null;
   items: readonly BarcodeAssignCatalogItem[];
+  localeTag?: string;
 }): BarcodeAssignCatalogViewModel {
   return {
     tenantCode: input.tenantCode,
     query: input.query,
     loading: input.loading,
     errorMessage: input.errorMessage,
-    rows: input.items.map(buildBarcodeAssignCatalogRowViewModel),
+    rows: input.items.map((item) =>
+      buildBarcodeAssignCatalogRowViewModel(item, input.localeTag),
+    ),
   };
 }
 

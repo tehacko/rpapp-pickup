@@ -1,11 +1,16 @@
+import { resolveLocalizedName } from 'pi-kiosk-shared';
 import type { SellCartLine, SellCartLineInput, SellCatalogItem } from './sellTypes.js';
 import { sellCartLineKey } from './sellTypes.js';
 
-export function catalogItemToCartLineInput(item: SellCatalogItem, quantity = 1): SellCartLineInput {
+export function catalogItemToCartLineInput(
+  item: SellCatalogItem,
+  quantity = 1,
+  localeTag?: string,
+): SellCartLineInput {
   return {
     productId: item.productId,
     variantId: item.variantId,
-    label: item.name,
+    label: resolveLocalizedName(item.name, item.nameLocales, localeTag ?? ''),
     unitPrice: item.price,
     quantity,
   };

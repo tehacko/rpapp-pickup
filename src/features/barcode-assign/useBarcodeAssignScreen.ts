@@ -5,6 +5,7 @@ import { PickupStaffFunction } from '../../shared/entitlements/pickupStaffFuncti
 import { usePickupEntitlement } from '../../hooks/usePickupEntitlement.js';
 import { useStaffToken, useTenantCode } from '../../hooks/useStaffToken.js';
 import { usePickupErrorHandler } from '../../shared/hooks/usePickupErrorHandler.js';
+import { usePickupLocaleTag } from '../../shared/hooks/usePickupLocaleTag.js';
 import type { BarcodeAssignCatalogItem } from '../../gateway/productBarcode.gateway.js';
 import {
   buildBarcodeAssignCatalogViewModel,
@@ -36,6 +37,7 @@ export function useBarcodeAssignScreen(
   const accessToken = useStaffToken();
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const localeTag = usePickupLocaleTag();
   const { entitledFunctions } = usePickupEntitlement(tenantCode);
   const { handleError } = usePickupErrorHandler();
   const [query, setQuery] = useState('');
@@ -92,8 +94,9 @@ export function useBarcodeAssignScreen(
         loading,
         errorMessage,
         items,
+        localeTag,
       }),
-    [errorMessage, items, loading, query, tenantCode],
+    [errorMessage, items, loading, localeTag, query, tenantCode],
   );
 
   const openRow = useCallback(

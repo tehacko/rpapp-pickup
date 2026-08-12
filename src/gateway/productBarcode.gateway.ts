@@ -1,4 +1,5 @@
 import { authHeaders, pickupFetchInit } from '../lib/auth.js';
+import type { LocalizedNameMap } from 'pi-kiosk-shared';
 
 export interface BarcodeConflictDTO {
   readonly holderType: 'product' | 'variant';
@@ -18,6 +19,8 @@ export interface BarcodeAssignCheckResult {
 export interface BarcodeAssignCatalogItem {
   readonly productId: number;
   readonly name: string;
+  /** Locale overrides aligned with composite `name` (product or product — variant). */
+  readonly nameLocales?: LocalizedNameMap | null;
   readonly useVariants: boolean;
   readonly variantId?: number;
   readonly variantName?: string;
@@ -102,6 +105,7 @@ export async function listProductsForBarcodeAssign(
     products: Array<{
       productId: number;
       productName: string;
+      nameLocales?: LocalizedNameMap | null;
       variantId?: number | null;
       variantName?: string | null;
       useVariants: boolean;
@@ -121,6 +125,7 @@ export async function listProductsForBarcodeAssign(
     return {
       productId: row.productId,
       name: displayName,
+      nameLocales: row.nameLocales ?? null,
       useVariants: row.useVariants,
       variantId: row.variantId ?? undefined,
       variantName,

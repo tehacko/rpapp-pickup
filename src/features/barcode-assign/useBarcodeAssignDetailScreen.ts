@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { PickupStaffFunction } from '../../shared/entitlements/pickupStaffFunctions.js';
 import { usePickupEntitlement } from '../../hooks/usePickupEntitlement.js';
 import { useStaffToken, useTenantCode } from '../../hooks/useStaffToken.js';
+import { usePickupLocaleTag } from '../../shared/hooks/usePickupLocaleTag.js';
 import { useBarcodeAssignScanner } from './hooks/useBarcodeAssignScanner.js';
 import { useDebouncedBarcodeCheck } from './hooks/useDebouncedBarcodeCheck.js';
 import type { BarcodeAssignCatalogItem, ProductBarcodeStateDTO } from '../../gateway/productBarcode.gateway.js';
@@ -60,6 +61,7 @@ export function useBarcodeAssignDetailScreen(
   const productId = Number(productIdParam);
   const routeVariantId = parsePositiveInt(variantIdParam);
   const { t } = useTranslation();
+  const localeTag = usePickupLocaleTag();
   const { entitledFunctions, isLoading: entitlementLoading, isError: entitlementIsError, refetch: refetchEntitlement } =
     usePickupEntitlement(tenantCode);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -208,6 +210,7 @@ export function useBarcodeAssignDetailScreen(
         confirmClear,
         artifactLinearUrl,
         artifactQrUrl,
+        localeTag,
       }),
     [
       artifactLinearUrl,
@@ -222,6 +225,7 @@ export function useBarcodeAssignDetailScreen(
       debouncedCheck.result,
       draftCode,
       isSaving,
+      localeTag,
       productId,
       saveError,
       state,

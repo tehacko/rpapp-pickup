@@ -1,6 +1,10 @@
+import type { LocalizedNameMap } from 'pi-kiosk-shared';
+
 export interface SellCatalogItem {
   readonly productId: number;
   readonly name: string;
+  /** Per-locale display-name overrides; null/omit = use `name`. */
+  readonly nameLocales?: LocalizedNameMap | null;
   readonly price: number;
   readonly useVariants: boolean;
   readonly variantId?: number;

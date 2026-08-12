@@ -74,17 +74,24 @@ describe('buildBarcodeAssignDetailViewModel', () => {
     ]);
   });
 
-  it('resolves selected variant label from variantName then name fallback', () => {
+  it('resolves selected variant label via resolveLocalizedName on composite name', () => {
     const withVariantName = buildBarcodeAssignDetailViewModel(
       baseInput({
         variantId: 2,
         catalogVariants: [
-          catalogItem({ productId: 10, name: 'Coffee', variantId: 1, variantName: 'Small' }),
-          catalogItem({ productId: 10, name: 'Coffee', variantId: 2, variantName: 'Large' }),
+          catalogItem({ productId: 10, name: 'Coffee — Small', variantId: 1, variantName: 'Small' }),
+          catalogItem({
+            productId: 10,
+            name: 'Coffee — Large',
+            nameLocales: { cs: 'Káva — Large' },
+            variantId: 2,
+            variantName: 'Large',
+          }),
         ],
+        localeTag: 'cs',
       }),
     );
-    expect(withVariantName.selectedVariantLabel).toBe('Large');
+    expect(withVariantName.selectedVariantLabel).toBe('Káva — Large');
     expect(withVariantName.needsVariantPicker).toBe(false);
 
     const nameFallback = buildBarcodeAssignDetailViewModel(

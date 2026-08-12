@@ -1,3 +1,4 @@
+import { resolveLocalizedName } from 'pi-kiosk-shared';
 import type { BarcodeAssignCatalogItem } from '../../gateway/productBarcode.gateway.js';
 import type { BarcodeAssignCheckResult, ProductBarcodeStateDTO } from '../../gateway/productBarcode.gateway.js';
 
@@ -32,6 +33,18 @@ export interface BarcodeAssignDetailViewModel {
   readonly artifactQrUrl: string;
 }
 
+function resolveCatalogLabel(item: BarcodeAssignCatalogItem, localeTag?: string): string {
+  return resolveLocalizedName(item.name, item.nameLocales, localeTag ?? '');
+}
+
+function resolveVariantPickerLabel(item: BarcodeAssignCatalogItem, localeTag?: string): string {
+  // Prefer short variantName for the picker; fall back to localized composite name.
+  if (item.variantName !== undefined && item.variantName.length > 0) {
+    return resolveLocalizedName(item.variantName, null, localeTag ?? '');
+  }
+  return resolveCatalogLabel(item, localeTag);
+}
+
 export function buildBarcodeAssignDetailViewModel(input: {
   tenantCode: string;
   productId: number;
@@ -50,14 +63,15 @@ export function buildBarcodeAssignDetailViewModel(input: {
   confirmClear: boolean;
   artifactLinearUrl: string;
   artifactQrUrl: string;
+  localeTag?: string;
 }): BarcodeAssignDetailViewModel {
   const needsVariantPicker = input.catalogVariants.length > 1 && input.variantId === undefined;
-  const selectedVariantLabel =
+  const selectedItem =
     input.variantId === undefined
-      ? null
-      : input.catalogVariants.find((item) => item.variantId === input.variantId)?.variantName ??
-        input.catalogVariants.find((item) => item.variantId === input.variantId)?.name ??
-        null;
+      ? undefined
+      : input.catalogVariants.find((item) => item.variantId === input.variantId);
+  const selectedVariantLabel =
+    selectedItem === undefined ? null : resolveCatalogLabel(selectedItem, input.localeTag);
 
   const conflict =
     input.checkResult?.available === false ? input.checkResult.conflict : undefined;
@@ -80,7 +94,7 @@ export function buildBarcodeAssignDetailViewModel(input: {
       .filter((item): item is typeof item & { variantId: number } => item.variantId !== undefined)
       .map((item) => ({
         variantId: item.variantId,
-        label: item.variantName ?? item.name,
+        label: resolveVariantPickerLabel(item, input.localeTag),
         disabled: !item.assignable || item.isArchived,
         barcode: item.barcode ?? null,
       })),

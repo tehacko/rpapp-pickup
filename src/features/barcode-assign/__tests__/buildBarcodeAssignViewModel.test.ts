@@ -38,6 +38,30 @@ describe('buildBarcodeAssignCatalogViewModel', () => {
     expect(vm.rows[1]?.showArchivedRow).toBe(true);
     expect(vm.rows[1]?.disabled).toBe(true);
   });
+
+  it('resolves list labels via resolveLocalizedName', () => {
+    const vm = buildBarcodeAssignCatalogViewModel({
+      tenantCode: 'demo',
+      query: '',
+      loading: false,
+      errorMessage: null,
+      localeTag: 'cs',
+      items: [
+        {
+          productId: 1,
+          name: 'Coffee',
+          nameLocales: { cs: 'Káva' },
+          useVariants: false,
+          isActive: true,
+          isArchived: false,
+          assignable: true,
+          barcode: '999',
+        },
+      ],
+    });
+
+    expect(vm.rows[0]?.label).toBe('Káva — 999');
+  });
 });
 
 describe('buildBarcodeAssignDetailPath', () => {

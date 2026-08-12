@@ -1,3 +1,5 @@
+import type { LocalizedNameMap } from 'pi-kiosk-shared';
+
 export interface FulfillmentLine {
   lineId: number;
   productId: number | null;
@@ -50,6 +52,8 @@ export interface QueueItem {
 export interface SalesPointLookupResponse {
   salesPointId: number;
   name: string;
+  /** Per-locale display-name overrides; null/omit = use `name`. */
+  nameLocales?: LocalizedNameMap | null;
   code?: string | null;
 }
 

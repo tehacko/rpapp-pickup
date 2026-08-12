@@ -177,8 +177,8 @@ export function useSellScreen(
     if (item === undefined || !item.sellable) {
       return;
     }
-    setCartLines((lines) => addSellCartLine(lines, catalogItemToCartLineInput(item)));
-  }, [items]);
+    setCartLines((lines) => addSellCartLine(lines, catalogItemToCartLineInput(item, 1, localeTag)));
+  }, [items, localeTag]);
 
   const incrementLine = useCallback((key: string): void => {
     setCartLines((lines) => {

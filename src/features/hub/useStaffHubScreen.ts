@@ -1,5 +1,7 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
+import { resolveLocalizedName, type LocalizedNameMap } from 'pi-kiosk-shared';
 import { PickupStaffFunction, PICKUP_SELL_CAPABILITY } from '../../shared/entitlements/pickupStaffFunctions.js';
 import { getPairedDevice } from '../../lib/deviceStorage.js';
 import { usePickupEntitlement } from '../../hooks/usePickupEntitlement.js';
@@ -25,8 +27,14 @@ export interface UseStaffHubScreenResult {
 }
 
 function mapPickupPointOptions(
-  points: readonly { id: number; code: string; name: string }[],
+  points: readonly {
+    id: number;
+    code: string;
+    name: string;
+    nameLocales?: LocalizedNameMap | null;
+  }[],
   allowedPickupPointIds: readonly number[],
+  localeTag: string,
 ): readonly StaffHubPickupPointOption[] {
   if (points.length === 0) {
     return allowedPickupPointIds.map((id) => ({
@@ -34,13 +42,17 @@ function mapPickupPointOptions(
       label: String(id),
     }));
   }
-  return points.map((point) => ({
-    id: point.id,
-    label: point.name.trim().length > 0 ? point.name : point.code,
-  }));
+  return points.map((point) => {
+    const localized = resolveLocalizedName(point.name, point.nameLocales, localeTag).trim();
+    return {
+      id: point.id,
+      label: localized.length > 0 ? localized : point.code,
+    };
+  });
 }
 
 export function useStaffHubScreen(): UseStaffHubScreenResult {
+  const { i18n } = useTranslation();
   const tenantCode = useTenantCode();
   const accessToken = useStaffToken();
   const {
@@ -78,9 +90,13 @@ export function useStaffHubScreen(): UseStaffHubScreenResult {
   const pickupPointOptions = useMemo(
     () =>
       shouldLoadPickupPoints
-        ? mapPickupPointOptions(pickupPointsQuery.data ?? [], allowedPickupPointIds)
+        ? mapPickupPointOptions(
+            pickupPointsQuery.data ?? [],
+            allowedPickupPointIds,
+            i18n.language,
+          )
         : [],
-    [allowedPickupPointIds, pickupPointsQuery.data, shouldLoadPickupPoints],
+    [allowedPickupPointIds, i18n.language, pickupPointsQuery.data, shouldLoadPickupPoints],
   );
 
   const viewModel = useMemo(

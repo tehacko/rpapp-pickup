@@ -21,6 +21,7 @@ describe('productBarcode.gateway', () => {
             {
               productId: 10,
               productName: 'Coffee',
+              nameLocales: { cs: 'Káva — Large' },
               variantId: 501,
               variantName: 'Large',
               useVariants: true,
@@ -39,6 +40,7 @@ describe('productBarcode.gateway', () => {
     expect(rows[0]?.variantId).toBe(501);
     expect(rows[0]?.variantName).toBe('Large');
     expect(rows[0]?.name).toBe('Coffee — Large');
+    expect(rows[0]?.nameLocales).toEqual({ cs: 'Káva — Large' });
   });
 
   it('addAltBarcode posts to pickup alt route with Idempotency-Key', async () => {

@@ -1,3 +1,4 @@
+import { resolveLocalizedName } from 'pi-kiosk-shared';
 import type { SellCatalogItem } from './sellTypes.js';
 import { sellCatalogRowKey } from './sellTypes.js';
 
@@ -41,7 +42,7 @@ export function buildSellCatalogRowViewModel(
     key: sellCatalogRowKey(item.productId, item.variantId),
     productId: item.productId,
     variantId: item.variantId,
-    label: item.name,
+    label: resolveLocalizedName(item.name, item.nameLocales, localeTag ?? ''),
     priceLabel: formatPrice(item.price, currency, localeTag),
     disabled: !item.sellable || outOfStock,
     showOutOfStock: outOfStock,

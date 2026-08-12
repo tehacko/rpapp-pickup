@@ -6,6 +6,7 @@ import {
   formatRateLimitMessage,
   getRetryAfterMs,
   isRateLimitError,
+  resolveLocalizedName,
   useSubmitCooldown,
 } from 'pi-kiosk-shared';
 import { TurnstileExecuteWidget, useTurnstileExecute } from 'pi-kiosk-shared/ui';
@@ -37,7 +38,7 @@ export function LoginPage(): JSX.Element {
   const { handleError } = usePickupErrorHandler();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const {
     denialReason,
     isLoading: entitlementLoading,
@@ -78,13 +79,17 @@ export function LoginPage(): JSX.Element {
       if (cancelled) {
         return;
       }
-      setPmName(salesPoint?.name ?? null);
+      setPmName(
+        salesPoint !== null
+          ? resolveLocalizedName(salesPoint.name, salesPoint.nameLocales, i18n.language)
+          : null,
+      );
       setPmLoading(false);
     })();
     return () => {
       cancelled = true;
     };
-  }, [validSalesPointId, tenantCode]);
+  }, [validSalesPointId, tenantCode, i18n.language]);
 
   const displayPmName = validSalesPointId === null ? null : pmName;
   const displayPmLoading = validSalesPointId === null ? false : pmLoading;

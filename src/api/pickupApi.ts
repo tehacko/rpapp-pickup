@@ -2,7 +2,7 @@ import { authHeaders, pickupFetchInit } from '../lib/auth.js';
 import { getPairedDeviceCode } from '../lib/deviceStorage.js';
 import type { PickupStaffDeviceFlags } from '../hooks/pickupDeviceFlags.js';
 import { resolvePickupDeviceFlags } from '../hooks/pickupDeviceFlags.js';
-import { getRetryAfterMs } from 'pi-kiosk-shared';
+import { getRetryAfterMs, type LocalizedNameMap } from 'pi-kiosk-shared';
 import { readRequestId, setClientCorrelationId } from 'pi-kiosk-shared/logging';
 import { setSentryCorrelationId } from 'pi-kiosk-shared/sentry';
 import { capturePickupRateLimitBreadcrumb } from '../lib/observability/sentry';
@@ -376,6 +376,8 @@ export interface PickupStaffPickupPoint {
   readonly id: number;
   readonly code: string;
   readonly name: string;
+  /** Per-locale display-name overrides; null/omit = use `name`. */
+  readonly nameLocales?: LocalizedNameMap | null;
 }
 
 export async function fetchPickupStaffPickupPoints(

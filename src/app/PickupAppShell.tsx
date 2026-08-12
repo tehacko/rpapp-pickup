@@ -9,6 +9,7 @@ import {
 import { Navigate, Outlet, useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
+import { resolveLocalizedName } from 'pi-kiosk-shared';
 import { useResponsiveTier } from 'pi-kiosk-shared/responsive';
 import { PickupStaffFunction } from './adapters/pickupStaffFunctions.js';
 import { fetchSellCatalogConfig } from './adapters/sellCatalogEnabled.js';
@@ -81,7 +82,7 @@ function PickupAppShellChrome({ bottomNav }: PickupAppShellProps): JSX.Element {
   const { tenantCode: tenantParam } = useParams<{ tenantCode: string }>();
   const tenantCode = tenantParam?.trim() ?? '';
   const navigate = useNavigate();
-  const { t } = useTranslation('pickup');
+  const { t, i18n } = useTranslation('pickup');
   const tier = useResponsiveTier();
   const isCompact = tier === 'compact';
   const isOnline = useOnlineStatus();
@@ -148,11 +149,18 @@ function PickupAppShellChrome({ bottomNav }: PickupAppShellProps): JSX.Element {
 
   const contextPoints = useMemo(() => {
     const points = pickupPointsQuery.data ?? [];
-    return points.map((point) => ({
-      id: point.id,
-      label: point.name.trim().length > 0 ? point.name : point.code,
-    }));
-  }, [pickupPointsQuery.data]);
+    return points.map((point) => {
+      const localized = resolveLocalizedName(
+        point.name,
+        point.nameLocales,
+        i18n.language,
+      ).trim();
+      return {
+        id: point.id,
+        label: localized.length > 0 ? localized : point.code,
+      };
+    });
+  }, [i18n.language, pickupPointsQuery.data]);
 
   const showContextBar =
     !isCompact && isRoamingStaff && (contextPoints.length > 0 || pickupPointsQuery.isLoading);
