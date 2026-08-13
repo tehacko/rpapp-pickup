@@ -12,12 +12,17 @@ import {
   buildBarcodeAssignDetailPath,
   type BarcodeAssignCatalogViewModel,
 } from './buildBarcodeAssignViewModel.js';
+import {
+  parseBarcodeAssignCatalogFilterId,
+  type BarcodeAssignCatalogFilterId,
+} from './barcodeAssignCatalogFilter.js';
 import type { IBarcodeAssignGateway } from './IBarcodeAssignGateway.js';
 import { barcodeAssignGateway } from './barcodeAssignGateway.js';
 import { assignLog } from './logging.js';
 
 export interface BarcodeAssignScreenActions {
   readonly setQuery: (value: string) => void;
+  readonly setCatalogFilter: (value: string) => void;
   readonly openRow: (productId: number, variantId?: number) => void;
   readonly retry: () => void;
 }
@@ -41,6 +46,8 @@ export function useBarcodeAssignScreen(
   const { entitledFunctions } = usePickupEntitlement(tenantCode);
   const { handleError } = usePickupErrorHandler();
   const [query, setQuery] = useState('');
+  const [catalogFilter, setCatalogFilterState] =
+    useState<BarcodeAssignCatalogFilterId>('all');
   const [items, setItems] = useState<readonly BarcodeAssignCatalogItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -95,8 +102,9 @@ export function useBarcodeAssignScreen(
         errorMessage,
         items,
         localeTag,
+        catalogFilter,
       }),
-    [errorMessage, items, loading, localeTag, query, tenantCode],
+    [catalogFilter, errorMessage, items, loading, localeTag, query, tenantCode],
   );
 
   const openRow = useCallback(
@@ -110,13 +118,18 @@ export function useBarcodeAssignScreen(
     setReloadToken((token) => token + 1);
   }, []);
 
+  const setCatalogFilter = useCallback((value: string): void => {
+    setCatalogFilterState(parseBarcodeAssignCatalogFilterId(value));
+  }, []);
+
   const actions = useMemo<BarcodeAssignScreenActions>(
     () => ({
       setQuery,
+      setCatalogFilter,
       openRow,
       retry,
     }),
-    [openRow, retry],
+    [openRow, retry, setCatalogFilter],
   );
 
   return { accessToken, tenantCode, canAssign, viewModel, actions };

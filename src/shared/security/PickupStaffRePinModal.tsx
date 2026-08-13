@@ -4,8 +4,8 @@ import {
   formatRateLimitMessage,
   getRetryAfterMs,
   isRateLimitError,
-  useSubmitCooldown,
 } from 'pi-kiosk-shared';
+import { useSubmitCooldown } from 'pi-kiosk-shared/ui';
 import { PickupApiError, verifyPickupStaffPin } from '../../api/pickupApi.js';
 import { useStaffToken, useTenantCode } from '../../hooks/useStaffToken.js';
 import { Button, FormField } from '../ui/surfacePrimitives.js';

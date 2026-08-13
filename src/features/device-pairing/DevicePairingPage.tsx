@@ -5,8 +5,8 @@ import {
   formatRateLimitMessage,
   getRetryAfterMs,
   isRateLimitError,
-  useSubmitCooldown,
 } from 'pi-kiosk-shared';
+import { useSubmitCooldown } from 'pi-kiosk-shared/ui';
 import { pairPickupDevice, PickupApiError } from '../../api/pickupApi.js';
 import {
   clearPairedDevice,

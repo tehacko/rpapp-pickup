@@ -18,6 +18,9 @@ jest.mock('pi-kiosk-shared', () => ({
   formatRateLimitMessage: (_t: unknown, seconds: number) => `wait ${seconds}`,
   getRetryAfterMs: () => 30_000,
   isRateLimitError: () => false,
+}));
+
+jest.mock('pi-kiosk-shared/ui', () => ({
   useSubmitCooldown: () => ({
     isCoolingDown: false,
     remainingSeconds: 0,

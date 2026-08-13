@@ -88,7 +88,7 @@ export function StaffHubScreenView({ viewModel, actions }: StaffHubScreenViewPro
     : t('pickup.hub.refresh');
 
   return (
-    <div className="flex flex-col gap-4" data-testid="staff-hub-screen">
+    <div className="flex flex-col gap-3" data-testid="staff-hub-screen">
       <PageHeader
         title={t('pickup.hub.title')}
         lead={t('pickup.hub.lead')}
@@ -143,25 +143,25 @@ export function StaffHubScreenView({ viewModel, actions }: StaffHubScreenViewPro
       ) : null}
 
       {hasDashboard ? (
-        <section className="flex flex-col gap-3" aria-labelledby="pickup-hub-stats-heading">
+        <section className="flex flex-col gap-2" aria-labelledby="pickup-hub-stats-heading">
           <h2 id="pickup-hub-stats-heading" className="sr-only">
             {t('pickup.hub.statsTitle')}
           </h2>
           {viewModel.dashboardLoading ? (
             <>
               <div
-                className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4"
+                className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4"
                 data-testid="hub-kpi-skeleton"
                 aria-busy="true"
                 aria-label={t('pickup.common.loading')}
               >
                 {KPI_SKELETON_KEYS.map((key) => (
-                  <Skeleton key={key} className="h-28 w-full" />
+                  <Skeleton key={key} className="h-16 w-full" />
                 ))}
               </div>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2" aria-hidden="true">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2" aria-hidden="true">
                 {WIDGET_SKELETON_KEYS.map((key) => (
-                  <Skeleton key={key} className="h-40 w-full" />
+                  <Skeleton key={key} className="h-32 w-full" />
                 ))}
               </div>
             </>

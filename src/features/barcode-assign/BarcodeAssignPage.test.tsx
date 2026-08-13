@@ -23,6 +23,7 @@ jest.mock('../../hooks/useStaffToken.js', () => ({
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string) => key,
+    i18n: { language: 'en', resolvedLanguage: 'en' },
   }),
 }));
 
@@ -79,7 +80,8 @@ describe('BarcodeAssignPage', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getAllByRole('button')).toHaveLength(2);
+      expect(screen.getByRole('button', { name: /Coffee — Small/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Coffee — Large/i })).toBeInTheDocument();
     });
 
     fireEvent.click(screen.getByRole('button', { name: /Coffee — Large/i }));

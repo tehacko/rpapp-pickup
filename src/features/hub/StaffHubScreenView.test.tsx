@@ -123,7 +123,9 @@ describe('StaffHubScreenView', () => {
     expect(screen.getByTestId('hub-kpi-open-checkup')).toBeInTheDocument();
     expect(screen.getByTestId('hub-work-queue')).toBeInTheDocument();
     expect(screen.getByTestId('hub-widget-stock')).toBeInTheDocument();
+    expect(screen.getByTestId('hub-chart-stock')).toBeInTheDocument();
     expect(screen.getByTestId('hub-widget-checkup')).toBeInTheDocument();
+    expect(screen.getByTestId('hub-chart-checkup')).toBeInTheDocument();
     expect(screen.getAllByText('Coffee').length).toBeGreaterThan(0);
     expect(screen.getByTestId('hub-refresh')).toBeInTheDocument();
     expect(screen.getByTestId('hub-last-updated')).toBeInTheDocument();
@@ -182,6 +184,8 @@ describe('StaffHubScreenView', () => {
     expect(screen.getByTestId('hub-kpi-missing-barcodes')).toBeInTheDocument();
     expect(screen.getByTestId('hub-kpi-coverage')).toBeInTheDocument();
     expect(screen.getByTestId('hub-widget-barcodes')).toBeInTheDocument();
+    expect(screen.getByTestId('hub-kpi-coverage')).toBeInTheDocument();
+    expect(screen.getByTestId('hub-chart-coverage')).toBeInTheDocument();
     expect(screen.getByTestId('hub-all-clear')).toBeInTheDocument();
     expect(screen.getByTestId('hub-refresh')).toBeInTheDocument();
   });

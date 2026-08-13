@@ -16,7 +16,7 @@ export function RestockPage(): JSX.Element {
 
   if (entitlementLoading) {
     return (
-      <div className="mx-auto w-full max-w-[720px] px-4 py-6">
+      <div className="flex w-full flex-col gap-4">
         <ScreenState variant="loading" message={t('pickup.common.loading')} />
       </div>
     );

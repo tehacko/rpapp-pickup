@@ -7,9 +7,8 @@ import {
   getRetryAfterMs,
   isRateLimitError,
   resolveLocalizedName,
-  useSubmitCooldown,
 } from 'pi-kiosk-shared';
-import { TurnstileExecuteWidget, useTurnstileExecute } from 'pi-kiosk-shared/ui';
+import { TurnstileExecuteWidget, useSubmitCooldown, useTurnstileExecute } from 'pi-kiosk-shared/ui';
 import { Button, FormField } from '../shared/ui/surfacePrimitives.js';
 import { AlertBanner, InlineNotice } from '../shared/ui/AlertBanner.js';
 import { Input } from '../shared/ui/Input.js';

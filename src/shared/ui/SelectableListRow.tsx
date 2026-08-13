@@ -34,7 +34,7 @@ export function SelectableListRow({
   return (
     <div
       className={cn(
-        'flex min-h-11 items-center gap-3 rounded-lg border border-[var(--color-border)] px-3 py-2',
+        'flex min-h-11 items-center gap-3 rounded-[var(--radius-lg)] border border-[var(--color-border)] px-3 py-2',
         className,
       )}
       data-testid={testId}

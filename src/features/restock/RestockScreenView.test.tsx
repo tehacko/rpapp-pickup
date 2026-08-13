@@ -221,4 +221,35 @@ describe('RestockScreenView', () => {
     expect(actions.toggleSelectAllDraft).toHaveBeenCalledTimes(1);
     expect(actions.toggleDraftSelected).toHaveBeenCalledWith('1:base', false);
   });
+
+  it('lays out catalog and draft as a workspace with a catalog grid', () => {
+    render(
+      <MemoryRouter>
+        <RestockScreenView
+          actions={createActions()}
+          viewModel={createViewModel({
+            catalogRows: [createCatalogRow(), createCatalogRow({ key: '2:base', productId: 2 })],
+          })}
+        />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByTestId('restock-workspace').className).toContain(
+      'lg:grid-cols-[minmax(0,1fr)_minmax(18rem,22rem)]',
+    );
+    expect(screen.getByTestId('restock-catalog').className).toContain('sm:grid-cols-2');
+    expect(screen.getByTestId('restock-draft-panel')).toBeTruthy();
+    expect(screen.queryByTestId('restock-catalog-empty')).toBeNull();
+  });
+
+  it('shows empty catalog and draft states', () => {
+    render(
+      <MemoryRouter>
+        <RestockScreenView actions={createActions()} viewModel={createViewModel()} />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByTestId('restock-catalog-empty')).toBeTruthy();
+    expect(screen.getByTestId('restock-draft-empty')).toBeTruthy();
+  });
 });

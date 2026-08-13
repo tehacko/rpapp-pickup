@@ -6,8 +6,6 @@ import {
   Package,
   PackageMinus,
   PackagePlus,
-  Percent,
-  Warehouse,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -72,16 +70,6 @@ function buildKpis(viewModel: StaffHubViewModel, t: (key: string, opts?: Record<
       icon: Barcode,
       tone: viewModel.barcodeStats.missingCount > 0 ? 'warn' : 'success',
     });
-    kpis.push({
-      id: 'coverage',
-      testId: 'hub-kpi-coverage',
-      labelKey: 'pickup.hub.kpi.coverage',
-      hint: t('pickup.hub.kpi.hint.coverage'),
-      value: t('pickup.hub.coverageValue', { percent: viewModel.barcodeStats.coveragePercent }),
-      href: `/${encoded}/barcode-assign`,
-      icon: Percent,
-      tone: viewModel.barcodeStats.coveragePercent < 100 ? 'warn' : 'success',
-    });
   }
   if (viewModel.canResupply && viewModel.stockStats.loadState === 'ready') {
     kpis.push({
@@ -104,28 +92,8 @@ function buildKpis(viewModel: StaffHubViewModel, t: (key: string, opts?: Record<
       icon: Package,
       tone: viewModel.stockStats.belowReorderCount > 0 ? 'warn' : 'success',
     });
-    kpis.push({
-      id: 'units',
-      testId: 'hub-kpi-units',
-      labelKey: 'pickup.hub.kpi.unitsOnHand',
-      hint: t('pickup.hub.kpi.hint.holdUnits', { count: viewModel.stockStats.totalHoldUnits }),
-      value: viewModel.stockStats.totalUnits,
-      href: `/${encoded}/restock`,
-      icon: Warehouse,
-      tone: 'neutral',
-    });
-    kpis.push({
-      id: 'hold',
-      testId: 'hub-kpi-on-hold',
-      labelKey: 'pickup.hub.kpi.onHold',
-      hint: t('pickup.hub.kpi.hint.onHold'),
-      value: viewModel.stockStats.onHoldCount,
-      href: `/${encoded}/restock`,
-      icon: PackagePlus,
-      tone: viewModel.stockStats.onHoldCount > 0 ? 'warn' : 'neutral',
-    });
   }
-  if (viewModel.canResupply && viewModel.stockStats.draftsLoadState === 'ready') {
+  if (viewModel.canResupply && viewModel.stockStats.draftsLoadState === 'ready' && viewModel.stockStats.draftBatchCount > 0) {
     kpis.push({
       id: 'drafts',
       testId: 'hub-kpi-restock-drafts',
@@ -176,7 +144,7 @@ export function StaffHubKpiStrip({ viewModel }: StaffHubKpiStripProps): JSX.Elem
 
   return (
     <section
-      className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4"
+      className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4"
       data-testid="hub-kpi-grid"
       aria-label={t('pickup.hub.statsTitle')}
     >
@@ -187,7 +155,7 @@ export function StaffHubKpiStrip({ viewModel }: StaffHubKpiStripProps): JSX.Elem
             key={kpi.id}
             to={kpi.href}
             className={cn(
-              'flex min-h-11 min-w-0 flex-col gap-2 rounded-[var(--radius-lg)] border bg-[var(--color-surface)] p-3 no-underline shadow-[var(--shadow-card)]',
+              'flex min-h-11 min-w-0 flex-col gap-0.5 rounded-[var(--radius-lg)] border bg-[var(--color-surface)] p-2 no-underline',
               'hover:bg-[var(--color-surface-hover)]',
               'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus-ring)]',
               kpiToneClass(kpi.tone),
@@ -204,10 +172,10 @@ export function StaffHubKpiStrip({ viewModel }: StaffHubKpiStripProps): JSX.Elem
                 aria-hidden
               />
             </span>
-            <span className="text-2xl font-bold tabular-nums text-[var(--color-on-surface)]">
+            <span className="text-xl font-bold tabular-nums text-[var(--color-on-surface)]">
               {kpi.value}
             </span>
-            <span className="text-xs leading-snug text-[var(--color-on-surface-muted)]">
+            <span className="hidden text-xs leading-snug text-[var(--color-on-surface-muted)] sm:block">
               {kpi.hint}
             </span>
           </Link>

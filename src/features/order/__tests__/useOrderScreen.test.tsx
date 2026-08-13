@@ -52,7 +52,7 @@ jest.mock('react-i18next', () => ({
   }),
 }));
 
-jest.mock('pi-kiosk-shared', () => ({
+jest.mock('pi-kiosk-shared/ui', () => ({
   useSubmitCooldown: () => ({
     isCoolingDown: false,
     remainingSeconds: 0,

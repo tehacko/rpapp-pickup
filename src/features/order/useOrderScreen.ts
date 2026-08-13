@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { useSubmitCooldown } from 'pi-kiosk-shared';
+import { useSubmitCooldown } from 'pi-kiosk-shared/ui';
 import {
   acquireFulfillmentClaim,
   PickupApiError,

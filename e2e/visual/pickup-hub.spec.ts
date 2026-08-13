@@ -195,6 +195,7 @@ async function loginAndOpenPickupHub(page: Page): Promise<void> {
   await expect(page.getByTestId('hub-kpi-queue')).toBeVisible();
   await expect(page.getByTestId('hub-work-queue')).toBeVisible();
   await expect(page.getByTestId('hub-widget-barcodes')).toBeVisible();
+  await expect(page.getByTestId('hub-chart-coverage')).toBeVisible();
   await expect(page.getByTestId('hub-widget-queue')).toBeVisible();
   await expect(page.getByTestId('hub-refresh')).toBeVisible();
   await expect(page.getByTestId('hub-work-list')).toContainText('Espresso beans');
