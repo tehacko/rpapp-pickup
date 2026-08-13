@@ -1,11 +1,15 @@
 /**
  * Monorepo cold-install: after npm ci/install, overlay Node-safe
  * pi-kiosk-shared dist via sibling shared/scripts/ensureDist.mjs when present.
- * Railway / app-only clones (no ../shared/package.json): no-op exit 0.
- * Local monorepo with shared present but ensureDist missing: fail exit 1.
+ *
+ * Detector:
+ * - Sibling `../shared` directory absent → app-only / Railway no-op exit 0.
+ * - `../shared` directory present but incomplete (missing package.json and/or
+ *   scripts/ensureDist.mjs) → fail exit 1 with recovery (monorepo honesty).
+ * - Complete shared layout → run ensureDist with ALLOW_MISSING consumers.
  */
 import { spawnSync } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { existsSync, statSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
@@ -15,22 +19,42 @@ const sharedRoot = resolve(packageRoot, '..', 'shared');
 const sharedPackageJson = resolve(sharedRoot, 'package.json');
 const ensureDistScript = resolve(sharedRoot, 'scripts', 'ensureDist.mjs');
 
-if (!existsSync(ensureDistScript)) {
-  if (existsSync(sharedPackageJson)) {
-    process.stderr.write(
-      [
-        'overlaySharedIfPresent: local monorepo detected (../shared/package.json exists)',
-        `but ensureDist is missing: ${ensureDistScript}`,
-        'Recovery: confirm package cwd is the app root (not nested wrong),',
-        'rebuild/checkout shared so scripts/ensureDist.mjs exists,',
-        'or fix the shared path layout.',
-        '',
-      ].join('\n')
-    );
-    process.exit(1);
+function isDirectory(path) {
+  try {
+    return statSync(path).isDirectory();
+  } catch {
+    return false;
   }
-  // Railway / app-only clone: no sibling shared package — skip quietly.
+}
+
+// True app-only / Railway: sibling shared directory does not exist → skip quietly.
+if (!isDirectory(sharedRoot)) {
   process.exit(0);
+}
+
+const hasPackageJson = existsSync(sharedPackageJson);
+const hasEnsureDist = existsSync(ensureDistScript);
+
+if (!hasPackageJson || !hasEnsureDist) {
+  const missing = [];
+  if (!hasPackageJson) {
+    missing.push(`package.json (${sharedPackageJson})`);
+  }
+  if (!hasEnsureDist) {
+    missing.push(`scripts/ensureDist.mjs (${ensureDistScript})`);
+  }
+  process.stderr.write(
+    [
+      'overlaySharedIfPresent: ../shared directory exists but layout is incomplete.',
+      `Missing: ${missing.join('; ')}`,
+      'This is not a true app-only clone (those have no sibling shared directory).',
+      'Recovery: restore/checkout the full shared package so package.json and',
+      'scripts/ensureDist.mjs both exist, or remove the empty/stub ../shared',
+      'directory if this deploy is intentionally app-only.',
+      '',
+    ].join('\n')
+  );
+  process.exit(1);
 }
 
 const result = spawnSync(process.execPath, [ensureDistScript], {
