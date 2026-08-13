@@ -1,5 +1,7 @@
 /**
- * Monorepo: build sibling ../shared before tsc/vite.
+ * Monorepo: overlay sibling ../shared (build + copy dist into this app's
+ * node_modules/pi-kiosk-shared) via ensureDist.mjs so Node/tsc see the
+ * Node-safe barrel without waiting on npm publish.
  * Separate-repo / Railway (Root Directory = app only): no sibling — use
  * registry-installed pi-kiosk-shared (published tarball includes dist/).
  *
@@ -13,7 +15,10 @@ import { resolve } from 'node:path';
 
 const siblingPkg = resolve(process.cwd(), '..', 'shared', 'package.json');
 if (existsSync(siblingPkg)) {
-  execSync('npm run build --prefix ../shared', { stdio: 'inherit' });
+  execSync('node ../shared/scripts/ensureDist.mjs', {
+    stdio: 'inherit',
+    env: { ...process.env, ENSURE_DIST_ALLOW_MISSING_CONSUMERS: '1' },
+  });
   process.exit(0);
 }
 

@@ -3,8 +3,8 @@ import {
   formatRateLimitMessage,
   getRetryAfterMs,
   isRateLimitError,
-  type UseSubmitCooldownResult,
 } from 'pi-kiosk-shared';
+import type { UseSubmitCooldownResult } from 'pi-kiosk-shared/ui';
 import { PickupApiError } from '../../api/pickupApi.js';
 import { capturePickupConflictBreadcrumb } from '../../lib/observability/sentry.js';
 import { reportPickupError } from '../../shared/hooks/usePickupErrorHandler.js';

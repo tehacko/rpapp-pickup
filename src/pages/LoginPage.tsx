@@ -179,7 +179,10 @@ export function LoginPage(): JSX.Element {
 
   return (
     // Landmark: login is outside PickupAppShell — this page may own the sole <main>.
-    <main className="mx-auto flex min-h-[100dvh] w-full max-w-md flex-col justify-center px-4 py-8">
+    // items-start + my-auto: center when content fits; keep SailorMark scrollable/visible when
+    // errors/Turnstile make the column taller than the viewport (justify-center clips the top).
+    <main className="mx-auto flex min-h-[100dvh] w-full max-w-md flex-col items-start overflow-y-auto px-4 py-8">
+      <div className="my-auto w-full min-w-0">
       <SectionCard elevated data-testid="pickup-login-card">
         <div className="flex flex-col gap-4">
         <div className="flex flex-col items-center gap-3 text-center">
@@ -315,6 +318,7 @@ export function LoginPage(): JSX.Element {
         ) : null}
         </div>
       </SectionCard>
+      </div>
     </main>
   );
 }

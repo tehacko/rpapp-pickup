@@ -6,7 +6,13 @@ import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ANALYTICS_PWA_EVENTS } from 'pi-kiosk-shared/analyticsEvents';
 import { Button } from '../../shared/ui/surfacePrimitives.js';
+import { readViteMetaEnv } from '../../shared/vite/readViteMetaEnv.js';
 import { emitPickupPwaAnalytics } from './emitPickupPwaAnalytics.js';
+import {
+  clearPickupInstallOfferShown,
+  isPickupInstallOfferDue,
+  markPickupInstallOfferShown,
+} from './pickupInstallOfferCooldown.js';
 import { isPickupCriticalFlowActive } from './scanActiveGate.js';
 import { PwaRefreshBlockingOverlay } from './PwaRefreshBlockingOverlay.js';
 import {
@@ -31,13 +37,11 @@ function readIosGuideEligible(): boolean {
   if (typeof window === 'undefined' || !isIosSafari()) {
     return false;
   }
-  const visits = Number(window.sessionStorage.getItem('pickup-pwa-visits') ?? '0') + 1;
-  window.sessionStorage.setItem('pickup-pwa-visits', String(visits));
-  return visits >= 2;
+  return isPickupInstallOfferDue();
 }
 
 function readPwaForceUpdateEnabled(): boolean {
-  const raw = import.meta.env.VITE_PWA_FORCE_UPDATE;
+  const raw = readViteMetaEnv('VITE_PWA_FORCE_UPDATE');
   return raw === '1' || raw === 'true';
 }
 
@@ -45,6 +49,9 @@ export function PickupPwaLifecycle(): JSX.Element | null {
   const { t } = useTranslation('pickup');
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(
     null,
+  );
+  const [installOfferVisible, setInstallOfferVisible] = useState(() =>
+    isPickupInstallOfferDue(),
   );
   const [showIosGuide] = useState(() => readIosGuideEligible());
   const [updateReady, setUpdateReady] = useState(false);
@@ -56,6 +63,7 @@ export function PickupPwaLifecycle(): JSX.Element | null {
   );
   const forceUpdateEnabled = readPwaForceUpdateEnabled();
   const updateShownEmittedRef = useRef(false);
+  const installOfferMarkedRef = useRef(false);
   const refreshLockRef = useRef(false);
   const criticalFlowActive = isPickupCriticalFlowActive();
 
@@ -63,6 +71,7 @@ export function PickupPwaLifecycle(): JSX.Element | null {
     const onBeforeInstall = (event: Event): void => {
       event.preventDefault();
       setDeferredPrompt(event as BeforeInstallPromptEvent);
+      setInstallOfferVisible(isPickupInstallOfferDue());
     };
     window.addEventListener('beforeinstallprompt', onBeforeInstall);
     return () => {
@@ -164,6 +173,21 @@ export function PickupPwaLifecycle(): JSX.Element | null {
     }
   };
 
+  const showChromiumInstall = deferredPrompt !== null && installOfferVisible;
+  const showIosInstallGuide =
+    showIosGuide && deferredPrompt === null && installOfferVisible;
+
+  useEffect(() => {
+    if (!showChromiumInstall && !showIosInstallGuide) {
+      return;
+    }
+    if (installOfferMarkedRef.current) {
+      return;
+    }
+    installOfferMarkedRef.current = true;
+    markPickupInstallOfferShown();
+  }, [showChromiumInstall, showIosInstallGuide]);
+
   const handleInstall = async (): Promise<void> => {
     if (deferredPrompt === null || isRefreshing) {
       return;
@@ -177,7 +201,23 @@ export function PickupPwaLifecycle(): JSX.Element | null {
           : ANALYTICS_PWA_EVENTS.PWA_INSTALL_DISMISSED,
       metadata: { outcome: choice.outcome },
     });
+    if (choice.outcome === 'accepted') {
+      clearPickupInstallOfferShown();
+    }
     setDeferredPrompt(null);
+    setInstallOfferVisible(false);
+  };
+
+  const handleDismissInstall = (): void => {
+    if (isRefreshing) {
+      return;
+    }
+    emitPickupPwaAnalytics({
+      eventName: ANALYTICS_PWA_EVENTS.PWA_INSTALL_DISMISSED,
+      metadata: { outcome: 'banner_cancel' },
+    });
+    setDeferredPrompt(null);
+    setInstallOfferVisible(false);
   };
 
   const handleApplyUpdate = (): void => {
@@ -189,8 +229,8 @@ export function PickupPwaLifecycle(): JSX.Element | null {
   };
 
   if (
-    !deferredPrompt &&
-    !showIosGuide &&
+    !showChromiumInstall &&
+    !showIosInstallGuide &&
     !updateReady &&
     !offline &&
     !forceUpdateEnabled &&
@@ -216,26 +256,65 @@ export function PickupPwaLifecycle(): JSX.Element | null {
             <p className="text-sm text-[var(--color-on-surface)]">{t('pwa.offlineBanner')}</p>
           </div>
         ) : null}
-        {deferredPrompt !== null ? (
-          <div className="mb-2 rounded-md border border-[var(--color-border)] bg-[var(--color-surface-elevated)] p-3 shadow-sm">
-            <p className="text-sm text-[var(--color-on-surface)]">{t('pwa.installPrompt')}</p>
-            <Button
-              type="button"
-              className="mt-2"
-              onClick={() => void handleInstall()}
-              disabled={isRefreshing}
-              data-testid="pickup-pwa-install-button"
-            >
-              {t('pwa.installAction')}
-            </Button>
+        {showChromiumInstall ? (
+          <div
+            className="mb-2 rounded-md border border-[var(--color-border)] bg-[var(--color-surface-elevated)] p-3 shadow-sm"
+            role="region"
+            aria-label={t('pwa.installTitle')}
+          >
+            <h2 className="m-0 text-base font-semibold text-[var(--color-on-surface)]">
+              {t('pwa.installTitle')}
+            </h2>
+            <p className="mt-1 text-sm text-[var(--color-on-surface-muted)]">
+              {t('pwa.installPrompt')}
+            </p>
+            <div className="mt-3 flex flex-col gap-2 min-[30rem]:flex-row min-[30rem]:items-stretch">
+              <Button
+                type="button"
+                intent="primary"
+                className="w-full min-[30rem]:min-w-0 min-[30rem]:flex-1"
+                onClick={() => void handleInstall()}
+                disabled={isRefreshing}
+                data-testid="pickup-pwa-install-button"
+              >
+                {t('pwa.installAction')}
+              </Button>
+              <Button
+                type="button"
+                intent="secondary"
+                className="w-full min-[30rem]:min-w-0 min-[30rem]:flex-1"
+                onClick={handleDismissInstall}
+                disabled={isRefreshing}
+                data-testid="pickup-pwa-install-dismiss"
+              >
+                {t('pwa.installDismiss')}
+              </Button>
+            </div>
           </div>
         ) : null}
-        {showIosGuide && deferredPrompt === null ? (
+        {showIosInstallGuide ? (
           <div
             className="mb-2 rounded-md border border-[var(--color-border)] bg-[var(--color-surface-elevated)] p-3 shadow-sm"
             data-testid="pickup-pwa-ios-guide"
+            role="region"
+            aria-label={t('pwa.installTitle')}
           >
-            <p className="text-sm text-[var(--color-on-surface)]">{t('pwa.iosInstallGuide')}</p>
+            <h2 className="m-0 text-base font-semibold text-[var(--color-on-surface)]">
+              {t('pwa.installTitle')}
+            </h2>
+            <p className="mt-1 text-sm text-[var(--color-on-surface-muted)]">
+              {t('pwa.iosInstallGuide')}
+            </p>
+            <Button
+              type="button"
+              intent="secondary"
+              className="mt-3 w-full"
+              onClick={handleDismissInstall}
+              disabled={isRefreshing}
+              data-testid="pickup-pwa-install-dismiss"
+            >
+              {t('pwa.installDismiss')}
+            </Button>
           </div>
         ) : null}
         {updateReady ? (

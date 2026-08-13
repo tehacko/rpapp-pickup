@@ -20,7 +20,7 @@
         "test:workspace": "npm run test:workspace:package --prefix .. -- rpapp-pickup",
         "test:coverage": "jest --config jest.config.cjs --coverage",
         "test:ci": "jest --config jest.config.cjs --ci --coverage --maxWorkers=2",
-        "postinstall": "node scripts/applyPatchesIfAvailable.mjs",
+        "postinstall": "node scripts/overlaySharedIfPresent.mjs && node scripts/applyPatchesIfAvailable.mjs",
         "test:e2e": "playwright test",
         "test:e2e:barcode": "npm run predev && playwright test e2e/barcode-assign-flow.spec.ts e2e/barcode-assign-admin-sse.spec.ts --workers=1",
         "test:e2e:commerce": "playwright test e2e/staff-confirm-pickup.spec.ts --workers=1",

@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
+import type { ButtonHTMLAttributes, HTMLAttributes, InputHTMLAttributes, ReactNode } from 'react';
 import { DevicePairingPage } from './DevicePairingPage.js';
 import { PickupApiError } from '../../api/pickupApi.js';
 
@@ -27,6 +28,59 @@ jest.mock('pi-kiosk-shared/ui', () => ({
     startCooldown: jest.fn(),
     clearCooldown: jest.fn(),
   }),
+  Button: ({
+    children,
+    type = 'button',
+    ...props
+  }: ButtonHTMLAttributes<HTMLButtonElement> & { block?: boolean }) => (
+    <button type={type} {...props}>
+      {children}
+    </button>
+  ),
+  FormField: ({
+    label,
+    id,
+    ...rest
+  }: {
+    label: string;
+    id?: string;
+  } & InputHTMLAttributes<HTMLInputElement>) => (
+    <div>
+      <label htmlFor={id}>{label}</label>
+      <input id={id} aria-label={label} {...rest} />
+    </div>
+  ),
+  Card: ({ children, ...props }: HTMLAttributes<HTMLDivElement> & { children?: ReactNode }) => (
+    <div {...props}>{children}</div>
+  ),
+}));
+
+jest.mock('../../shared/hooks/usePickupErrorHandler.js', () => ({
+  usePickupErrorHandler: () => ({ handleError: jest.fn() }),
+}));
+
+jest.mock('../../shared/security/usePickupStaffRePin.js', () => ({
+  usePickupStaffRePin: () => ({
+    requestRePin: jest.fn(async () => true),
+    rePinModal: null,
+  }),
+}));
+
+jest.mock('../../shared/ui/AlertBanner.js', () => ({
+  AlertBanner: ({ message }: { message: string }) => <div role="alert">{message}</div>,
+}));
+
+jest.mock('../../shared/ui/SailorMark.js', () => ({
+  SailorMark: () => <div data-testid="pickup-sailor-mark" />,
+}));
+
+jest.mock('../../shared/ui/SectionCard.js', () => ({
+  SectionCard: ({
+    children,
+    ...props
+  }: HTMLAttributes<HTMLDivElement> & { children?: ReactNode; elevated?: boolean }) => (
+    <div {...props}>{children}</div>
+  ),
 }));
 
 jest.mock('../../api/pickupApi.js', () => {
@@ -81,6 +135,15 @@ describe('DevicePairingPage', () => {
     useStaffToken.mockReset();
     useStaffToken.mockReturnValue('staff-token');
     getPairedDevice.mockReturnValue(null);
+  });
+
+  it('uses items-start + my-auto stage so brand mark is not clipped when column grows', () => {
+    renderPage();
+
+    const main = screen.getByRole('main');
+    expect(main.className).toMatch(/items-start/);
+    expect(main.className).not.toMatch(/justify-center/);
+    expect(main.firstElementChild?.className).toMatch(/my-auto/);
   });
 
   it('pairs device and navigates to hub', async () => {

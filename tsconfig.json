@@ -14,10 +14,7 @@
     "noEmit": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "baseUrl": ".",
-    "paths": {
-      "pi-kiosk-shared/ui": ["../shared/dist/ui/index.d.ts"]
-    }
+    "baseUrl": "."
   },
   "include": [
     "src"
