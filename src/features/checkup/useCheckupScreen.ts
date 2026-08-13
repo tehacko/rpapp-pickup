@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ShrinkageReason } from 'pi-kiosk-shared/contracts/inventory';
 import { PickupApiError } from '../../api/pickupApi.js';
@@ -22,6 +22,13 @@ import {
 } from '../../shared/inventory/inventoryHttp.js';
 import { confirmApi } from '../../shared/ui/confirm/confirmApi.js';
 import { buildCheckupViewModel, type CheckupViewModel } from './buildCheckupViewModel.js';
+import {
+  applyExpectedCounts,
+  isCheckupLineFilterId,
+  lineIdsMatchingFilter,
+  uncountedLineIds,
+  type CheckupLineFilterId,
+} from './checkupBulk.js';
 import type { ICheckupGateway } from './ICheckupGateway.js';
 import { checkupGateway } from './checkupGateway.js';
 import type {
@@ -97,6 +104,12 @@ export interface CheckupScreenActions {
   readonly resumeSelectedCheckup: () => void;
   readonly dismissStatus: () => void;
   readonly dismissConflict: () => void;
+  readonly setLineFilter: (id: string) => void;
+  readonly toggleLineSelected: (lineId: string, selected: boolean) => void;
+  readonly toggleSelectAllVisible: () => void;
+  readonly acceptUncountedExpected: () => void;
+  readonly setVisibleToExpected: () => void;
+  readonly acceptSelectedExpected: () => void;
 }
 
 export interface UseCheckupScreenResult {
@@ -139,6 +152,12 @@ export function useCheckupScreen(
   const [selectedResumeId, setSelectedResumeId] = useState<string | null>(null);
   const [conflict, setConflict] = useState<CheckupConflictState | null>(null);
   const [overrideReason, setOverrideReason] = useState('');
+  const [lineFilter, setLineFilterState] = useState<CheckupLineFilterId>('all');
+  const [selectedLineIds, setSelectedLineIds] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
+  const [bulkSyncing, setBulkSyncing] = useState(false);
+  const bulkInFlightRef = useRef(false);
   const [draft, setDraft] = useState<CheckupDraft>(() => {
     const stored = readInventoryDraft<CheckupDraft>(
       'checkup',
@@ -278,6 +297,92 @@ export function useCheckupScreen(
     [syncLineToServer],
   );
 
+  const resetBulkUi = useCallback((): void => {
+    setLineFilterState('all');
+    setSelectedLineIds(new Set());
+  }, []);
+
+  const applyExpectedToLineIds = useCallback(
+    async (
+      lineIds: ReadonlySet<string>,
+      options: { confirmOverwrite: boolean },
+    ): Promise<void> => {
+      if (lineIds.size === 0 || bulkInFlightRef.current) {
+        return;
+      }
+      const { changed } = applyExpectedCounts(draft.lines, lineIds);
+      if (changed.length === 0) {
+        return;
+      }
+      if (options.confirmOverwrite) {
+        const overwriting = draft.lines.some(
+          (line) =>
+            lineIds.has(line.lineId) &&
+            line.countedQuantity !== null &&
+            line.countedQuantity !== line.expectedQuantity,
+        );
+        if (overwriting) {
+          const confirmed = await confirmApi({
+            title: t('pickup.checkup.bulkOverwriteTitle'),
+            message: t('pickup.checkup.bulkOverwriteMessage', { count: changed.length }),
+            confirmLabel: t('pickup.checkup.setVisibleExpected'),
+            cancelLabel: t('pickup.checkup.confirmCancel'),
+            variant: 'warning',
+          });
+          if (!confirmed) {
+            return;
+          }
+        }
+      }
+      bulkInFlightRef.current = true;
+      setBulkSyncing(true);
+      setDraft((prev) => {
+        const applied = applyExpectedCounts(prev.lines, lineIds);
+        return { ...prev, lines: applied.nextLines };
+      });
+      setSelectedLineIds((prev) => {
+        const next = new Set(prev);
+        for (const line of changed) {
+          next.delete(line.lineId);
+        }
+        return next;
+      });
+      try {
+        if (accessToken === null || draft.serverCheckupId === null || !isPickupOnline()) {
+          setStatusTone('success');
+          setStatusMessage(t('pickup.checkup.bulkApplied', { count: changed.length }));
+          return;
+        }
+        let lastDoc: Parameters<typeof documentToDraft>[0] | null = null;
+        for (const line of changed) {
+          lastDoc = await gateway.patchLine(
+            tenantCode,
+            accessToken,
+            draft.serverCheckupId,
+            line.lineId,
+            {
+              countedQuantity: line.countedQuantity,
+              shrinkageReason: line.shrinkageReason,
+              included: line.included,
+            },
+          );
+        }
+        if (lastDoc !== null) {
+          setDraft(documentToDraft(lastDoc));
+        }
+        setStatusTone('success');
+        setStatusMessage(t('pickup.checkup.bulkApplied', { count: changed.length }));
+      } catch {
+        setStatusTone('danger');
+        setStatusMessage(t('pickup.checkup.bulkFailed'));
+      } finally {
+        bulkInFlightRef.current = false;
+        setBulkSyncing(false);
+      }
+    },
+    [accessToken, draft.lines, draft.serverCheckupId, gateway, t, tenantCode],
+  );
+
   const startCheckup = useCallback((): void => {
     if (!isPickupOnline()) {
       setIsOnline(false);
@@ -293,6 +398,7 @@ export function useCheckupScreen(
     setOverrideReason('');
     setStatusMessage(null);
     setSelectedResumeId(null);
+    resetBulkUi();
     const clientDraftKey = generateClientDraftKey('checkup');
     void gateway
       .startFresh(tenantCode, accessToken, {
@@ -316,7 +422,7 @@ export function useCheckupScreen(
       .finally(() => {
         setStarting(false);
       });
-  }, [accessToken, gateway, t, tenantCode]);
+  }, [accessToken, gateway, resetBulkUi, t, tenantCode]);
 
   const resumeSelectedCheckup = useCallback((): void => {
     if (selectedResumeId === null || accessToken === null) {
@@ -326,6 +432,7 @@ export function useCheckupScreen(
     if (candidate === undefined) {
       return;
     }
+    resetBulkUi();
     setDraft((prev) => ({
       ...prev,
       serverCheckupId: candidate.id,
@@ -335,7 +442,7 @@ export function useCheckupScreen(
     }));
     setStatusTone('neutral');
     setStatusMessage(t('pickup.checkup.resumeSelected'));
-  }, [accessToken, resumeCandidates, selectedResumeId, t]);
+  }, [accessToken, resetBulkUi, resumeCandidates, selectedResumeId, t]);
 
   const refreshSnapshot = useCallback((): void => {
     if (!isPickupOnline() || accessToken === null) {
@@ -534,17 +641,23 @@ export function useCheckupScreen(
         overrideReason,
         resumeCandidates,
         selectedResumeId,
+        lineFilter,
+        selectedLineIds: [...selectedLineIds],
+        bulkSyncing,
       }),
     [
       applying,
+      bulkSyncing,
       canOverrideHoldFloor,
       canResupply,
       conflict,
       draft,
       isOnline,
+      lineFilter,
       overrideReason,
       resumeCandidates,
       refreshing,
+      selectedLineIds,
       selectedResumeId,
       starting,
       statusMessage,
@@ -604,12 +717,63 @@ export function useCheckupScreen(
         setConflict(null);
         setOverrideReason('');
       },
+      setLineFilter: (id): void => {
+        if (isCheckupLineFilterId(id)) {
+          setLineFilterState(id);
+        }
+      },
+      toggleLineSelected: (lineId, selected): void => {
+        setSelectedLineIds((prev) => {
+          const next = new Set(prev);
+          if (selected) {
+            next.add(lineId);
+          } else {
+            next.delete(lineId);
+          }
+          return next;
+        });
+      },
+      toggleSelectAllVisible: (): void => {
+        const visibleIds = lineIdsMatchingFilter(draft.lines, lineFilter);
+        setSelectedLineIds((prev) => {
+          const allSelected =
+            visibleIds.length > 0 && visibleIds.every((id) => prev.has(id));
+          const next = new Set(prev);
+          if (allSelected) {
+            for (const id of visibleIds) {
+              next.delete(id);
+            }
+          } else {
+            for (const id of visibleIds) {
+              next.add(id);
+            }
+          }
+          return next;
+        });
+      },
+      acceptUncountedExpected: (): void => {
+        void applyExpectedToLineIds(new Set(uncountedLineIds(draft.lines)), {
+          confirmOverwrite: false,
+        });
+      },
+      setVisibleToExpected: (): void => {
+        void applyExpectedToLineIds(new Set(lineIdsMatchingFilter(draft.lines, lineFilter)), {
+          confirmOverwrite: true,
+        });
+      },
+      acceptSelectedExpected: (): void => {
+        void applyExpectedToLineIds(selectedLineIds, { confirmOverwrite: true });
+      },
     }),
     [
+      applyExpectedToLineIds,
       attemptApply,
+      draft.lines,
+      lineFilter,
       refreshSnapshot,
       resumeSelectedCheckup,
       retryApplyWithOverride,
+      selectedLineIds,
       startCheckup,
       updateLocalLine,
     ],

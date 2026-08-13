@@ -1,10 +1,12 @@
 import { useTranslation } from 'react-i18next';
 import { SHRINKAGE_REASONS, type ShrinkageReason } from 'pi-kiosk-shared/contracts/inventory';
 import { AlertBanner } from '../../shared/ui/AlertBanner.js';
+import { EmptyState } from '../../shared/ui/EmptyState.js';
 import { PageHeader } from '../../shared/ui/PageHeader.js';
 import { PickupStickyCta } from '../../shared/ui/PickupStickyCta.js';
 import { QuantityStepper } from '../../shared/ui/QuantityStepper.js';
 import { SectionCard } from '../../shared/ui/SectionCard.js';
+import { SegmentTabs } from '../../shared/ui/SegmentTabs.js';
 import { StatusBadge } from '../../shared/ui/StatusBadge.js';
 import { Button } from '../../shared/ui/surfacePrimitives.js';
 import type { CheckupViewModel } from './buildCheckupViewModel.js';
@@ -295,75 +297,190 @@ export function CheckupScreenView({
 
           <SectionCard title={t('pickup.checkup.linesTitle')}>
             <p className="m-0 text-sm text-[var(--color-on-surface-muted)]">
-              {t('pickup.checkup.lineCount', { count: viewModel.lineCount })}
+              {viewModel.lineFilter === 'all'
+                ? t('pickup.checkup.lineCount', { count: viewModel.lineCount })
+                : t('pickup.checkup.visibleLineCount', {
+                    visible: viewModel.visibleLineCount,
+                    total: viewModel.lineCount,
+                  })}
             </p>
-            <ul
-              className="m-0 mt-3 flex list-none flex-col gap-3 p-0"
-              data-testid="checkup-lines"
-            >
-              {viewModel.lines.map((line) => (
-                <li
-                  key={line.lineId}
-                  className="rounded-lg border border-[var(--color-border)] px-3 py-3"
-                  data-testid={`checkup-line-${line.lineId}`}
-                >
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="m-0 truncate text-sm font-medium">{line.label}</p>
-                      <p className="m-0 text-xs text-[var(--color-on-surface-muted)]">
-                        {t('pickup.checkup.expectedLabel', {
-                          expected: line.expectedQuantity,
-                          hold: line.expectedStockOnHold,
-                        })}
-                      </p>
-                    </div>
-                    <StatusBadge
-                      label={t(`pickup.checkup.mismatch.${line.mismatch}`)}
-                      tone={mismatchTone(line.mismatch)}
-                      testId={`checkup-mismatch-${line.lineId}`}
-                    />
-                  </div>
-                  <div className="mt-3 flex flex-wrap items-center gap-3">
-                    <QuantityStepper
-                      value={line.countedQuantity}
-                      min={0}
-                      onInc={() => {
-                        actions.incrementCounted(line.lineId);
-                      }}
-                      onDec={() => {
-                        actions.decrementCounted(line.lineId);
-                      }}
-                      aria-label={t('pickup.checkup.countedAria', { label: line.label })}
-                      testId={`checkup-stepper-${line.lineId}`}
-                    />
-                    {line.mismatch === 'short' || line.needsShrinkageReason ? (
-                      <label className="flex min-w-[12rem] flex-col gap-1 text-xs font-medium">
-                        {t('pickup.checkup.shrinkageLabel')}
-                        <select
-                          className="min-h-11 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-2 text-sm"
-                          value={line.shrinkageReason ?? ''}
+            <div className="mt-3" data-testid="checkup-line-filters">
+              <SegmentTabs
+                tabs={[
+                  {
+                    id: 'all',
+                    label: t('pickup.checkup.filter.all'),
+                    count: viewModel.lineCount,
+                  },
+                  {
+                    id: 'uncounted',
+                    label: t('pickup.checkup.filter.uncounted'),
+                    count: viewModel.buckets.uncounted,
+                  },
+                  {
+                    id: 'short',
+                    label: t('pickup.checkup.filter.short'),
+                    count: viewModel.buckets.short,
+                  },
+                  {
+                    id: 'over',
+                    label: t('pickup.checkup.filter.over'),
+                    count: viewModel.buckets.over,
+                  },
+                  {
+                    id: 'match',
+                    label: t('pickup.checkup.filter.match'),
+                    count: viewModel.buckets.matched,
+                  },
+                ]}
+                activeId={viewModel.lineFilter}
+                ariaLabel={t('pickup.checkup.filterAria')}
+                idPrefix="checkup-line-filter"
+                onChange={actions.setLineFilter}
+              />
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Button
+                intent="primary"
+                type="button"
+                className="min-h-11"
+                disabled={!viewModel.acceptRemainingEnabled}
+                onClick={actions.acceptUncountedExpected}
+                data-testid="checkup-accept-remaining"
+              >
+                {viewModel.bulkBusy
+                  ? t('pickup.checkup.bulkBusy')
+                  : t('pickup.checkup.acceptRemainingCount', {
+                      count: viewModel.buckets.uncounted,
+                    })}
+              </Button>
+              <Button
+                intent="secondary"
+                type="button"
+                className="min-h-11"
+                disabled={!viewModel.setVisibleExpectedEnabled}
+                onClick={actions.setVisibleToExpected}
+                data-testid="checkup-set-visible-expected"
+              >
+                {t('pickup.checkup.setVisibleExpected')}
+              </Button>
+              <Button
+                intent="secondary"
+                type="button"
+                className="min-h-11"
+                disabled={!viewModel.acceptSelectedEnabled}
+                onClick={actions.acceptSelectedExpected}
+                data-testid="checkup-accept-selected"
+              >
+                {t('pickup.checkup.acceptSelectedCount', {
+                  count: viewModel.selectedCount,
+                })}
+              </Button>
+            </div>
+            {viewModel.visibleLineCount > 0 ? (
+              <label className="pickup-touch-target mt-3 inline-flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  className="h-5 w-5 accent-[var(--color-accent)]"
+                  checked={viewModel.allVisibleSelected}
+                  disabled={viewModel.bulkBusy}
+                  onChange={actions.toggleSelectAllVisible}
+                  data-testid="checkup-select-all"
+                />
+                {t('pickup.checkup.selectAllVisible')}
+              </label>
+            ) : null}
+            {viewModel.visibleLineCount === 0 ? (
+              <div className="mt-3">
+                <EmptyState
+                  title={t('pickup.common.emptyTitle')}
+                  message={t('pickup.checkup.filterEmpty')}
+                />
+              </div>
+            ) : (
+              <ul
+                className="m-0 mt-3 flex list-none flex-col gap-3 p-0"
+                data-testid="checkup-lines"
+              >
+                {viewModel.visibleLines.map((line) => (
+                  <li
+                    key={line.lineId}
+                    className="rounded-lg border border-[var(--color-border)] px-3 py-3"
+                    data-testid={`checkup-line-${line.lineId}`}
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex min-w-0 items-start gap-3">
+                        <input
+                          type="checkbox"
+                          className="mt-1 h-5 w-5 shrink-0 accent-[var(--color-accent)]"
+                          checked={viewModel.selectedLineIds.includes(line.lineId)}
+                          disabled={viewModel.bulkBusy}
                           onChange={(event) => {
-                            const value = event.target.value;
-                            actions.setShrinkageReason(
-                              line.lineId,
-                              value.length === 0 ? null : (value as ShrinkageReason),
-                            );
+                            actions.toggleLineSelected(line.lineId, event.target.checked);
                           }}
-                          data-testid={`checkup-shrinkage-${line.lineId}`}
-                        >
-                          <option value="">{t('pickup.checkup.shrinkagePlaceholder')}</option>
-                          {SHRINKAGE_REASONS.map((reason) => (
-                            <option key={reason} value={reason}>
-                              {t(`pickup.checkup.shrinkage.${reason}`)}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                    ) : null}
-                  </div>
-                </li>
-              ))}
-            </ul>
+                          aria-label={t('pickup.checkup.selectLineAria', { label: line.label })}
+                          data-testid={`checkup-select-${line.lineId}`}
+                        />
+                        <div className="min-w-0">
+                          <p className="m-0 truncate text-sm font-medium">{line.label}</p>
+                          <p className="m-0 text-xs text-[var(--color-on-surface-muted)]">
+                            {t('pickup.checkup.expectedLabel', {
+                              expected: line.expectedQuantity,
+                              hold: line.expectedStockOnHold,
+                            })}
+                          </p>
+                        </div>
+                      </div>
+                      <StatusBadge
+                        label={t(`pickup.checkup.mismatch.${line.mismatch}`)}
+                        tone={mismatchTone(line.mismatch)}
+                        testId={`checkup-mismatch-${line.lineId}`}
+                      />
+                    </div>
+                    <div className="mt-3 flex flex-wrap items-center gap-3">
+                      <QuantityStepper
+                        value={line.countedQuantity}
+                        min={0}
+                        disabled={viewModel.bulkBusy}
+                        onInc={() => {
+                          actions.incrementCounted(line.lineId);
+                        }}
+                        onDec={() => {
+                          actions.decrementCounted(line.lineId);
+                        }}
+                        aria-label={t('pickup.checkup.countedAria', { label: line.label })}
+                        testId={`checkup-stepper-${line.lineId}`}
+                      />
+                      {line.mismatch === 'short' || line.needsShrinkageReason ? (
+                        <label className="flex min-w-[12rem] flex-col gap-1 text-xs font-medium">
+                          {t('pickup.checkup.shrinkageLabel')}
+                          <select
+                            className="min-h-11 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-2 text-sm"
+                            value={line.shrinkageReason ?? ''}
+                            disabled={viewModel.bulkBusy}
+                            onChange={(event) => {
+                              const value = event.target.value;
+                              actions.setShrinkageReason(
+                                line.lineId,
+                                value.length === 0 ? null : (value as ShrinkageReason),
+                              );
+                            }}
+                            data-testid={`checkup-shrinkage-${line.lineId}`}
+                          >
+                            <option value="">{t('pickup.checkup.shrinkagePlaceholder')}</option>
+                            {SHRINKAGE_REASONS.map((reason) => (
+                              <option key={reason} value={reason}>
+                                {t(`pickup.checkup.shrinkage.${reason}`)}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                      ) : null}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
           </SectionCard>
         </>
       )}

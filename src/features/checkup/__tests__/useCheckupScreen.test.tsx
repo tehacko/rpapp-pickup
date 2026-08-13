@@ -368,4 +368,154 @@ describe('useCheckupScreen', () => {
     });
     expect(result.current.viewModel.statusTone).toBe('danger');
   });
+
+  it('accepts remaining uncounted lines as expected and patches each line', async () => {
+    const inventoryDraftStore = jest.requireMock(
+      '../../../shared/inventory/inventoryDraftStore.js',
+    ) as {
+      readInventoryDraft: jest.Mock;
+    };
+    inventoryDraftStore.readInventoryDraft.mockReturnValue({
+      payload: {
+        clientDraftKey: 'draft-1',
+        serverCheckupId: 'checkup-1',
+        scopeMode: 'ACTIVE_STOCK',
+        status: 'IN_PROGRESS',
+        lines: [
+          {
+            lineId: 'line-1',
+            productId: 11,
+            variantId: null,
+            productLabel: 'Tea',
+            expectedQuantity: 5,
+            expectedStockOnHold: 0,
+            countedQuantity: null,
+            shrinkageReason: null,
+            included: true,
+          },
+          {
+            lineId: 'line-2',
+            productId: 12,
+            variantId: null,
+            productLabel: 'Coffee',
+            expectedQuantity: 3,
+            expectedStockOnHold: 0,
+            countedQuantity: null,
+            shrinkageReason: null,
+            included: true,
+          },
+        ],
+      },
+    });
+    const gateway = createGatewayMock();
+    gateway.listOpen.mockResolvedValue([]);
+    gateway.patchLine.mockImplementation(async (_tenant, _token, _id, lineId) => ({
+      id: 'checkup-1',
+      clientDraftKey: 'draft-1',
+      status: 'IN_PROGRESS',
+      scopeMode: 'ACTIVE_STOCK',
+      lines: [
+        {
+          id: 'line-1',
+          productId: 11,
+          variantId: null,
+          expectedQuantity: 5,
+          expectedStockOnHold: 0,
+          countedQuantity: 5,
+          shrinkageReason: null,
+          included: true,
+          productLabel: 'Tea',
+        },
+        {
+          id: 'line-2',
+          productId: 12,
+          variantId: null,
+          expectedQuantity: 3,
+          expectedStockOnHold: 0,
+          countedQuantity: lineId === 'line-2' ? 3 : null,
+          shrinkageReason: null,
+          included: true,
+          productLabel: 'Coffee',
+        },
+      ],
+    }));
+
+    const { result } = renderHook(() => useCheckupScreen(gateway));
+
+    await act(async () => {
+      result.current.actions.acceptUncountedExpected();
+    });
+
+    await waitFor(() => {
+      expect(gateway.patchLine).toHaveBeenCalledTimes(2);
+      expect(result.current.viewModel.buckets.uncounted).toBe(0);
+    });
+    expect(gateway.patchLine).toHaveBeenNthCalledWith(
+      1,
+      'demo',
+      'staff-token',
+      'checkup-1',
+      'line-1',
+      {
+        countedQuantity: 5,
+        shrinkageReason: null,
+        included: true,
+      },
+    );
+    expect(result.current.viewModel.statusMessage).toBe('pickup.checkup.bulkApplied');
+  });
+
+  it('filters visible lines after setLineFilter', async () => {
+    const inventoryDraftStore = jest.requireMock(
+      '../../../shared/inventory/inventoryDraftStore.js',
+    ) as {
+      readInventoryDraft: jest.Mock;
+    };
+    inventoryDraftStore.readInventoryDraft.mockReturnValue({
+      payload: {
+        clientDraftKey: 'draft-1',
+        serverCheckupId: 'checkup-1',
+        scopeMode: 'ACTIVE_STOCK',
+        status: 'IN_PROGRESS',
+        lines: [
+          {
+            lineId: 'line-1',
+            productId: 11,
+            variantId: null,
+            productLabel: 'Tea',
+            expectedQuantity: 5,
+            expectedStockOnHold: 0,
+            countedQuantity: null,
+            shrinkageReason: null,
+            included: true,
+          },
+          {
+            lineId: 'line-2',
+            productId: 12,
+            variantId: null,
+            productLabel: 'Coffee',
+            expectedQuantity: 3,
+            expectedStockOnHold: 0,
+            countedQuantity: 3,
+            shrinkageReason: null,
+            included: true,
+          },
+        ],
+      },
+    });
+    const gateway = createGatewayMock();
+    gateway.listOpen.mockResolvedValue([]);
+
+    const { result } = renderHook(() => useCheckupScreen(gateway));
+
+    expect(result.current.viewModel.visibleLines).toHaveLength(2);
+
+    act(() => {
+      result.current.actions.setLineFilter('uncounted');
+    });
+
+    expect(result.current.viewModel.lineFilter).toBe('uncounted');
+    expect(result.current.viewModel.visibleLines).toHaveLength(1);
+    expect(result.current.viewModel.visibleLines[0]?.lineId).toBe('line-1');
+  });
 });

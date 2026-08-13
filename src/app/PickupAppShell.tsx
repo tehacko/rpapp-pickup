@@ -23,6 +23,7 @@ import { usePickupEntitlement } from '../hooks/usePickupEntitlement.js';
 import { getPairedDevice } from '../lib/deviceStorage.js';
 import { useOnlineStatus } from '../shared/network/useOnlineStatus.js';
 import { usePickupStaffSession } from '../shared/session/PickupStaffSessionProvider.js';
+import { compilePickupCompactNav } from '../shared/nav/compilePickupCompactNav.js';
 import { PickupBottomNav } from '../shared/ui/PickupBottomNav.js';
 import { PickupContextBar } from '../shared/ui/PickupContextBar.js';
 import { PickupMoreDrawer } from '../shared/ui/PickupMoreDrawer.js';
@@ -319,9 +320,12 @@ function PickupAppShellChrome({ bottomNav }: PickupAppShellProps): JSX.Element {
         ]
       : [];
 
+  const { primary: compactPrimaryItems, overflow: compactOverflowItems } =
+    compilePickupCompactNav(navItems, moreItems);
+
   const defaultBottomNav = (
     <PickupBottomNav
-      items={navItems}
+      items={compactPrimaryItems}
       moreOpen={isMoreOpen}
       onMoreClick={toggleMore}
       moreButtonRef={moreButtonRef}
@@ -445,7 +449,7 @@ function PickupAppShellChrome({ bottomNav }: PickupAppShellProps): JSX.Element {
         <PickupMoreDrawer
           open={isMoreOpen}
           onClose={closeMore}
-          items={moreItems}
+          items={compactOverflowItems}
           deviceItems={deviceItems}
           onSignOut={onSignOut}
         />

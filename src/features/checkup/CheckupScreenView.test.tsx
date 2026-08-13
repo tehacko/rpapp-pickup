@@ -29,6 +29,12 @@ function createActions(): CheckupScreenActions {
     resumeSelectedCheckup: jest.fn(),
     dismissStatus: jest.fn(),
     dismissConflict: jest.fn(),
+    setLineFilter: jest.fn(),
+    toggleLineSelected: jest.fn(),
+    toggleSelectAllVisible: jest.fn(),
+    acceptUncountedExpected: jest.fn(),
+    setVisibleToExpected: jest.fn(),
+    acceptSelectedExpected: jest.fn(),
   };
 }
 
@@ -46,6 +52,7 @@ function createViewModel(overrides: Partial<CheckupViewModel> = {}): CheckupView
     applying: false,
     refreshing: false,
     lineCount: 1,
+    visibleLineCount: 1,
     lines: [
       {
         lineId: 'l1',
@@ -60,12 +67,34 @@ function createViewModel(overrides: Partial<CheckupViewModel> = {}): CheckupView
         needsShrinkageReason: false,
       },
     ],
+    visibleLines: [
+      {
+        lineId: 'l1',
+        productId: 1,
+        variantId: null,
+        label: 'Tea',
+        expectedQuantity: 5,
+        expectedStockOnHold: 0,
+        countedQuantity: 5,
+        shrinkageReason: null,
+        mismatch: 'match',
+        needsShrinkageReason: false,
+      },
+    ],
+    lineFilter: 'all',
+    selectedLineIds: [],
+    selectedCount: 0,
+    allVisibleSelected: false,
     buckets: {
       matched: 1,
       short: 0,
       over: 0,
       uncounted: 0,
     },
+    bulkBusy: false,
+    acceptRemainingEnabled: false,
+    setVisibleExpectedEnabled: false,
+    acceptSelectedEnabled: false,
     applyEnabled: true,
     conflict: null,
     overrideReason: '',
@@ -157,5 +186,52 @@ describe('CheckupScreenView', () => {
 
     expect(actions.selectResumeCheckup).toHaveBeenCalledWith('checkup-7');
     expect(actions.resumeSelectedCheckup).toHaveBeenCalledTimes(1);
+  });
+
+  it('wires bulk actions and line selection', () => {
+    const actions = createActions();
+    const uncountedLine = {
+      lineId: 'l2',
+      productId: 2,
+      variantId: null,
+      label: 'Coffee',
+      expectedQuantity: 8,
+      expectedStockOnHold: 0,
+      countedQuantity: 0,
+      shrinkageReason: null,
+      mismatch: 'uncounted' as const,
+      needsShrinkageReason: false,
+    };
+    render(
+      <CheckupScreenView
+        actions={actions}
+        viewModel={createViewModel({
+          lineCount: 1,
+          visibleLineCount: 1,
+          lines: [uncountedLine],
+          visibleLines: [uncountedLine],
+          buckets: { matched: 0, short: 0, over: 0, uncounted: 1 },
+          acceptRemainingEnabled: true,
+          setVisibleExpectedEnabled: true,
+          acceptSelectedEnabled: true,
+          selectedCount: 1,
+          selectedLineIds: ['l2'],
+          applyEnabled: false,
+        })}
+      />,
+    );
+
+    fireEvent.click(screen.getByTestId('checkup-accept-remaining'));
+    fireEvent.click(screen.getByTestId('checkup-set-visible-expected'));
+    fireEvent.click(screen.getByTestId('checkup-accept-selected'));
+    fireEvent.click(screen.getByTestId('checkup-select-all'));
+    fireEvent.click(screen.getByTestId('checkup-select-l2'));
+
+    expect(actions.acceptUncountedExpected).toHaveBeenCalledTimes(1);
+    expect(actions.setVisibleToExpected).toHaveBeenCalledTimes(1);
+    expect(actions.acceptSelectedExpected).toHaveBeenCalledTimes(1);
+    expect(actions.toggleSelectAllVisible).toHaveBeenCalledTimes(1);
+    expect(actions.toggleLineSelected).toHaveBeenCalledWith('l2', false);
+    expect(screen.getByTestId('checkup-line-filters')).toBeTruthy();
   });
 });

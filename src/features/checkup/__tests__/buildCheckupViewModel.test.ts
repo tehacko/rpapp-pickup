@@ -195,4 +195,42 @@ describe('buildCheckupViewModel', () => {
     });
     expect(vm.resumeChoiceVisible).toBe(true);
   });
+
+  it('filters visible lines and enables remaining bulk when uncounted exist', () => {
+    const vm = buildCheckupViewModel({
+      tenantCode: 'demo',
+      canResupply: true,
+      canOverrideHoldFloor: false,
+      isOnline: true,
+      statusMessage: null,
+      statusTone: 'neutral',
+      draft: {
+        serverCheckupId: 'c1',
+        status: 'IN_PROGRESS',
+        lines: [
+          { ...baseDraftLine, lineId: 'l1', countedQuantity: null },
+          {
+            ...baseDraftLine,
+            lineId: 'l2',
+            countedQuantity: 5,
+            shrinkageReason: null,
+          },
+        ],
+      },
+      starting: false,
+      applying: false,
+      refreshing: false,
+      conflict: null,
+      overrideReason: '',
+      resumeCandidates: [],
+      selectedResumeId: null,
+      lineFilter: 'uncounted',
+      selectedLineIds: ['l1'],
+    });
+    expect(vm.visibleLines).toHaveLength(1);
+    expect(vm.visibleLines[0]?.lineId).toBe('l1');
+    expect(vm.acceptRemainingEnabled).toBe(true);
+    expect(vm.acceptSelectedEnabled).toBe(true);
+    expect(vm.setVisibleExpectedEnabled).toBe(true);
+  });
 });

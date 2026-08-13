@@ -1,9 +1,17 @@
 import type { ShrinkageReason } from 'pi-kiosk-shared/contracts/inventory';
+import {
+  applyExpectedCounts,
+  classifyCheckupMismatch,
+  type CheckupLineFilterId,
+  type CheckupMismatch,
+} from './checkupBulk.js';
 import type {
   CheckupConflictState,
   CheckupLineDraft,
   CheckupResumeCandidate,
 } from './checkupTypes.js';
+
+export type { CheckupLineFilterId, CheckupMismatch };
 
 export interface CheckupLineViewModel {
   readonly lineId: string;
@@ -14,7 +22,7 @@ export interface CheckupLineViewModel {
   readonly expectedStockOnHold: number;
   readonly countedQuantity: number;
   readonly shrinkageReason: ShrinkageReason | null;
-  readonly mismatch: 'match' | 'short' | 'over' | 'uncounted';
+  readonly mismatch: CheckupMismatch;
   readonly needsShrinkageReason: boolean;
 }
 
@@ -39,8 +47,18 @@ export interface CheckupViewModel {
   readonly applying: boolean;
   readonly refreshing: boolean;
   readonly lineCount: number;
+  readonly visibleLineCount: number;
   readonly lines: readonly CheckupLineViewModel[];
+  readonly visibleLines: readonly CheckupLineViewModel[];
+  readonly lineFilter: CheckupLineFilterId;
+  readonly selectedLineIds: readonly string[];
+  readonly selectedCount: number;
+  readonly allVisibleSelected: boolean;
   readonly buckets: CheckupSummaryBuckets;
+  readonly bulkBusy: boolean;
+  readonly acceptRemainingEnabled: boolean;
+  readonly setVisibleExpectedEnabled: boolean;
+  readonly acceptSelectedEnabled: boolean;
   readonly applyEnabled: boolean;
   readonly conflict: CheckupConflictState | null;
   readonly overrideReason: string;
@@ -49,19 +67,6 @@ export interface CheckupViewModel {
   readonly resumeCandidates: readonly CheckupResumeCandidate[];
   readonly resumeChoiceVisible: boolean;
   readonly selectedResumeId: string | null;
-}
-
-function classifyLine(line: CheckupLineDraft): CheckupLineViewModel['mismatch'] {
-  if (line.countedQuantity === null) {
-    return 'uncounted';
-  }
-  if (line.countedQuantity === line.expectedQuantity) {
-    return 'match';
-  }
-  if (line.countedQuantity < line.expectedQuantity) {
-    return 'short';
-  }
-  return 'over';
 }
 
 export function buildCheckupViewModel(input: {
@@ -84,9 +89,17 @@ export function buildCheckupViewModel(input: {
   overrideReason: string;
   resumeCandidates: readonly CheckupResumeCandidate[];
   selectedResumeId: string | null;
+  lineFilter?: CheckupLineFilterId;
+  selectedLineIds?: readonly string[];
+  bulkSyncing?: boolean;
 }): CheckupViewModel {
+  const lineFilter = input.lineFilter ?? 'all';
+  const validLineIds = new Set(input.draft.lines.map((line) => line.lineId));
+  const selectedLineIds = (input.selectedLineIds ?? []).filter((id) => validLineIds.has(id));
+  const bulkSyncing = input.bulkSyncing ?? false;
+  const selectedSet = new Set(selectedLineIds);
   const lines: CheckupLineViewModel[] = input.draft.lines.map((line) => {
-    const mismatch = classifyLine(line);
+    const mismatch = classifyCheckupMismatch(line);
     const counted = line.countedQuantity ?? 0;
     return {
       lineId: line.lineId,
@@ -113,8 +126,21 @@ export function buildCheckupViewModel(input: {
     input.draft.serverCheckupId !== null &&
     (input.draft.status === 'IN_PROGRESS' || input.draft.lines.length > 0);
 
+  const visibleLines =
+    lineFilter === 'all' ? lines : lines.filter((line) => line.mismatch === lineFilter);
   const incompleteReasons = lines.some((l) => l.needsShrinkageReason);
   const hasUncounted = buckets.uncounted > 0;
+  const bulkBusy = bulkSyncing || input.applying || input.refreshing;
+  const visibleExpectedChanges = applyExpectedCounts(
+    input.draft.lines,
+    new Set(visibleLines.map((line) => line.lineId)),
+  ).changed.length;
+  const selectedExpectedChanges = applyExpectedCounts(
+    input.draft.lines,
+    selectedSet,
+  ).changed.length;
+  const allVisibleSelected =
+    visibleLines.length > 0 && visibleLines.every((line) => selectedSet.has(line.lineId));
   const overrideVisible =
     input.canOverrideHoldFloor &&
     (input.conflict?.kind === 'STOCK_MOVED' || input.conflict?.kind === 'BELOW_HOLD');
@@ -123,7 +149,8 @@ export function buildCheckupViewModel(input: {
     input.isOnline &&
     input.overrideReason.trim().length > 0 &&
     !input.applying &&
-    !input.refreshing;
+    !input.refreshing &&
+    !bulkSyncing;
 
   return {
     tenantCode: input.tenantCode,
@@ -138,8 +165,18 @@ export function buildCheckupViewModel(input: {
     applying: input.applying,
     refreshing: input.refreshing,
     lineCount: lines.length,
+    visibleLineCount: visibleLines.length,
     lines,
+    visibleLines,
+    lineFilter,
+    selectedLineIds,
+    selectedCount: selectedLineIds.length,
+    allVisibleSelected,
     buckets,
+    bulkBusy,
+    acceptRemainingEnabled: started && !bulkBusy && hasUncounted,
+    setVisibleExpectedEnabled: started && !bulkBusy && visibleExpectedChanges > 0,
+    acceptSelectedEnabled: started && !bulkBusy && selectedExpectedChanges > 0,
     applyEnabled:
       input.isOnline &&
       started &&
@@ -147,7 +184,8 @@ export function buildCheckupViewModel(input: {
       !hasUncounted &&
       !incompleteReasons &&
       !input.applying &&
-      !input.refreshing,
+      !input.refreshing &&
+      !bulkSyncing,
     conflict: input.conflict,
     overrideReason: input.overrideReason,
     overrideVisible,
