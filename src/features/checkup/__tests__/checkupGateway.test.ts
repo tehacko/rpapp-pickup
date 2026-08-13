@@ -186,4 +186,46 @@ describe('checkupGateway', () => {
       }),
     );
   });
+
+  it('patches many lines in one request', async () => {
+    const fetchMock = jest.fn().mockResolvedValue(
+      mockJsonResponse(200, {
+        data: {
+          id: 'checkup-1',
+          clientDraftKey: 'draft-1',
+          status: 'IN_PROGRESS',
+          scopeMode: 'ACTIVE_STOCK',
+          lines: [],
+        },
+      }),
+    );
+    global.fetch = fetchMock as typeof fetch;
+
+    await checkupGateway.patchLines('demo', 'token', 'checkup-1', [
+      { lineId: 'line-1', countedQuantity: 5, included: true },
+      { lineId: 'line-2', countedQuantity: 3, shrinkageReason: null, included: true },
+    ]);
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/demo/v1/pickup/staff/inventory/checkups/checkup-1/lines',
+      expect.objectContaining({
+        method: 'PATCH',
+        body: JSON.stringify({
+          lines: [
+            {
+              lineId: 'line-1',
+              countedQuantity: 5,
+              included: true,
+            },
+            {
+              lineId: 'line-2',
+              countedQuantity: 3,
+              shrinkageReason: null,
+              included: true,
+            },
+          ],
+        }),
+      }),
+    );
+  });
 });

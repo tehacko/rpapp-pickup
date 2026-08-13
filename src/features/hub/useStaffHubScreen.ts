@@ -8,6 +8,17 @@ import { usePickupEntitlement } from '../../hooks/usePickupEntitlement.js';
 import { useStaffToken, useTenantCode } from '../../hooks/useStaffToken.js';
 import { usePickupStaffSession } from '../../shared/session/PickupStaffSessionProvider.js';
 import { sellCatalogGateway } from '../sell/sellCatalogGateway.js';
+import { barcodeAssignGateway } from '../barcode-assign/barcodeAssignGateway.js';
+import { restockGateway } from '../restock/restockGateway.js';
+import { checkupGateway } from '../checkup/checkupGateway.js';
+import { queueGateway } from '../queue/queueGateway.js';
+import {
+  buildBarcodeHubStats,
+  buildCheckupHubStats,
+  buildQueueHubStats,
+  buildStockHubStats,
+  queryToLoadState,
+} from './buildStaffHubDashboard.js';
 import {
   buildStaffHubViewModel,
   type StaffHubPickupPointOption,
@@ -18,6 +29,7 @@ import { useStaffPickupPointsQuery } from '../../shared/queries/useStaffPickupPo
 export interface StaffHubScreenActions {
   readonly setActivePickupPointId: (pickupPointId: number) => void;
   readonly retryPickupPoints: () => void;
+  readonly retryDashboard: () => void;
 }
 
 export interface UseStaffHubScreenResult {
@@ -25,6 +37,8 @@ export interface UseStaffHubScreenResult {
   readonly viewModel: StaffHubViewModel;
   readonly actions: StaffHubScreenActions;
 }
+
+const HUB_STATS_STALE_MS = 30_000;
 
 function mapPickupPointOptions(
   points: readonly {
@@ -71,6 +85,11 @@ export function useStaffHubScreen(): UseStaffHubScreenResult {
   const canProbeSell =
     sessionClaims?.capabilities.includes(PICKUP_SELL_CAPABILITY) === true;
 
+  const canScan = entitledFunctions.includes(PickupStaffFunction.FULFILLMENT_SCAN);
+  const canAssign = entitledFunctions.includes(PickupStaffFunction.BARCODE_ASSIGN);
+  const canResupply = entitledFunctions.includes(PickupStaffFunction.STOCK_RESUPPLY);
+  const hasToken = accessToken !== null;
+
   const pickupPointsQuery = useStaffPickupPointsQuery({
     enabled: shouldLoadPickupPoints,
   });
@@ -83,8 +102,79 @@ export function useStaffHubScreen(): UseStaffHubScreenResult {
       }
       return sellCatalogGateway.fetchConfig(tenantCode, accessToken);
     },
-    enabled: accessToken !== null && canProbeSell,
+    enabled: hasToken && canProbeSell,
     staleTime: 60_000,
+    retry: 0,
+  });
+
+  const barcodeQuery = useQuery({
+    queryKey: ['pickup', tenantCode, 'hub', 'barcodeCatalog'],
+    queryFn: () => {
+      if (accessToken === null) {
+        throw new Error('Missing staff token');
+      }
+      return barcodeAssignGateway.listCatalog(tenantCode, accessToken);
+    },
+    enabled: hasToken && canAssign,
+    staleTime: HUB_STATS_STALE_MS,
+    retry: 0,
+  });
+
+  const stockQuery = useQuery({
+    queryKey: ['pickup', tenantCode, 'hub', 'stock'],
+    queryFn: () => {
+      if (accessToken === null) {
+        throw new Error('Missing staff token');
+      }
+      return restockGateway.listStock(tenantCode, accessToken);
+    },
+    enabled: hasToken && canResupply,
+    staleTime: HUB_STATS_STALE_MS,
+    retry: 0,
+  });
+
+  const restockDraftsQuery = useQuery({
+    queryKey: ['pickup', tenantCode, 'hub', 'restockDrafts'],
+    queryFn: () => {
+      if (accessToken === null) {
+        throw new Error('Missing staff token');
+      }
+      return restockGateway.listDraftBatches(tenantCode, accessToken);
+    },
+    enabled: hasToken && canResupply,
+    staleTime: HUB_STATS_STALE_MS,
+    retry: 0,
+  });
+
+  const checkupQuery = useQuery({
+    queryKey: ['pickup', tenantCode, 'hub', 'checkupsOpen'],
+    queryFn: () => {
+      if (accessToken === null) {
+        throw new Error('Missing staff token');
+      }
+      return checkupGateway.listOpen(tenantCode, accessToken);
+    },
+    enabled: hasToken && canResupply,
+    staleTime: HUB_STATS_STALE_MS,
+    retry: 0,
+  });
+
+  const queueQuery = useQuery({
+    queryKey: ['pickup', tenantCode, 'hub', 'queue', activePickupPointId],
+    queryFn: async () => {
+      if (accessToken === null) {
+        throw new Error('Missing staff token');
+      }
+      const result = await queueGateway.fetchQueue(tenantCode, accessToken, {
+        ...(activePickupPointId !== null ? { pickupPointId: activePickupPointId } : {}),
+      });
+      if (!result.ok) {
+        throw new Error('Pickup queue could not be loaded.');
+      }
+      return result.items;
+    },
+    enabled: hasToken && canScan,
+    staleTime: HUB_STATS_STALE_MS,
     retry: 0,
   });
 
@@ -102,14 +192,65 @@ export function useStaffHubScreen(): UseStaffHubScreenResult {
     [allowedPickupPointIds, i18n.language, pickupPointsQuery.data, shouldLoadPickupPoints],
   );
 
+  const barcodeStats = useMemo(
+    () =>
+      buildBarcodeHubStats(
+        barcodeQuery.data ?? [],
+        queryToLoadState(hasToken && canAssign, barcodeQuery.isPending, barcodeQuery.isError),
+      ),
+    [barcodeQuery.data, barcodeQuery.isError, barcodeQuery.isPending, canAssign, hasToken],
+  );
+
+  const stockStats = useMemo(
+    () =>
+      buildStockHubStats(
+        stockQuery.data ?? [],
+        restockDraftsQuery.data ?? [],
+        queryToLoadState(hasToken && canResupply, stockQuery.isPending, stockQuery.isError),
+        queryToLoadState(
+          hasToken && canResupply,
+          restockDraftsQuery.isPending,
+          restockDraftsQuery.isError,
+        ),
+      ),
+    [
+      canResupply,
+      hasToken,
+      restockDraftsQuery.data,
+      restockDraftsQuery.isError,
+      restockDraftsQuery.isPending,
+      stockQuery.data,
+      stockQuery.isError,
+      stockQuery.isPending,
+    ],
+  );
+
+  const checkupStats = useMemo(
+    () =>
+      buildCheckupHubStats(
+        checkupQuery.data ?? [],
+        queryToLoadState(hasToken && canResupply, checkupQuery.isPending, checkupQuery.isError),
+      ),
+    [canResupply, checkupQuery.data, checkupQuery.isError, checkupQuery.isPending, hasToken],
+  );
+
+  const queueStats = useMemo(
+    () =>
+      buildQueueHubStats(
+        queueQuery.data ?? [],
+        queryToLoadState(hasToken && canScan, queueQuery.isPending, queueQuery.isError),
+      ),
+    [canScan, hasToken, queueQuery.data, queueQuery.isError, queueQuery.isPending],
+  );
+
   const viewModel = useMemo(
     () =>
       buildStaffHubViewModel({
         tenantCode,
-        canScan: entitledFunctions.includes(PickupStaffFunction.FULFILLMENT_SCAN),
-        canAssign: entitledFunctions.includes(PickupStaffFunction.BARCODE_ASSIGN),
+        canScan,
+        canAssign,
         canSell,
-        canResupply: entitledFunctions.includes(PickupStaffFunction.STOCK_RESUPPLY),
+        canResupply,
         showDeviceRegistry: deviceFlags.registryEnabled,
         pairedDeviceLabel: pairedDevice?.deviceLabel ?? null,
         showPickupPointSwitcher: isRoamingStaff,
@@ -117,23 +258,38 @@ export function useStaffHubScreen(): UseStaffHubScreenResult {
         activePickupPointId,
         pickupPointsLoading: shouldLoadPickupPoints && pickupPointsQuery.isLoading,
         pickupPointsError: shouldLoadPickupPoints && pickupPointsQuery.isError,
+        barcodeStats,
+        stockStats,
+        checkupStats,
+        queueStats,
       }),
     [
       activePickupPointId,
+      barcodeStats,
+      canAssign,
+      canResupply,
+      canScan,
       canSell,
+      checkupStats,
       deviceFlags.registryEnabled,
-      entitledFunctions,
       isRoamingStaff,
       pairedDevice?.deviceLabel,
       pickupPointOptions,
       pickupPointsQuery.isError,
       pickupPointsQuery.isLoading,
+      queueStats,
       shouldLoadPickupPoints,
+      stockStats,
       tenantCode,
     ],
   );
 
   const refetchPickupPoints = pickupPointsQuery.refetch;
+  const refetchBarcode = barcodeQuery.refetch;
+  const refetchStock = stockQuery.refetch;
+  const refetchDrafts = restockDraftsQuery.refetch;
+  const refetchCheckup = checkupQuery.refetch;
+  const refetchQueue = queueQuery.refetch;
 
   const actions = useMemo<StaffHubScreenActions>(
     () => ({
@@ -141,8 +297,32 @@ export function useStaffHubScreen(): UseStaffHubScreenResult {
       retryPickupPoints: (): void => {
         void refetchPickupPoints();
       },
+      retryDashboard: (): void => {
+        if (canAssign) {
+          void refetchBarcode();
+        }
+        if (canResupply) {
+          void refetchStock();
+          void refetchDrafts();
+          void refetchCheckup();
+        }
+        if (canScan) {
+          void refetchQueue();
+        }
+      },
     }),
-    [refetchPickupPoints, setActivePickupPointId],
+    [
+      canAssign,
+      canResupply,
+      canScan,
+      refetchBarcode,
+      refetchCheckup,
+      refetchDrafts,
+      refetchPickupPoints,
+      refetchQueue,
+      refetchStock,
+      setActivePickupPointId,
+    ],
   );
 
   return { accessToken, viewModel, actions };

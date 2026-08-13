@@ -1,6 +1,7 @@
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -31,7 +32,9 @@ import {
   PickupMoreShellProvider,
   usePickupMoreShell,
 } from '../shared/ui/PickupMoreShellContext.js';
+import { PickupProfileSheet } from '../shared/ui/PickupProfileSheet.js';
 import { PickupSettingsSheet } from '../shared/ui/PickupSettingsSheet.js';
+import { PickupShellHeader } from '../shared/ui/PickupShellHeader.js';
 import { PickupSideNav } from '../shared/ui/PickupSideNav.js';
 import { Skeleton } from '../shared/ui/Skeleton.js';
 import { RemountBoundary } from '../shared/components/RemountBoundary.js';
@@ -105,8 +108,10 @@ function PickupAppShellChrome({ bottomNav }: PickupAppShellProps): JSX.Element {
   } = usePickupEntitlement(tenantCode);
   const [sideExpanded, setSideExpanded] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
   const { isMoreOpen, closeMore, toggleMore } = usePickupMoreShell();
   const bottomChromeRef = useRef<HTMLDivElement | null>(null);
+  const topChromeRef = useRef<HTMLDivElement | null>(null);
   const moreButtonRef = useRef<HTMLButtonElement | null>(null);
   /** Compact always collapses rail — derive instead of syncing in an effect. */
   const railExpanded = isCompact ? false : sideExpanded;
@@ -245,12 +250,52 @@ function PickupAppShellChrome({ bottomNav }: PickupAppShellProps): JSX.Element {
     };
   }, [isCompact, bottomNav, isMoreOpen]);
 
+  useLayoutEffect(() => {
+    const node = topChromeRef.current;
+    if (node === null) {
+      return;
+    }
+    const apply = (): void => {
+      const height = node.getBoundingClientRect().height;
+      document.documentElement.style.setProperty(
+        '--pickup-top-chrome',
+        `${String(Math.ceil(height))}px`,
+      );
+    };
+    apply();
+    const ro = new ResizeObserver(apply);
+    ro.observe(node);
+    return () => {
+      ro.disconnect();
+    };
+  }, [accessToken, sessionHydrated, showContextBar]);
+
   const onSignOut = useCallback((): void => {
     if (tenantCode.length === 0) {
       return;
     }
     void signOut(tenantCode);
   }, [signOut, tenantCode]);
+
+  const openSettings = useCallback((): void => {
+    closeMore();
+    setProfileOpen(false);
+    setSettingsOpen(true);
+  }, [closeMore]);
+
+  const closeSettings = useCallback((): void => {
+    setSettingsOpen(false);
+  }, []);
+
+  const openProfile = useCallback((): void => {
+    closeMore();
+    setSettingsOpen(false);
+    setProfileOpen(true);
+  }, [closeMore]);
+
+  const closeProfile = useCallback((): void => {
+    setProfileOpen(false);
+  }, []);
 
   if (tenantCode.length === 0) {
     return <Navigate to="/" replace />;
@@ -322,6 +367,8 @@ function PickupAppShellChrome({ bottomNav }: PickupAppShellProps): JSX.Element {
 
   const { primary: compactPrimaryItems, overflow: compactOverflowItems } =
     compilePickupCompactNav(navItems, moreItems);
+  const showCompactMore =
+    compactOverflowItems.length > 0 || deviceItems.length > 0;
 
   const defaultBottomNav = (
     <PickupBottomNav
@@ -329,7 +376,7 @@ function PickupAppShellChrome({ bottomNav }: PickupAppShellProps): JSX.Element {
       moreOpen={isMoreOpen}
       onMoreClick={toggleMore}
       moreButtonRef={moreButtonRef}
-      showMore
+      showMore={showCompactMore}
       isOffline={isOffline}
     />
   );
@@ -353,8 +400,6 @@ function PickupAppShellChrome({ bottomNav }: PickupAppShellProps): JSX.Element {
           onToggleExpanded={() => {
             setSideExpanded((value) => !value);
           }}
-          onOpenSettings={() => setSettingsOpen(true)}
-          onSignOut={onSignOut}
           salesPointId={sessionClaims?.salesPointId ?? null}
           role={sessionClaims?.role ?? null}
           pairedDeviceLabel={pairedDevice?.deviceLabel ?? null}
@@ -363,14 +408,27 @@ function PickupAppShellChrome({ bottomNav }: PickupAppShellProps): JSX.Element {
       ) : null}
 
       <div className="flex min-w-0 flex-1 flex-col">
-        {showContextBar ? (
-          <PickupContextBar
-            points={contextPoints}
-            value={activePickupPointId}
-            onChange={setActivePickupPointId}
-            loading={pickupPointsQuery.isLoading}
+        <div
+          ref={topChromeRef}
+          className="sticky top-0 z-[var(--pickup-z-50)]"
+          data-testid="pickup-top-chrome"
+        >
+          <PickupShellHeader
+            settingsOpen={settingsOpen}
+            profileOpen={profileOpen}
+            onOpenSettings={openSettings}
+            onOpenProfile={openProfile}
           />
-        ) : null}
+          {showContextBar ? (
+            <PickupContextBar
+              className="static top-auto z-auto"
+              points={contextPoints}
+              value={activePickupPointId}
+              onChange={setActivePickupPointId}
+              loading={pickupPointsQuery.isLoading}
+            />
+          ) : null}
+        </div>
 
         {isOffline ? (
           <div className="border-b border-[var(--color-border)] px-4 py-2 md:px-6">
@@ -445,16 +503,16 @@ function PickupAppShellChrome({ bottomNav }: PickupAppShellProps): JSX.Element {
         ) : null}
       </div>
 
-      {isCompact ? (
+      {isCompact && showCompactMore ? (
         <PickupMoreDrawer
           open={isMoreOpen}
           onClose={closeMore}
           items={compactOverflowItems}
           deviceItems={deviceItems}
-          onSignOut={onSignOut}
         />
       ) : null}
-      <PickupSettingsSheet open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+      <PickupSettingsSheet open={settingsOpen} onClose={closeSettings} />
+      <PickupProfileSheet open={profileOpen} onClose={closeProfile} onSignOut={onSignOut} />
     </div>
   );
 }

@@ -18,6 +18,10 @@ jest.mock('pi-kiosk-shared/ui', () => ({
   LanguageToggle: () => <div data-testid="mock-language-toggle" />,
 }));
 
+jest.mock('../pickupBuildLabel.js', () => ({
+  PICKUP_BUILD_LABEL: '0.1.0',
+}));
+
 describe('PickupSettingsPanel', () => {
   beforeEach(() => {
     mockUseTheme.mockReset();
@@ -69,5 +73,6 @@ describe('PickupSettingsPanel', () => {
     expect(screen.getByText('chrome.settings.title')).toBeInTheDocument();
     expect(screen.getByRole('radiogroup')).toBeInTheDocument();
     expect(screen.getByTestId('mock-language-toggle')).toBeInTheDocument();
+    expect(screen.getByTestId('pickup-settings-build')).toBeInTheDocument();
   });
 });

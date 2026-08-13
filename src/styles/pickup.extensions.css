@@ -22,6 +22,10 @@
 :root {
   --pickup-bottom-chrome: 0px;
   --keyboard-inset: 0px;
+  /* Compact shell header content row (icons 44px). Safe-area is extra on the header. */
+  --pickup-header-compact-height: 3.5rem;
+  /* Measured by PickupAppShell (header + optional context bar). Fallback = header row. */
+  --pickup-top-chrome: calc(env(safe-area-inset-top, 0px) + var(--pickup-header-compact-height));
   /* Space reserved above bottom chrome for sticky primary CTAs (L18). */
   --pickup-sticky-cta-clearance: 5.5rem;
   /* L16 z-index scale (locked twin of --admin-z-*). */

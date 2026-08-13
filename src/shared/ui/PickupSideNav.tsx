@@ -1,10 +1,9 @@
 import { createElement } from 'react';
 import * as Tooltip from '@radix-ui/react-tooltip';
-import { ChevronLeft, ChevronRight, LogOut, PanelLeft, Settings, WifiOff } from 'lucide-react';
+import { ChevronLeft, ChevronRight, PanelLeft, WifiOff } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { cn } from './cn.js';
-import { IconButton } from './IconButton.js';
 import { resolvePickupBottomNavIcon } from './PickupBottomNavIcons.js';
 import { SailorMark } from './SailorMark.js';
 
@@ -24,8 +23,6 @@ export interface PickupSideNavProps {
   readonly navItems: readonly PickupSideNavItem[];
   readonly moreItems: readonly PickupSideNavItem[];
   readonly onToggleExpanded: () => void;
-  readonly onOpenSettings: () => void;
-  readonly onSignOut: () => void;
   readonly salesPointId?: number | null;
   readonly role?: string | null;
   readonly pairedDeviceLabel?: string | null;
@@ -66,8 +63,6 @@ export function PickupSideNav({
   navItems,
   moreItems,
   onToggleExpanded,
-  onOpenSettings,
-  onSignOut,
   salesPointId = null,
   role = null,
   pairedDeviceLabel = null,
@@ -89,8 +84,6 @@ export function PickupSideNav({
   const expandLabel = railExpanded
     ? t('nav.side.collapse', { defaultValue: 'Collapse navigation' })
     : t('nav.side.expand', { defaultValue: 'Expand navigation' });
-  const settingsLabel = t('nav.side.settings', { defaultValue: 'Settings' });
-  const signOutLabel = t('pickup.hub.signOut');
 
   return (
     <Tooltip.Provider delayDuration={300}>
@@ -192,8 +185,8 @@ export function PickupSideNav({
           })}
         </nav>
 
-        <div className="flex flex-col gap-2 border-t border-white/15 p-3">
-          {showChip ? (
+        {showChip ? (
+          <div className="border-t border-white/15 p-3">
             <div
               className={cn(
                 'rounded-md bg-white/10 px-2 py-1.5 text-xs text-[var(--brand-consumer-accent-soft)]',
@@ -204,33 +197,8 @@ export function PickupSideNav({
             >
               {chipParts.join(' · ')}
             </div>
-          ) : null}
-
-          <div
-            className={cn(
-              'flex items-center gap-2',
-              railExpanded ? 'flex-row justify-center' : 'flex-col justify-center',
-            )}
-          >
-            <IconButton
-              icon={Settings}
-              aria-label={settingsLabel}
-              title={settingsLabel}
-              data-testid="pickup-side-nav-settings"
-              className="border-transparent bg-transparent text-[var(--brand-consumer-accent-soft)] hover:bg-white/10"
-              onClick={onOpenSettings}
-            />
-            <IconButton
-              icon={LogOut}
-              tone="danger"
-              aria-label={signOutLabel}
-              title={signOutLabel}
-              data-testid="pickup-side-nav-sign-out"
-              className="border-transparent bg-transparent text-[var(--color-danger,#f87171)] hover:bg-white/10"
-              onClick={onSignOut}
-            />
           </div>
-        </div>
+        ) : null}
       </aside>
     </Tooltip.Provider>
   );

@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { PickupSideNav } from '../PickupSideNav.js';
 
@@ -13,9 +13,7 @@ jest.mock('pi-kiosk-shared/ui', () => ({
 }));
 
 describe('PickupSideNav settings chrome', () => {
-  it('exposes settings control without LanguageToggle and calls onOpenSettings', () => {
-    const onOpenSettings = jest.fn();
-
+  it('renders destinations without LanguageToggle, settings, or sign-out', () => {
     render(
       <MemoryRouter>
         <PickupSideNav
@@ -25,18 +23,13 @@ describe('PickupSideNav settings chrome', () => {
           navItems={[{ id: 'hub', to: '/demo/hub', labelKey: 'nav.hub' }]}
           moreItems={[]}
           onToggleExpanded={jest.fn()}
-          onOpenSettings={onOpenSettings}
-          onSignOut={jest.fn()}
         />
       </MemoryRouter>,
     );
 
     expect(screen.queryByTestId('mock-language-toggle')).not.toBeInTheDocument();
-
-    const settings = screen.getByTestId('pickup-side-nav-settings');
-    expect(settings).toBeInTheDocument();
-
-    fireEvent.click(settings);
-    expect(onOpenSettings).toHaveBeenCalledTimes(1);
+    expect(screen.queryByTestId('pickup-side-nav-settings')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('pickup-side-nav-sign-out')).not.toBeInTheDocument();
+    expect(screen.getByTestId('pickup-side-nav')).toBeInTheDocument();
   });
 });

@@ -37,6 +37,19 @@ export interface ICheckupGateway {
     },
   ): Promise<CheckupServerDocument>;
 
+  patchLines(
+    tenantCode: string,
+    accessToken: string,
+    checkupId: string,
+    lines: readonly {
+      lineId: string;
+      countedQuantity: number | null;
+      shrinkageReason?: ShrinkageReason | null;
+      included?: boolean;
+      note?: string | null;
+    }[],
+  ): Promise<CheckupServerDocument>;
+
   applyCheckup(
     tenantCode: string,
     accessToken: string,

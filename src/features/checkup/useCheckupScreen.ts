@@ -353,28 +353,26 @@ export function useCheckupScreen(
           setStatusMessage(t('pickup.checkup.bulkApplied', { count: changed.length }));
           return;
         }
-        let lastDoc: Parameters<typeof documentToDraft>[0] | null = null;
-        for (const line of changed) {
-          lastDoc = await gateway.patchLine(
-            tenantCode,
-            accessToken,
-            draft.serverCheckupId,
-            line.lineId,
-            {
-              countedQuantity: line.countedQuantity,
-              shrinkageReason: line.shrinkageReason,
-              included: line.included,
-            },
-          );
-        }
-        if (lastDoc !== null) {
-          setDraft(documentToDraft(lastDoc));
-        }
+        const doc = await gateway.patchLines(
+          tenantCode,
+          accessToken,
+          draft.serverCheckupId,
+          changed.map((line) => ({
+            lineId: line.lineId,
+            countedQuantity: line.countedQuantity,
+            shrinkageReason: line.shrinkageReason,
+            included: line.included,
+          })),
+        );
+        setDraft(documentToDraft(doc));
         setStatusTone('success');
         setStatusMessage(t('pickup.checkup.bulkApplied', { count: changed.length }));
-      } catch {
+      } catch (err: unknown) {
         setStatusTone('danger');
-        setStatusMessage(t('pickup.checkup.bulkFailed'));
+        const isRateLimit = err instanceof PickupApiError && err.status === 429;
+        setStatusMessage(
+          isRateLimit ? t('pickup.checkup.bulkRateLimited') : t('pickup.checkup.bulkFailed'),
+        );
       } finally {
         bulkInFlightRef.current = false;
         setBulkSyncing(false);

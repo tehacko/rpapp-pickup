@@ -71,6 +71,7 @@ function createGatewayMock(): jest.Mocked<ICheckupGateway> {
     listOpen: jest.fn().mockResolvedValue([]),
     startFresh: jest.fn(),
     patchLine: jest.fn(),
+    patchLines: jest.fn(),
     applyCheckup: jest.fn(),
     refreshSnapshot: jest.fn(),
     cancelCheckup: jest.fn(),
@@ -409,7 +410,7 @@ describe('useCheckupScreen', () => {
     });
     const gateway = createGatewayMock();
     gateway.listOpen.mockResolvedValue([]);
-    gateway.patchLine.mockImplementation(async (_tenant, _token, _id, lineId) => ({
+    gateway.patchLines.mockResolvedValue({
       id: 'checkup-1',
       clientDraftKey: 'draft-1',
       status: 'IN_PROGRESS',
@@ -432,13 +433,13 @@ describe('useCheckupScreen', () => {
           variantId: null,
           expectedQuantity: 3,
           expectedStockOnHold: 0,
-          countedQuantity: lineId === 'line-2' ? 3 : null,
+          countedQuantity: 3,
           shrinkageReason: null,
           included: true,
           productLabel: 'Coffee',
         },
       ],
-    }));
+    });
 
     const { result } = renderHook(() => useCheckupScreen(gateway));
 
@@ -447,21 +448,29 @@ describe('useCheckupScreen', () => {
     });
 
     await waitFor(() => {
-      expect(gateway.patchLine).toHaveBeenCalledTimes(2);
+      expect(gateway.patchLines).toHaveBeenCalledTimes(1);
       expect(result.current.viewModel.buckets.uncounted).toBe(0);
     });
-    expect(gateway.patchLine).toHaveBeenNthCalledWith(
-      1,
+    expect(gateway.patchLines).toHaveBeenCalledWith(
       'demo',
       'staff-token',
       'checkup-1',
-      'line-1',
-      {
-        countedQuantity: 5,
-        shrinkageReason: null,
-        included: true,
-      },
+      [
+        {
+          lineId: 'line-1',
+          countedQuantity: 5,
+          shrinkageReason: null,
+          included: true,
+        },
+        {
+          lineId: 'line-2',
+          countedQuantity: 3,
+          shrinkageReason: null,
+          included: true,
+        },
+      ],
     );
+    expect(gateway.patchLine).not.toHaveBeenCalled();
     expect(result.current.viewModel.statusMessage).toBe('pickup.checkup.bulkApplied');
   });
 

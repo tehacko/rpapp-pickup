@@ -5,7 +5,7 @@
  * Manual checklist (G-PW-SPEC): also capture Wide (≥md side rail + ContextBar) and
  * Compact (bottom nav + More drawer) chrome for hub — pair with queue/order/login stubs
  * under e2e/visual/pickup-*-smoke.spec.ts and Wave4 todos in e2e/enterprise-ux-mvp.smoke.spec.ts
- * (Hub ActionTiles).
+ * (Hub shift KPIs).
  */
 import { test, expect, type Page } from '@playwright/test';
 import { mockTurnstileDisabled } from '../helpers/barcodeE2eMocks.js';
@@ -94,6 +94,65 @@ async function installPickupHubVisualMocks(page: Page): Promise<void> {
       }),
     });
   });
+
+  await page.route(`**/api/${TENANT}/v1/pickup/products/barcode-assign/catalog**`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        success: true,
+        data: {
+          products: [
+            {
+              productId: 11,
+              productName: 'Espresso beans',
+              useVariants: false,
+              isActive: true,
+              isArchived: false,
+              assignable: true,
+              hasBarcode: false,
+              barcodePreview: null,
+            },
+            {
+              productId: 12,
+              productName: 'Filter coffee',
+              useVariants: false,
+              isActive: true,
+              isArchived: false,
+              assignable: true,
+              hasBarcode: true,
+              barcodePreview: 'FLT-001',
+            },
+          ],
+        },
+      }),
+    });
+  });
+
+  await page.route(`**/api/${TENANT}/v1/pickup/staff/queue**`, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        success: true,
+        data: {
+          items: [
+            {
+              fulfillmentId: 41,
+              transactionId: 900,
+              version: 1,
+              status: 'READY',
+              pickupPointId: 5,
+              pickupPointName: 'Front desk',
+              promisedPickupAt: null,
+              claimedByDeviceLabel: null,
+              claimExpiresAt: null,
+            },
+          ],
+        },
+      }),
+    });
+  });
 }
 
 async function installPairedDeviceFixture(page: Page): Promise<void> {
@@ -128,15 +187,14 @@ async function loginAndOpenPickupHub(page: Page): Promise<void> {
   await page.getByLabel(/^PIN$/i).fill('1234');
   await page.getByRole('button', { name: /Sign in|Přihlásit se/i }).click();
   await expect(page).toHaveURL(new RegExp(`/${TENANT}/hub$`), { timeout: 15_000 });
-  await expect(page.getByRole('heading', { name: /Staff hub|Personální hub/i })).toBeVisible({
+  await expect(page.getByRole('heading', { name: /Staff hub|Přehled obsluhy|Prehľad obsluhy/i })).toBeVisible({
     timeout: 15_000,
   });
-  await expect(page.getByRole('link', { name: /Fulfillment scan|Výdej skenem/i })).toBeVisible();
-  await expect(
-    page.getByRole('link', { name: /Assign product barcodes|Přiřadit čárové kódy/i }),
-  ).toBeVisible();
-  await expect(page.getByRole('link', { name: /Sell at counter|Prodej na přepážce/i })).toBeVisible();
-  await expect(page.getByText(/Paired as Counter tablet|Párováno jako Counter tablet/i)).toBeVisible();
+  await expect(page.getByTestId('hub-kpi-missing-barcodes')).toBeVisible();
+  await expect(page.getByTestId('hub-kpi-coverage')).toBeVisible();
+  await expect(page.getByTestId('hub-kpi-queue')).toBeVisible();
+  await expect(page.getByTestId('hub-attention-missing_barcodes')).toBeVisible();
+  await expect(page.getByText(/Paired as Counter tablet|Spárováno jako Counter tablet/i)).toBeVisible();
 }
 
 test.describe('Pickup hub visual regression', () => {

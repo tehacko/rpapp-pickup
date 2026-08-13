@@ -145,6 +145,37 @@ async function startCheckup(
   return mapCheckup(data, previousBySku);
 }
 
+async function patchCheckupLines(
+  tenantCode: string,
+  accessToken: string,
+  checkupId: string,
+  lines: readonly {
+    lineId: string;
+    countedQuantity: number | null;
+    shrinkageReason?: ShrinkageReason | null;
+    included?: boolean;
+    note?: string | null;
+  }[],
+): Promise<CheckupServerDocument> {
+  const data = await inventoryFetchJson<Record<string, unknown>>(
+    `${inventoryBase(tenantCode)}/checkups/${encodeURIComponent(checkupId)}/lines`,
+    accessToken,
+    {
+      method: 'PATCH',
+      body: JSON.stringify({
+        lines: lines.map((line) => ({
+          lineId: line.lineId,
+          countedQuantity: line.countedQuantity,
+          shrinkageReason: line.shrinkageReason,
+          included: line.included,
+          note: line.note,
+        })),
+      }),
+    },
+  );
+  return mapCheckup(data);
+}
+
 async function patchCheckupLine(
   tenantCode: string,
   accessToken: string,
@@ -189,6 +220,11 @@ export const checkupGateway: ICheckupGateway = {
   patchLine: (tenantCode, accessToken, checkupId, lineId, patch) =>
     withCheckupLog('patchLine', async (): Promise<CheckupServerDocument> =>
       patchCheckupLine(tenantCode, accessToken, checkupId, lineId, patch),
+    ),
+
+  patchLines: (tenantCode, accessToken, checkupId, lines) =>
+    withCheckupLog('patchLines', async (): Promise<CheckupServerDocument> =>
+      patchCheckupLines(tenantCode, accessToken, checkupId, lines),
     ),
 
   applyCheckup: (tenantCode, accessToken, checkupId, idempotencyKey, body) =>
@@ -241,24 +277,21 @@ export const checkupGateway: ICheckupGateway = {
         previousBySku,
       );
       // Push remapped counts to server when present.
-      let current = started;
-      for (const line of toDraftLines(started)) {
-        if (line.countedQuantity === null) {
-          continue;
-        }
-        current = await patchCheckupLine(
-          tenantCode,
-          accessToken,
-          started.id,
-          line.lineId,
-          {
-            countedQuantity: line.countedQuantity,
-            shrinkageReason: line.shrinkageReason,
-            included: line.included,
-          },
-        );
+      const counted = toDraftLines(started).filter((line) => line.countedQuantity !== null);
+      if (counted.length === 0) {
+        return started;
       }
-      return current;
+      return patchCheckupLines(
+        tenantCode,
+        accessToken,
+        started.id,
+        counted.map((line) => ({
+          lineId: line.lineId,
+          countedQuantity: line.countedQuantity,
+          shrinkageReason: line.shrinkageReason,
+          included: line.included,
+        })),
+      );
     }),
 
   cancelCheckup: (tenantCode, accessToken, checkupId) =>

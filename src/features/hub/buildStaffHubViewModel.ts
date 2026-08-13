@@ -1,3 +1,24 @@
+import {
+  buildHubAttentionItems,
+  isHubDashboardError,
+  isHubDashboardLoading,
+  type StaffHubAttentionItem,
+  type StaffHubBarcodeStats,
+  type StaffHubCheckupStats,
+  type StaffHubQueueStats,
+  type StaffHubStockStats,
+} from './buildStaffHubDashboard.js';
+
+export type {
+  HubAttentionKind,
+  HubStatsLoadState,
+  StaffHubAttentionItem,
+  StaffHubBarcodeStats,
+  StaffHubCheckupStats,
+  StaffHubQueueStats,
+  StaffHubStockStats,
+} from './buildStaffHubDashboard.js';
+
 export interface StaffHubPickupPointOption {
   readonly id: number;
   readonly label: string;
@@ -16,6 +37,13 @@ export interface StaffHubViewModel {
   readonly activePickupPointId: number | null;
   readonly pickupPointsLoading: boolean;
   readonly pickupPointsError: boolean;
+  readonly barcodeStats: StaffHubBarcodeStats;
+  readonly stockStats: StaffHubStockStats;
+  readonly checkupStats: StaffHubCheckupStats;
+  readonly queueStats: StaffHubQueueStats;
+  readonly attentionItems: readonly StaffHubAttentionItem[];
+  readonly dashboardLoading: boolean;
+  readonly dashboardError: boolean;
 }
 
 export function buildStaffHubViewModel(input: {
@@ -31,7 +59,17 @@ export function buildStaffHubViewModel(input: {
   activePickupPointId: number | null;
   pickupPointsLoading: boolean;
   pickupPointsError: boolean;
+  barcodeStats: StaffHubBarcodeStats;
+  stockStats: StaffHubStockStats;
+  checkupStats: StaffHubCheckupStats;
+  queueStats: StaffHubQueueStats;
 }): StaffHubViewModel {
+  const stats = {
+    barcodeStats: input.barcodeStats,
+    stockStats: input.stockStats,
+    checkupStats: input.checkupStats,
+    queueStats: input.queueStats,
+  };
   return {
     tenantCode: input.tenantCode,
     canScan: input.canScan,
@@ -45,5 +83,15 @@ export function buildStaffHubViewModel(input: {
     activePickupPointId: input.activePickupPointId,
     pickupPointsLoading: input.pickupPointsLoading,
     pickupPointsError: input.pickupPointsError,
+    ...stats,
+    attentionItems: buildHubAttentionItems({
+      tenantPath: `/${encodeURIComponent(input.tenantCode)}`,
+      canAssign: input.canAssign,
+      canResupply: input.canResupply,
+      canScan: input.canScan,
+      ...stats,
+    }),
+    dashboardLoading: isHubDashboardLoading(stats),
+    dashboardError: isHubDashboardError(stats),
   };
 }

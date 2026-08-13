@@ -1,13 +1,11 @@
 import { useEffect, createElement, type ReactNode } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import * as Separator from '@radix-ui/react-separator';
-import { Info, LogOut, Smartphone } from 'lucide-react';
+import { Smartphone } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { NavLink } from 'react-router-dom';
-import { PICKUP_BUILD_LABEL } from './pickupBuildLabel.js';
 import { resolvePickupBottomNavIcon } from './PickupBottomNavIcons.js';
 import { cn } from './cn.js';
-import { PickupSettingsPanel } from './PickupSettingsPanel.js';
 
 export interface PickupMoreDrawerItem {
   readonly id: string;
@@ -19,7 +17,6 @@ export interface PickupMoreDrawerProps {
   readonly open: boolean;
   readonly onClose: () => void;
   readonly items: readonly PickupMoreDrawerItem[];
-  readonly onSignOut: () => void;
   readonly deviceItems?: readonly PickupMoreDrawerItem[];
   readonly footer?: ReactNode;
 }
@@ -69,12 +66,10 @@ export function PickupMoreDrawer({
   open,
   onClose,
   items,
-  onSignOut,
   deviceItems = [],
   footer,
 }: PickupMoreDrawerProps): JSX.Element {
   const { t } = useTranslation('pickup');
-  const signOutLabel = t('pickup.hub.signOut');
 
   useEffect(() => {
     if (!open) {
@@ -198,44 +193,8 @@ export function PickupMoreDrawer({
               </section>
             ) : null}
 
-            {(hasActions || hasDevice) ? (
-              <Separator.Root
-                className="h-px w-full bg-[var(--color-border)]"
-                decorative
-              />
-            ) : null}
-
-            <section aria-labelledby="pickup-more-account-heading">
-              <SectionHeading>
-                <span id="pickup-more-account-heading">
-                  {t('nav.more.account', { defaultValue: 'Account' })}
-                </span>
-              </SectionHeading>
-              <div className="flex flex-col gap-2">
-                <PickupSettingsPanel />
-                {footer}
-                <button
-                  type="button"
-                  className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg px-3 text-sm font-medium text-[var(--color-danger)] hover:bg-[var(--color-danger-foreground)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus-ring)]"
-                  data-testid="pickup-more-sign-out"
-                  onClick={onSignOut}
-                >
-                  <LogOut className="h-4 w-4 shrink-0 stroke-[1.75]" aria-hidden />
-                  {signOutLabel}
-                </button>
-              </div>
-            </section>
+            {footer}
           </div>
-
-          <p
-            className="mb-0 mt-4 flex items-center justify-center gap-1.5 text-[11px] text-[var(--color-on-surface-muted)]"
-            data-testid="pickup-more-build"
-          >
-            <Info className="h-3.5 w-3.5 shrink-0 stroke-[1.75]" aria-hidden />
-            <span>
-              {t('nav.more.version', { defaultValue: 'Version' })} {PICKUP_BUILD_LABEL}
-            </span>
-          </p>
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>

@@ -26,7 +26,7 @@ test.describe('Enterprise UX MVP visual smoke (Wave4)', () => {
     test.skip(browserName !== 'chromium', 'Chromium-only');
   });
 
-  test('Hub ActionTiles visible', async ({ page }) => {
+  test('Hub shift stats visible', async ({ page }) => {
     await mockTurnstileDisabled(page);
     await page.route(`**/api/${TENANT}/v1/pickup/staff/entitlement`, async (route) => {
       await route.fulfill({
@@ -68,6 +68,36 @@ test.describe('Enterprise UX MVP visual smoke (Wave4)', () => {
         body: JSON.stringify({ success: true, data: { sellingEnabled: true } }),
       });
     });
+    await page.route(`**/api/${TENANT}/v1/pickup/products/barcode-assign/catalog**`, async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          success: true,
+          data: {
+            products: [
+              {
+                productId: 11,
+                productName: 'Espresso beans',
+                useVariants: false,
+                isActive: true,
+                isArchived: false,
+                assignable: true,
+                hasBarcode: false,
+                barcodePreview: null,
+              },
+            ],
+          },
+        }),
+      });
+    });
+    await page.route(`**/api/${TENANT}/v1/pickup/staff/queue**`, async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ success: true, data: { items: [] } }),
+      });
+    });
     await page.addInitScript(
       ({ codeKey, labelKey }) => {
         localStorage.setItem(codeKey, 'counter-tablet-01');
@@ -80,13 +110,11 @@ test.describe('Enterprise UX MVP visual smoke (Wave4)', () => {
     );
 
     await page.goto(`/${TENANT}/hub`, { waitUntil: 'domcontentloaded' });
-    await expect(page.getByRole('link', { name: /Fulfillment scan|Výdej skenem/i })).toBeVisible({
+    await expect(page.getByTestId('hub-kpi-missing-barcodes')).toBeVisible({
       timeout: 15_000,
     });
-    await expect(
-      page.getByRole('link', { name: /Assign product barcodes|Přiřadit čárové kódy/i }),
-    ).toBeVisible();
-    await expect(page.getByRole('link', { name: /Sell at counter|Prodej na přepážce/i })).toBeVisible();
+    await expect(page.getByTestId('hub-kpi-coverage')).toBeVisible();
+    await expect(page.getByTestId('hub-kpi-queue')).toBeVisible();
   });
 
   test('Queue aging badge on overdue row', async ({ page }) => {
