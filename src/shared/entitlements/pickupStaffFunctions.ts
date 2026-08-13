@@ -14,6 +14,9 @@ export const PICKUP_RESUPPLY_CAPABILITY = 'resupply';
 /** Session capability token that unlocks staff sell config/catalog probes. */
 export const PICKUP_SELL_CAPABILITY = 'sell';
 
+/** Session capability token that unlocks staff pickup-points / queue / scan APIs. */
+export const PICKUP_SCAN_CAPABILITY = 'scan';
+
 /** Canonical hold-floor override capability (plan Part 2 / Wave B). */
 export const PICKUP_HOLD_FLOOR_OVERRIDE_CAPABILITY =
   'ops:inventory:checkup.hold_floor_override' as const;

@@ -14,7 +14,7 @@ import { useResponsiveTier } from 'pi-kiosk-shared/responsive';
 import { PickupStaffFunction } from './adapters/pickupStaffFunctions.js';
 import { fetchSellCatalogConfig } from './adapters/sellCatalogEnabled.js';
 import { canAccessPickupStaffQueue } from '../shared/entitlements/pickupQueueAccess.js';
-import { PICKUP_SELL_CAPABILITY } from '../shared/entitlements/pickupStaffFunctions.js';
+import { PICKUP_SCAN_CAPABILITY, PICKUP_SELL_CAPABILITY } from '../shared/entitlements/pickupStaffFunctions.js';
 import { useStaffPickupPointsQuery } from '../shared/queries/useStaffPickupPointsQuery.js';
 import { AlertBanner } from '../shared/ui/AlertBanner.js';
 import { OfflineBanner } from '../shared/ui/OfflineBanner.js';
@@ -128,7 +128,11 @@ function PickupAppShellChrome({ bottomNav }: PickupAppShellProps): JSX.Element {
   });
 
   const shouldLoadPickupPoints =
-    !isCompact && isRoamingStaff && accessToken !== null && tenantCode.length > 0;
+    !isCompact &&
+    isRoamingStaff &&
+    accessToken !== null &&
+    tenantCode.length > 0 &&
+    sessionClaims?.capabilities.includes(PICKUP_SCAN_CAPABILITY) === true;
   const pickupPointsQuery = useStaffPickupPointsQuery({
     enabled: shouldLoadPickupPoints,
   });

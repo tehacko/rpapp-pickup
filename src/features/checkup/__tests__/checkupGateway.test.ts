@@ -132,4 +132,59 @@ describe('checkupGateway', () => {
       holdFloorLines: [expect.objectContaining({ lineId: 'line-2' })],
     });
   });
+
+  it('creates then starts with scopeMode on the create body', async () => {
+    const fetchMock = jest
+      .fn()
+      .mockResolvedValueOnce(
+        mockJsonResponse(200, {
+          data: {
+            id: 'checkup-new',
+            clientDraftKey: 'checkup-key-1',
+            status: 'DRAFT',
+            scopeMode: 'ACTIVE_STOCK',
+            lines: [],
+          },
+        }),
+      )
+      .mockResolvedValueOnce(
+        mockJsonResponse(200, {
+          data: {
+            id: 'checkup-new',
+            clientDraftKey: 'checkup-key-1',
+            status: 'IN_PROGRESS',
+            scopeMode: 'ACTIVE_STOCK',
+            lines: [],
+          },
+        }),
+      );
+    global.fetch = fetchMock as typeof fetch;
+
+    const doc = await checkupGateway.startFresh('demo', 'token', {
+      clientDraftKey: 'checkup-key-1',
+      scopeMode: 'ACTIVE_STOCK',
+    });
+
+    expect(doc.id).toBe('checkup-new');
+    expect(doc.status).toBe('IN_PROGRESS');
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      '/api/demo/v1/pickup/staff/inventory/checkups',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({
+          clientDraftKey: 'checkup-key-1',
+          scopeMode: 'ACTIVE_STOCK',
+        }),
+      }),
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      '/api/demo/v1/pickup/staff/inventory/checkups/checkup-new/start',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({}),
+      }),
+    );
+  });
 });

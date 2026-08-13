@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ShrinkageReason } from 'pi-kiosk-shared/contracts/inventory';
+import { PickupApiError } from '../../api/pickupApi.js';
 import { PickupStaffFunction, hasPickupHoldFloorOverrideCapability } from '../../shared/entitlements/pickupStaffFunctions.js';
 import { usePickupEntitlement } from '../../hooks/usePickupEntitlement.js';
 import { useStaffToken, useTenantCode } from '../../hooks/useStaffToken.js';
@@ -305,8 +306,11 @@ export function useCheckupScreen(
       })
       .catch((err: unknown) => {
         setStatusTone('danger');
+        const raw = err instanceof Error ? err.message.trim() : '';
+        const isGenericValidation =
+          err instanceof PickupApiError && raw.toLowerCase() === 'validation failed';
         setStatusMessage(
-          err instanceof Error ? err.message : t('pickup.checkup.startFailed'),
+          isGenericValidation || raw.length === 0 ? t('pickup.checkup.startFailed') : raw,
         );
       })
       .finally(() => {

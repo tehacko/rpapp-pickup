@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { resolveLocalizedName, type LocalizedNameMap } from 'pi-kiosk-shared';
-import { PickupStaffFunction, PICKUP_SELL_CAPABILITY } from '../../shared/entitlements/pickupStaffFunctions.js';
+import { PickupStaffFunction, PICKUP_SCAN_CAPABILITY, PICKUP_SELL_CAPABILITY } from '../../shared/entitlements/pickupStaffFunctions.js';
 import { getPairedDevice } from '../../lib/deviceStorage.js';
 import { usePickupEntitlement } from '../../hooks/usePickupEntitlement.js';
 import { useStaffToken, useTenantCode } from '../../hooks/useStaffToken.js';
@@ -64,7 +64,10 @@ export function useStaffHubScreen(): UseStaffHubScreenResult {
   } = usePickupStaffSession();
   const { entitledFunctions, deviceFlags } = usePickupEntitlement(tenantCode);
   const pairedDevice = getPairedDevice(tenantCode);
-  const shouldLoadPickupPoints = isRoamingStaff && accessToken !== null;
+  const shouldLoadPickupPoints =
+    isRoamingStaff &&
+    accessToken !== null &&
+    sessionClaims?.capabilities.includes(PICKUP_SCAN_CAPABILITY) === true;
   const canProbeSell =
     sessionClaims?.capabilities.includes(PICKUP_SELL_CAPABILITY) === true;
 

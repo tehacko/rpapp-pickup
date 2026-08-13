@@ -4,6 +4,7 @@ import {
   type PickupStaffPickupPoint,
 } from '../../api/pickupApi.js';
 import { useStaffToken, useTenantCode } from '../../hooks/useStaffToken.js';
+import { PICKUP_SCAN_CAPABILITY } from '../entitlements/pickupStaffFunctions.js';
 import { usePickupStaffSession } from '../session/PickupStaffSessionProvider.js';
 
 export interface UseStaffPickupPointsQueryOptions {
@@ -20,9 +21,12 @@ export function useStaffPickupPointsQuery(
 ): UseQueryResult<readonly PickupStaffPickupPoint[], Error> {
   const tenantCode = useTenantCode();
   const accessToken = useStaffToken();
-  const { isRoamingStaff } = usePickupStaffSession();
+  const { isRoamingStaff, sessionClaims } = usePickupStaffSession();
+  const hasScanCapability =
+    sessionClaims?.capabilities.includes(PICKUP_SCAN_CAPABILITY) === true;
   const enabled =
-    options?.enabled ?? (isRoamingStaff && accessToken !== null && tenantCode.length > 0);
+    options?.enabled ??
+    (isRoamingStaff && hasScanCapability && accessToken !== null && tenantCode.length > 0);
 
   return useQuery({
     queryKey: ['pickup', tenantCode, 'staffPickupPoints'],

@@ -7,6 +7,7 @@ import { useCheckupScreen } from '../useCheckupScreen.js';
 import type { ICheckupGateway } from '../ICheckupGateway.js';
 import { InventoryConflictError } from '../../../shared/inventory/inventoryApiError.js';
 import { PickupStaffFunction } from '../../../shared/entitlements/pickupStaffFunctions.js';
+import { PickupApiError } from '../../../api/pickupApi.js';
 
 jest.mock('../../../hooks/useStaffToken.js', () => ({
   useTenantCode: (): string => 'demo',
@@ -349,5 +350,22 @@ describe('useCheckupScreen', () => {
       expect(result.current.viewModel.started).toBe(true);
       expect(result.current.viewModel.resumeChoiceVisible).toBe(false);
     });
+  });
+
+  it('maps generic Validation failed from startFresh to the startFailed copy', async () => {
+    const gateway = createGatewayMock();
+    gateway.listOpen.mockResolvedValue([]);
+    gateway.startFresh.mockRejectedValue(new PickupApiError(422, 'Validation failed'));
+
+    const { result } = renderHook(() => useCheckupScreen(gateway));
+
+    await act(async () => {
+      result.current.actions.startCheckup();
+    });
+
+    await waitFor(() => {
+      expect(result.current.viewModel.statusMessage).toBe('pickup.checkup.startFailed');
+    });
+    expect(result.current.viewModel.statusTone).toBe('danger');
   });
 });
