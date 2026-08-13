@@ -4,6 +4,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { StaffHubScreenView } from './StaffHubScreenView.js';
 import type { StaffHubViewModel } from './buildStaffHubViewModel.js';
 import type { StaffHubScreenActions } from './useStaffHubScreen.js';
+import type { HubNamedItem } from './buildStaffHubDashboard.js';
 import {
   IDLE_BARCODE_STATS,
   IDLE_CHECKUP_STATS,
@@ -22,8 +23,22 @@ jest.mock('react-i18next', () => ({
       }
       return key;
     },
+    i18n: { language: 'en' },
   }),
 }));
+
+function namedItem(
+  overrides: Partial<HubNamedItem> & Pick<HubNamedItem, 'id' | 'kind' | 'label'>,
+): HubNamedItem {
+  return {
+    href: '/demo/restock',
+    tone: 'warn',
+    quantity: null,
+    reorderPoint: null,
+    meta: null,
+    ...overrides,
+  };
+}
 
 function createViewModel(overrides: Partial<StaffHubViewModel> = {}): StaffHubViewModel {
   return {
@@ -44,8 +59,11 @@ function createViewModel(overrides: Partial<StaffHubViewModel> = {}): StaffHubVi
     checkupStats: IDLE_CHECKUP_STATS,
     queueStats: IDLE_QUEUE_STATS,
     attentionItems: [],
+    workQueue: [],
     dashboardLoading: false,
     dashboardError: false,
+    dashboardRefreshing: false,
+    lastUpdatedAt: null,
     ...overrides,
   };
 }
@@ -57,7 +75,14 @@ const actions: StaffHubScreenActions = {
 };
 
 describe('StaffHubScreenView', () => {
-  it('shows stock and checkup KPIs instead of duplicate action tiles when resupply is enabled', () => {
+  it('shows stock widgets, named work, and KPIs instead of duplicate action tiles when resupply is enabled', () => {
+    const coffee = namedItem({
+      id: 'stock-out-1',
+      kind: 'out_of_stock',
+      label: 'Coffee',
+      quantity: 0,
+      tone: 'danger',
+    });
     render(
       <MemoryRouter>
         <StaffHubScreenView
@@ -65,23 +90,27 @@ describe('StaffHubScreenView', () => {
             canScan: false,
             canResupply: true,
             stockStats: {
+              ...IDLE_STOCK_STATS,
               loadState: 'ready',
               draftsLoadState: 'ready',
               skuCount: 12,
+              totalUnits: 40,
+              totalHoldUnits: 2,
               outOfStockCount: 2,
               belowReorderCount: 3,
               onHoldCount: 1,
               draftBatchCount: 0,
+              outOfStockItems: [coffee],
             },
-            checkupStats: { loadState: 'ready', openCount: 1, uncountedCount: 4 },
-            attentionItems: [
-              {
-                id: 'out_of_stock',
-                kind: 'out_of_stock',
-                href: '/demo/restock',
-                count: 2,
-              },
-            ],
+            checkupStats: {
+              ...IDLE_CHECKUP_STATS,
+              loadState: 'ready',
+              openCount: 1,
+              lineCount: 5,
+              uncountedCount: 4,
+            },
+            workQueue: [coffee],
+            lastUpdatedAt: '2026-08-13T14:00:00.000Z',
           })}
           actions={actions}
         />
@@ -90,10 +119,17 @@ describe('StaffHubScreenView', () => {
 
     expect(screen.getByTestId('hub-kpi-out-of-stock')).toBeInTheDocument();
     expect(screen.getByTestId('hub-kpi-below-reorder')).toBeInTheDocument();
+    expect(screen.getByTestId('hub-kpi-units')).toBeInTheDocument();
     expect(screen.getByTestId('hub-kpi-open-checkup')).toBeInTheDocument();
-    expect(screen.getByTestId('hub-attention-out_of_stock')).toBeInTheDocument();
+    expect(screen.getByTestId('hub-work-queue')).toBeInTheDocument();
+    expect(screen.getByTestId('hub-widget-stock')).toBeInTheDocument();
+    expect(screen.getByTestId('hub-widget-checkup')).toBeInTheDocument();
+    expect(screen.getAllByText('Coffee').length).toBeGreaterThan(0);
+    expect(screen.getByTestId('hub-refresh')).toBeInTheDocument();
+    expect(screen.getByTestId('hub-last-updated')).toBeInTheDocument();
     expect(screen.queryByTestId('hub-action-restock')).toBeNull();
     expect(screen.queryByTestId('hub-action-checkup')).toBeNull();
+    expect(screen.queryByTestId('hub-attention-out_of_stock')).toBeNull();
   });
 
   it('hides stock KPIs when resupply entitlement is disabled', () => {
@@ -105,6 +141,7 @@ describe('StaffHubScreenView', () => {
 
     expect(screen.queryByTestId('hub-kpi-out-of-stock')).toBeNull();
     expect(screen.queryByTestId('hub-kpi-open-checkup')).toBeNull();
+    expect(screen.queryByTestId('hub-widget-stock')).toBeNull();
     expect(screen.queryByTestId('hub-action-restock')).toBeNull();
   });
 
@@ -121,7 +158,7 @@ describe('StaffHubScreenView', () => {
     expect(screen.queryByTestId('hub-device-card')).toBeNull();
   });
 
-  it('shows barcode coverage KPIs and all-clear when nothing needs attention', () => {
+  it('shows barcode coverage KPIs, widgets, and all-clear when nothing needs attention', () => {
     render(
       <MemoryRouter>
         <StaffHubScreenView
@@ -129,8 +166,10 @@ describe('StaffHubScreenView', () => {
             canScan: false,
             canAssign: true,
             barcodeStats: {
+              ...IDLE_BARCODE_STATS,
               loadState: 'ready',
               assignableCount: 8,
+              withCodeCount: 8,
               missingCount: 0,
               coveragePercent: 100,
             },
@@ -142,6 +181,8 @@ describe('StaffHubScreenView', () => {
 
     expect(screen.getByTestId('hub-kpi-missing-barcodes')).toBeInTheDocument();
     expect(screen.getByTestId('hub-kpi-coverage')).toBeInTheDocument();
+    expect(screen.getByTestId('hub-widget-barcodes')).toBeInTheDocument();
     expect(screen.getByTestId('hub-all-clear')).toBeInTheDocument();
+    expect(screen.getByTestId('hub-refresh')).toBeInTheDocument();
   });
 });

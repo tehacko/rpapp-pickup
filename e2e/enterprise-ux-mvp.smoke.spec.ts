@@ -115,6 +115,9 @@ test.describe('Enterprise UX MVP visual smoke (Wave4)', () => {
     });
     await expect(page.getByTestId('hub-kpi-coverage')).toBeVisible();
     await expect(page.getByTestId('hub-kpi-queue')).toBeVisible();
+    await expect(page.getByTestId('hub-work-queue')).toBeVisible();
+    await expect(page.getByTestId('hub-widget-barcodes')).toBeVisible();
+    await expect(page.getByTestId('hub-work-list')).toContainText('Espresso beans');
   });
 
   test('Queue aging badge on overdue row', async ({ page }) => {

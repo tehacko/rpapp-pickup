@@ -31,6 +31,7 @@ function createActions(): CheckupScreenActions {
     dismissConflict: jest.fn(),
     setLineFilter: jest.fn(),
     toggleLineSelected: jest.fn(),
+    clearLineSelection: jest.fn(),
     toggleSelectAllVisible: jest.fn(),
     acceptUncountedExpected: jest.fn(),
     setVisibleToExpected: jest.fn(),
@@ -233,5 +234,22 @@ describe('CheckupScreenView', () => {
     expect(actions.toggleSelectAllVisible).toHaveBeenCalledTimes(1);
     expect(actions.toggleLineSelected).toHaveBeenCalledWith('l2', false);
     expect(screen.getByTestId('checkup-line-filters')).toBeTruthy();
+  });
+
+  it('does not render bulk action bar when selectedCount is 0', () => {
+    const actions = createActions();
+    render(
+      <CheckupScreenView
+        actions={actions}
+        viewModel={createViewModel({
+          selectedCount: 0,
+          selectedLineIds: [],
+          acceptSelectedEnabled: false,
+        })}
+      />,
+    );
+
+    expect(screen.queryByTestId('checkup-bulk-bar')).toBeNull();
+    expect(screen.queryByTestId('bulk-action-bar')).toBeNull();
   });
 });

@@ -193,7 +193,11 @@ async function loginAndOpenPickupHub(page: Page): Promise<void> {
   await expect(page.getByTestId('hub-kpi-missing-barcodes')).toBeVisible();
   await expect(page.getByTestId('hub-kpi-coverage')).toBeVisible();
   await expect(page.getByTestId('hub-kpi-queue')).toBeVisible();
-  await expect(page.getByTestId('hub-attention-missing_barcodes')).toBeVisible();
+  await expect(page.getByTestId('hub-work-queue')).toBeVisible();
+  await expect(page.getByTestId('hub-widget-barcodes')).toBeVisible();
+  await expect(page.getByTestId('hub-widget-queue')).toBeVisible();
+  await expect(page.getByTestId('hub-refresh')).toBeVisible();
+  await expect(page.getByTestId('hub-work-list')).toContainText('Espresso beans');
   await expect(page.getByText(/Paired as Counter tablet|Spárováno jako Counter tablet/i)).toBeVisible();
 }
 

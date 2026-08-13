@@ -7,9 +7,14 @@ import {
   buildBarcodeHubStats,
   buildCheckupHubStats,
   buildHubAttentionItems,
+  buildHubWorkQueue,
   buildQueueHubStats,
   buildStockHubStats,
   queryToLoadState,
+  IDLE_BARCODE_STATS,
+  IDLE_CHECKUP_STATS,
+  IDLE_QUEUE_STATS,
+  IDLE_STOCK_STATS,
 } from '../buildStaffHubDashboard.js';
 
 function catalogItem(
@@ -63,8 +68,10 @@ describe('buildBarcodeHubStats', () => {
     );
 
     expect(stats.assignableCount).toBe(3);
+    expect(stats.withCodeCount).toBe(1);
     expect(stats.missingCount).toBe(2);
     expect(stats.coveragePercent).toBe(33);
+    expect(stats.missingItems.map((item) => item.label)).toEqual(['A', 'B']);
   });
 
   it('treats an empty assignable catalog as full coverage', () => {
@@ -98,10 +105,15 @@ describe('buildStockHubStats', () => {
     const stats = buildStockHubStats(rows, drafts, 'ready', 'ready');
 
     expect(stats.skuCount).toBe(4);
+    expect(stats.totalUnits).toBe(13);
+    expect(stats.totalHoldUnits).toBe(1);
     expect(stats.outOfStockCount).toBe(1);
     expect(stats.belowReorderCount).toBe(1);
     expect(stats.onHoldCount).toBe(1);
     expect(stats.draftBatchCount).toBe(2);
+    expect(stats.outOfStockItems[0]?.label).toBe('Zero');
+    expect(stats.belowReorderItems[0]?.label).toBe('Low');
+    expect(stats.drafts).toHaveLength(2);
   });
 });
 
@@ -149,7 +161,11 @@ describe('buildCheckupHubStats', () => {
     ];
     const stats = buildCheckupHubStats(docs, 'ready');
     expect(stats.openCount).toBe(1);
+    expect(stats.lineCount).toBe(2);
+    expect(stats.countedCount).toBe(1);
     expect(stats.uncountedCount).toBe(1);
+    expect(stats.matchCount).toBe(1);
+    expect(stats.uncountedItems[0]?.label).toBe('#1');
   });
 });
 
@@ -179,9 +195,33 @@ describe('buildQueueHubStats', () => {
         claimExpiresAt: null,
       },
     ];
-    expect(buildQueueHubStats(queueItems, 'ready')).toEqual({
+    const stats = buildQueueHubStats(queueItems, 'ready');
+    expect(stats).toEqual({
       loadState: 'ready',
       waitingCount: 2,
+      claimedCount: 0,
+      items: [
+        {
+          id: 'queue-1',
+          kind: 'queue_item',
+          label: '#1',
+          href: '',
+          tone: 'warn',
+          quantity: null,
+          reorderPoint: null,
+          meta: 'Desk',
+        },
+        {
+          id: 'queue-2',
+          kind: 'queue_item',
+          label: '#2',
+          href: '',
+          tone: 'warn',
+          quantity: null,
+          reorderPoint: null,
+          meta: 'Desk',
+        },
+      ],
     });
   });
 });
@@ -194,12 +234,15 @@ describe('buildHubAttentionItems', () => {
       canResupply: true,
       canScan: true,
       barcodeStats: {
+        ...IDLE_BARCODE_STATS,
         loadState: 'ready',
         assignableCount: 10,
+        withCodeCount: 6,
         missingCount: 4,
         coveragePercent: 60,
       },
       stockStats: {
+        ...IDLE_STOCK_STATS,
         loadState: 'ready',
         draftsLoadState: 'ready',
         skuCount: 20,
@@ -208,8 +251,8 @@ describe('buildHubAttentionItems', () => {
         onHoldCount: 1,
         draftBatchCount: 1,
       },
-      checkupStats: { loadState: 'ready', openCount: 1, uncountedCount: 8 },
-      queueStats: { loadState: 'ready', waitingCount: 5 },
+      checkupStats: { ...IDLE_CHECKUP_STATS, loadState: 'ready', openCount: 1, uncountedCount: 8 },
+      queueStats: { ...IDLE_QUEUE_STATS, loadState: 'ready', waitingCount: 5 },
     });
 
     expect(items.map((item) => item.kind)).toEqual([
@@ -231,12 +274,15 @@ describe('buildHubAttentionItems', () => {
       canResupply: true,
       canScan: true,
       barcodeStats: {
+        ...IDLE_BARCODE_STATS,
         loadState: 'ready',
         assignableCount: 4,
+        withCodeCount: 4,
         missingCount: 0,
         coveragePercent: 100,
       },
       stockStats: {
+        ...IDLE_STOCK_STATS,
         loadState: 'error',
         draftsLoadState: 'ready',
         skuCount: 0,
@@ -245,9 +291,54 @@ describe('buildHubAttentionItems', () => {
         onHoldCount: 0,
         draftBatchCount: 0,
       },
-      checkupStats: { loadState: 'loading', openCount: 1, uncountedCount: 3 },
-      queueStats: { loadState: 'idle', waitingCount: 9 },
+      checkupStats: { ...IDLE_CHECKUP_STATS, loadState: 'loading', openCount: 1, uncountedCount: 3 },
+      queueStats: { ...IDLE_QUEUE_STATS, loadState: 'idle', waitingCount: 9 },
     });
     expect(items).toEqual([]);
+  });
+});
+
+describe('buildHubWorkQueue', () => {
+  it('merges named stock, checkup, queue, and barcode rows in priority order', () => {
+    const outItem = {
+      id: 'stock-out',
+      kind: 'out_of_stock' as const,
+      label: 'Zero',
+      href: '/demo/restock',
+      tone: 'danger' as const,
+      quantity: 0,
+      reorderPoint: 2,
+      meta: null,
+    };
+    const barcodeItem = {
+      id: 'barcode-1',
+      kind: 'missing_barcodes' as const,
+      label: 'Beans',
+      href: '/demo/barcode-assign/1',
+      tone: 'warn' as const,
+      quantity: null,
+      reorderPoint: null,
+      meta: null,
+    };
+    const queueItem = {
+      id: 'queue-9',
+      kind: 'queue_item' as const,
+      label: '#9',
+      href: '/demo/order/9',
+      tone: 'warn' as const,
+      quantity: null,
+      reorderPoint: null,
+      meta: 'Desk',
+    };
+    const rows = buildHubWorkQueue({
+      canAssign: true,
+      canResupply: true,
+      canScan: true,
+      barcodeStats: { ...IDLE_BARCODE_STATS, loadState: 'ready', missingItems: [barcodeItem] },
+      stockStats: { ...IDLE_STOCK_STATS, loadState: 'ready', outOfStockItems: [outItem] },
+      checkupStats: IDLE_CHECKUP_STATS,
+      queueStats: { ...IDLE_QUEUE_STATS, loadState: 'ready', items: [queueItem] },
+    });
+    expect(rows.map((row) => row.id)).toEqual(['stock-out', 'queue-9', 'barcode-1']);
   });
 });

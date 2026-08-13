@@ -197,9 +197,20 @@ export function useStaffHubScreen(): UseStaffHubScreenResult {
       buildBarcodeHubStats(
         barcodeQuery.data ?? [],
         queryToLoadState(hasToken && canAssign, barcodeQuery.isPending, barcodeQuery.isError),
+        { tenantCode, localeTag: i18n.language },
       ),
-    [barcodeQuery.data, barcodeQuery.isError, barcodeQuery.isPending, canAssign, hasToken],
+    [
+      barcodeQuery.data,
+      barcodeQuery.isError,
+      barcodeQuery.isPending,
+      canAssign,
+      hasToken,
+      i18n.language,
+      tenantCode,
+    ],
   );
+
+  const tenantPath = `/${encodeURIComponent(tenantCode)}`;
 
   const stockStats = useMemo(
     () =>
@@ -212,6 +223,7 @@ export function useStaffHubScreen(): UseStaffHubScreenResult {
           restockDraftsQuery.isPending,
           restockDraftsQuery.isError,
         ),
+        tenantPath,
       ),
     [
       canResupply,
@@ -222,6 +234,7 @@ export function useStaffHubScreen(): UseStaffHubScreenResult {
       stockQuery.data,
       stockQuery.isError,
       stockQuery.isPending,
+      tenantPath,
     ],
   );
 
@@ -230,8 +243,9 @@ export function useStaffHubScreen(): UseStaffHubScreenResult {
       buildCheckupHubStats(
         checkupQuery.data ?? [],
         queryToLoadState(hasToken && canResupply, checkupQuery.isPending, checkupQuery.isError),
+        tenantPath,
       ),
-    [canResupply, checkupQuery.data, checkupQuery.isError, checkupQuery.isPending, hasToken],
+    [canResupply, checkupQuery.data, checkupQuery.isError, checkupQuery.isPending, hasToken, tenantPath],
   );
 
   const queueStats = useMemo(
@@ -239,9 +253,37 @@ export function useStaffHubScreen(): UseStaffHubScreenResult {
       buildQueueHubStats(
         queueQuery.data ?? [],
         queryToLoadState(hasToken && canScan, queueQuery.isPending, queueQuery.isError),
+        tenantPath,
       ),
-    [canScan, hasToken, queueQuery.data, queueQuery.isError, queueQuery.isPending],
+    [canScan, hasToken, queueQuery.data, queueQuery.isError, queueQuery.isPending, tenantPath],
   );
+
+  const dashboardRefreshing =
+    barcodeQuery.isFetching ||
+    stockQuery.isFetching ||
+    restockDraftsQuery.isFetching ||
+    checkupQuery.isFetching ||
+    queueQuery.isFetching;
+
+  const lastUpdatedAt = useMemo(() => {
+    const stamps = [
+      barcodeQuery.dataUpdatedAt,
+      stockQuery.dataUpdatedAt,
+      restockDraftsQuery.dataUpdatedAt,
+      checkupQuery.dataUpdatedAt,
+      queueQuery.dataUpdatedAt,
+    ].filter((stamp) => stamp > 0);
+    if (stamps.length === 0) {
+      return null;
+    }
+    return new Date(Math.max(...stamps)).toISOString();
+  }, [
+    barcodeQuery.dataUpdatedAt,
+    checkupQuery.dataUpdatedAt,
+    queueQuery.dataUpdatedAt,
+    restockDraftsQuery.dataUpdatedAt,
+    stockQuery.dataUpdatedAt,
+  ]);
 
   const viewModel = useMemo(
     () =>
@@ -262,6 +304,8 @@ export function useStaffHubScreen(): UseStaffHubScreenResult {
         stockStats,
         checkupStats,
         queueStats,
+        dashboardRefreshing,
+        lastUpdatedAt,
       }),
     [
       activePickupPointId,
@@ -271,8 +315,10 @@ export function useStaffHubScreen(): UseStaffHubScreenResult {
       canScan,
       canSell,
       checkupStats,
+      dashboardRefreshing,
       deviceFlags.registryEnabled,
       isRoamingStaff,
+      lastUpdatedAt,
       pairedDevice?.deviceLabel,
       pickupPointOptions,
       pickupPointsQuery.isError,

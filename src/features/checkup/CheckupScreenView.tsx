@@ -7,9 +7,11 @@ import { PickupStickyCta } from '../../shared/ui/PickupStickyCta.js';
 import { QuantityStepper } from '../../shared/ui/QuantityStepper.js';
 import { SectionCard } from '../../shared/ui/SectionCard.js';
 import { SegmentTabs } from '../../shared/ui/SegmentTabs.js';
+import { SelectableListRow } from '../../shared/ui/SelectableListRow.js';
 import { StatusBadge } from '../../shared/ui/StatusBadge.js';
 import { Button } from '../../shared/ui/surfacePrimitives.js';
 import type { CheckupViewModel } from './buildCheckupViewModel.js';
+import { CheckupBulkBar } from './CheckupBulkBar.js';
 import type { CheckupScreenActions } from './useCheckupScreen.js';
 
 export interface CheckupScreenViewProps {
@@ -364,21 +366,16 @@ export function CheckupScreenView({
               >
                 {t('pickup.checkup.setVisibleExpected')}
               </Button>
-              <Button
-                intent="secondary"
-                type="button"
-                className="min-h-11"
-                disabled={!viewModel.acceptSelectedEnabled}
-                onClick={actions.acceptSelectedExpected}
-                data-testid="checkup-accept-selected"
-              >
-                {t('pickup.checkup.acceptSelectedCount', {
-                  count: viewModel.selectedCount,
-                })}
-              </Button>
             </div>
+            <CheckupBulkBar
+              selectedCount={viewModel.selectedCount}
+              isBusy={viewModel.bulkBusy}
+              onClear={actions.clearLineSelection}
+              onAcceptSelected={actions.acceptSelectedExpected}
+              acceptSelectedEnabled={viewModel.acceptSelectedEnabled}
+            />
             {viewModel.visibleLineCount > 0 ? (
-              <label className="pickup-touch-target mt-3 inline-flex items-center gap-2 text-sm">
+              <label className="pickup-touch-target mt-3 inline-flex min-h-11 items-center gap-2 text-sm">
                 <input
                   type="checkbox"
                   className="h-5 w-5 accent-[var(--color-accent)]"
@@ -403,80 +400,79 @@ export function CheckupScreenView({
                 data-testid="checkup-lines"
               >
                 {viewModel.visibleLines.map((line) => (
-                  <li
-                    key={line.lineId}
-                    className="rounded-lg border border-[var(--color-border)] px-3 py-3"
-                    data-testid={`checkup-line-${line.lineId}`}
-                  >
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <div className="flex min-w-0 items-start gap-3">
-                        <input
-                          type="checkbox"
-                          className="mt-1 h-5 w-5 shrink-0 accent-[var(--color-accent)]"
-                          checked={viewModel.selectedLineIds.includes(line.lineId)}
-                          disabled={viewModel.bulkBusy}
-                          onChange={(event) => {
-                            actions.toggleLineSelected(line.lineId, event.target.checked);
-                          }}
-                          aria-label={t('pickup.checkup.selectLineAria', { label: line.label })}
-                          data-testid={`checkup-select-${line.lineId}`}
+                  <li key={line.lineId}>
+                    <SelectableListRow
+                      selected={viewModel.selectedLineIds.includes(line.lineId)}
+                      onSelectedChange={(selected) => {
+                        actions.toggleLineSelected(line.lineId, selected);
+                      }}
+                      selectAriaLabel={t('pickup.checkup.selectLineAria', {
+                        label: line.label,
+                      })}
+                      disabled={viewModel.bulkBusy}
+                      testId={`checkup-line-${line.lineId}`}
+                      checkboxTestId={`checkup-select-${line.lineId}`}
+                      className="items-start py-3"
+                      trailing={
+                        <StatusBadge
+                          label={t(`pickup.checkup.mismatch.${line.mismatch}`)}
+                          tone={mismatchTone(line.mismatch)}
+                          testId={`checkup-mismatch-${line.lineId}`}
                         />
-                        <div className="min-w-0">
-                          <p className="m-0 truncate text-sm font-medium">{line.label}</p>
-                          <p className="m-0 text-xs text-[var(--color-on-surface-muted)]">
-                            {t('pickup.checkup.expectedLabel', {
-                              expected: line.expectedQuantity,
-                              hold: line.expectedStockOnHold,
-                            })}
-                          </p>
-                        </div>
-                      </div>
-                      <StatusBadge
-                        label={t(`pickup.checkup.mismatch.${line.mismatch}`)}
-                        tone={mismatchTone(line.mismatch)}
-                        testId={`checkup-mismatch-${line.lineId}`}
-                      />
-                    </div>
-                    <div className="mt-3 flex flex-wrap items-center gap-3">
-                      <QuantityStepper
-                        value={line.countedQuantity}
-                        min={0}
-                        disabled={viewModel.bulkBusy}
-                        onInc={() => {
-                          actions.incrementCounted(line.lineId);
-                        }}
-                        onDec={() => {
-                          actions.decrementCounted(line.lineId);
-                        }}
-                        aria-label={t('pickup.checkup.countedAria', { label: line.label })}
-                        testId={`checkup-stepper-${line.lineId}`}
-                      />
-                      {line.mismatch === 'short' || line.needsShrinkageReason ? (
-                        <label className="flex min-w-[12rem] flex-col gap-1 text-xs font-medium">
-                          {t('pickup.checkup.shrinkageLabel')}
-                          <select
-                            className="min-h-11 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-2 text-sm"
-                            value={line.shrinkageReason ?? ''}
-                            disabled={viewModel.bulkBusy}
-                            onChange={(event) => {
-                              const value = event.target.value;
-                              actions.setShrinkageReason(
-                                line.lineId,
-                                value.length === 0 ? null : (value as ShrinkageReason),
-                              );
-                            }}
-                            data-testid={`checkup-shrinkage-${line.lineId}`}
-                          >
-                            <option value="">{t('pickup.checkup.shrinkagePlaceholder')}</option>
-                            {SHRINKAGE_REASONS.map((reason) => (
-                              <option key={reason} value={reason}>
-                                {t(`pickup.checkup.shrinkage.${reason}`)}
+                      }
+                    >
+                      <p className="m-0 truncate text-sm font-medium">{line.label}</p>
+                      <p className="m-0 text-xs text-[var(--color-on-surface-muted)]">
+                        {t('pickup.checkup.expectedLabel', {
+                          expected: line.expectedQuantity,
+                          hold: line.expectedStockOnHold,
+                        })}
+                      </p>
+                      <div className="mt-3 flex flex-wrap items-center gap-3">
+                        <QuantityStepper
+                          value={line.countedQuantity}
+                          min={0}
+                          disabled={viewModel.bulkBusy}
+                          onInc={() => {
+                            actions.incrementCounted(line.lineId);
+                          }}
+                          onDec={() => {
+                            actions.decrementCounted(line.lineId);
+                          }}
+                          aria-label={t('pickup.checkup.countedAria', {
+                            label: line.label,
+                          })}
+                          testId={`checkup-stepper-${line.lineId}`}
+                        />
+                        {line.mismatch === 'short' || line.needsShrinkageReason ? (
+                          <label className="flex min-w-[12rem] flex-col gap-1 text-xs font-medium">
+                            {t('pickup.checkup.shrinkageLabel')}
+                            <select
+                              className="min-h-11 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-2 text-sm"
+                              value={line.shrinkageReason ?? ''}
+                              disabled={viewModel.bulkBusy}
+                              onChange={(event) => {
+                                const value = event.target.value;
+                                actions.setShrinkageReason(
+                                  line.lineId,
+                                  value.length === 0 ? null : (value as ShrinkageReason),
+                                );
+                              }}
+                              data-testid={`checkup-shrinkage-${line.lineId}`}
+                            >
+                              <option value="">
+                                {t('pickup.checkup.shrinkagePlaceholder')}
                               </option>
-                            ))}
-                          </select>
-                        </label>
-                      ) : null}
-                    </div>
+                              {SHRINKAGE_REASONS.map((reason) => (
+                                <option key={reason} value={reason}>
+                                  {t(`pickup.checkup.shrinkage.${reason}`)}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+                        ) : null}
+                      </div>
+                    </SelectableListRow>
                   </li>
                 ))}
               </ul>

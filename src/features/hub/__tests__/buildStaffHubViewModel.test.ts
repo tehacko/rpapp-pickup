@@ -96,12 +96,15 @@ describe('buildStaffHubViewModel', () => {
       pickupPointsLoading: false,
       pickupPointsError: false,
       barcodeStats: {
+        ...IDLE_BARCODE_STATS,
         loadState: 'ready',
         assignableCount: 10,
+        withCodeCount: 7,
         missingCount: 3,
         coveragePercent: 70,
       },
       stockStats: {
+        ...IDLE_STOCK_STATS,
         loadState: 'ready',
         draftsLoadState: 'ready',
         skuCount: 12,
@@ -110,7 +113,7 @@ describe('buildStaffHubViewModel', () => {
         onHoldCount: 0,
         draftBatchCount: 0,
       },
-      checkupStats: { loadState: 'ready', openCount: 0, uncountedCount: 0 },
+      checkupStats: { ...IDLE_CHECKUP_STATS, loadState: 'ready', openCount: 0, uncountedCount: 0 },
       queueStats: IDLE_QUEUE_STATS,
     });
 

@@ -527,4 +527,23 @@ describe('useCheckupScreen', () => {
     expect(result.current.viewModel.visibleLines).toHaveLength(1);
     expect(result.current.viewModel.visibleLines[0]?.lineId).toBe('line-1');
   });
+
+  it('clears selected line keys after toggleLineSelected', () => {
+    const gateway = createGatewayMock();
+    gateway.listOpen.mockResolvedValue([]);
+
+    const { result } = renderHook(() => useCheckupScreen(gateway));
+
+    act(() => {
+      result.current.actions.toggleLineSelected('line-1', true);
+    });
+    expect(result.current.viewModel.selectedCount).toBe(1);
+    expect(result.current.viewModel.selectedLineIds).toEqual(['line-1']);
+
+    act(() => {
+      result.current.actions.clearLineSelection();
+    });
+    expect(result.current.viewModel.selectedCount).toBe(0);
+    expect(result.current.viewModel.selectedLineIds).toEqual([]);
+  });
 });

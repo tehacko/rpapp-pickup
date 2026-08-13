@@ -1,7 +1,9 @@
 import {
   buildHubAttentionItems,
+  buildHubWorkQueue,
   isHubDashboardError,
   isHubDashboardLoading,
+  type HubNamedItem,
   type StaffHubAttentionItem,
   type StaffHubBarcodeStats,
   type StaffHubCheckupStats,
@@ -11,6 +13,8 @@ import {
 
 export type {
   HubAttentionKind,
+  HubNamedItem,
+  HubNamedKind,
   HubStatsLoadState,
   StaffHubAttentionItem,
   StaffHubBarcodeStats,
@@ -42,8 +46,11 @@ export interface StaffHubViewModel {
   readonly checkupStats: StaffHubCheckupStats;
   readonly queueStats: StaffHubQueueStats;
   readonly attentionItems: readonly StaffHubAttentionItem[];
+  readonly workQueue: readonly HubNamedItem[];
   readonly dashboardLoading: boolean;
   readonly dashboardError: boolean;
+  readonly dashboardRefreshing: boolean;
+  readonly lastUpdatedAt: string | null;
 }
 
 export function buildStaffHubViewModel(input: {
@@ -63,6 +70,8 @@ export function buildStaffHubViewModel(input: {
   stockStats: StaffHubStockStats;
   checkupStats: StaffHubCheckupStats;
   queueStats: StaffHubQueueStats;
+  dashboardRefreshing?: boolean;
+  lastUpdatedAt?: string | null;
 }): StaffHubViewModel {
   const stats = {
     barcodeStats: input.barcodeStats,
@@ -91,7 +100,15 @@ export function buildStaffHubViewModel(input: {
       canScan: input.canScan,
       ...stats,
     }),
+    workQueue: buildHubWorkQueue({
+      canAssign: input.canAssign,
+      canResupply: input.canResupply,
+      canScan: input.canScan,
+      ...stats,
+    }),
     dashboardLoading: isHubDashboardLoading(stats),
     dashboardError: isHubDashboardError(stats),
+    dashboardRefreshing: input.dashboardRefreshing === true,
+    lastUpdatedAt: input.lastUpdatedAt ?? null,
   };
 }

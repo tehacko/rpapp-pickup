@@ -1,19 +1,19 @@
-import { Check, ChevronRight, Lock } from 'lucide-react';
+import { LayoutDashboard, Lock, RefreshCw } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { canAccessPickupStaffQueue } from '../../shared/entitlements/pickupQueueAccess.js';
 import { Badge } from '../../shared/ui/Badge.js';
 import { EmptyState } from '../../shared/ui/EmptyState.js';
-import { KpiStat } from '../../shared/ui/KpiStat.js';
+import { IconButton } from '../../shared/ui/IconButton.js';
 import { MetaRow } from '../../shared/ui/MetaRow.js';
 import { PageHeader } from '../../shared/ui/PageHeader.js';
-import { PageSectionHeader } from '../../shared/ui/PageSectionHeader.js';
 import { PickupSelect } from '../../shared/ui/PickupSelect.js';
 import { ScreenState } from '../../shared/ui/ScreenState.js';
 import { SectionCard } from '../../shared/ui/SectionCard.js';
 import { Skeleton } from '../../shared/ui/Skeleton.js';
 import { cn } from '../../shared/ui/cn.js';
-import type { HubAttentionKind } from './buildStaffHubDashboard.js';
+import { StaffHubFactsGrid } from './StaffHubFactsGrid.js';
+import { StaffHubKpiStrip } from './StaffHubKpiStrip.js';
 import type { StaffHubViewModel } from './buildStaffHubViewModel.js';
 import type { StaffHubScreenActions } from './useStaffHubScreen.js';
 
@@ -29,42 +29,36 @@ const deviceLinkClass = cn(
   'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus-ring)]',
 );
 
-const attentionLinkClass = cn(
-  'flex min-h-11 w-full items-center gap-3 rounded-[var(--radius-lg)] border border-[var(--color-border)]',
-  'bg-[var(--color-surface)] px-4 py-3 text-left no-underline shadow-[var(--shadow-card)]',
-  'hover:bg-[var(--color-surface-hover)]',
-  'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus-ring)]',
-);
-
 const emptyIconClass = 'h-10 w-10 stroke-[1.75]';
 
-const KPI_SKELETON_KEYS = ['hub-kpi-sk-1', 'hub-kpi-sk-2', 'hub-kpi-sk-3', 'hub-kpi-sk-4'] as const;
+const KPI_SKELETON_KEYS = [
+  'hub-kpi-sk-1',
+  'hub-kpi-sk-2',
+  'hub-kpi-sk-3',
+  'hub-kpi-sk-4',
+  'hub-kpi-sk-5',
+  'hub-kpi-sk-6',
+] as const;
 
-const ATTENTION_COPY: Record<
-  HubAttentionKind,
-  { readonly titleKey: string; readonly tone: 'warn' | 'danger' | 'neutral' }
-> = {
-  checkup_open: { titleKey: 'pickup.hub.attention.checkupOpen', tone: 'warn' },
-  queue_waiting: { titleKey: 'pickup.hub.attention.queueWaiting', tone: 'warn' },
-  out_of_stock: { titleKey: 'pickup.hub.attention.outOfStock', tone: 'danger' },
-  below_reorder: { titleKey: 'pickup.hub.attention.belowReorder', tone: 'warn' },
-  missing_barcodes: { titleKey: 'pickup.hub.attention.missingBarcodes', tone: 'warn' },
-  restock_draft: { titleKey: 'pickup.hub.attention.restockDraft', tone: 'neutral' },
-};
+const WIDGET_SKELETON_KEYS = ['hub-widget-sk-1', 'hub-widget-sk-2'] as const;
 
-const ATTENTION_SKELETON_KEYS = ['hub-att-sk-1', 'hub-att-sk-2'] as const;
-
-function kpiToneClass(tone: 'neutral' | 'warn' | 'danger' | 'success'): string | undefined {
-  if (tone === 'danger') {
-    return 'border-[color-mix(in_oklab,var(--color-danger)_40%,var(--color-border))]';
+function formatHubLastUpdated(
+  lastUpdatedAt: string | null,
+  localeTag: string,
+  t: (key: string, opts?: Record<string, unknown>) => string,
+): string | null {
+  if (lastUpdatedAt === null) {
+    return null;
   }
-  if (tone === 'warn') {
-    return 'border-[color-mix(in_oklab,var(--color-warning)_40%,var(--color-border))]';
+  const parsed = Date.parse(lastUpdatedAt);
+  if (Number.isNaN(parsed)) {
+    return null;
   }
-  if (tone === 'success') {
-    return 'border-[color-mix(in_oklab,var(--color-success)_40%,var(--color-border))]';
-  }
-  return undefined;
+  const time = new Date(parsed).toLocaleTimeString(localeTag, {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+  return t('pickup.hub.lastUpdated', { time });
 }
 
 function hasReadyKpis(viewModel: StaffHubViewModel): boolean {
@@ -78,7 +72,7 @@ function hasReadyKpis(viewModel: StaffHubViewModel): boolean {
 }
 
 export function StaffHubScreenView({ viewModel, actions }: StaffHubScreenViewProps): JSX.Element {
-  const { t } = useTranslation('pickup');
+  const { t, i18n } = useTranslation('pickup');
   const canAccessQueue = canAccessPickupStaffQueue(viewModel.canScan);
   const hasStaffFunctions =
     canAccessQueue ||
@@ -88,15 +82,30 @@ export function StaffHubScreenView({ viewModel, actions }: StaffHubScreenViewPro
     viewModel.canResupply;
   const hasDashboard = viewModel.canAssign || viewModel.canResupply || viewModel.canScan;
   const devicePairingPath = `/${encodeURIComponent(viewModel.tenantCode)}/device-pairing`;
-  const showAllClear =
-    hasDashboard &&
-    !viewModel.dashboardLoading &&
-    !viewModel.dashboardError &&
-    viewModel.attentionItems.length === 0;
+  const lastUpdatedLabel = formatHubLastUpdated(viewModel.lastUpdatedAt, i18n.language, t);
+  const refreshLabel = viewModel.dashboardRefreshing
+    ? t('pickup.hub.refreshing')
+    : t('pickup.hub.refresh');
 
   return (
     <div className="flex flex-col gap-4" data-testid="staff-hub-screen">
-      <PageHeader title={t('pickup.hub.title')} lead={t('pickup.hub.lead')} />
+      <PageHeader
+        title={t('pickup.hub.title')}
+        lead={t('pickup.hub.lead')}
+        titleIcon={LayoutDashboard}
+        actions={
+          hasDashboard ? (
+            <IconButton
+              icon={RefreshCw}
+              aria-label={refreshLabel}
+              onClick={actions.retryDashboard}
+              disabled={viewModel.dashboardRefreshing}
+              className={viewModel.dashboardRefreshing ? 'animate-spin' : undefined}
+              data-testid="hub-refresh"
+            />
+          ) : undefined
+        }
+      />
 
       {viewModel.showPickupPointSwitcher ? (
         <SectionCard title={t('pickup.hub.pickupPointTitle')} data-testid="hub-pickup-point-card">
@@ -135,105 +144,30 @@ export function StaffHubScreenView({ viewModel, actions }: StaffHubScreenViewPro
 
       {hasDashboard ? (
         <section className="flex flex-col gap-3" aria-labelledby="pickup-hub-stats-heading">
-          <PageSectionHeader
-            titleId="pickup-hub-stats-heading"
-            title={t('pickup.hub.statsTitle')}
-          />
+          <h2 id="pickup-hub-stats-heading" className="sr-only">
+            {t('pickup.hub.statsTitle')}
+          </h2>
           {viewModel.dashboardLoading ? (
-            <div
-              className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4"
-              data-testid="hub-kpi-skeleton"
-              aria-busy="true"
-              aria-label={t('pickup.common.loading')}
-            >
-              {KPI_SKELETON_KEYS.map((key) => (
-                <Skeleton key={key} className="h-20 w-full" />
-              ))}
-            </div>
+            <>
+              <div
+                className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4"
+                data-testid="hub-kpi-skeleton"
+                aria-busy="true"
+                aria-label={t('pickup.common.loading')}
+              >
+                {KPI_SKELETON_KEYS.map((key) => (
+                  <Skeleton key={key} className="h-28 w-full" />
+                ))}
+              </div>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2" aria-hidden="true">
+                {WIDGET_SKELETON_KEYS.map((key) => (
+                  <Skeleton key={key} className="h-40 w-full" />
+                ))}
+              </div>
+            </>
           ) : null}
           {!viewModel.dashboardLoading && hasReadyKpis(viewModel) ? (
-            <div
-              className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4"
-              data-testid="hub-kpi-grid"
-            >
-              {viewModel.canAssign && viewModel.barcodeStats.loadState === 'ready' ? (
-                <>
-                  <KpiStat
-                    label={t('pickup.hub.kpi.missingBarcodes')}
-                    value={viewModel.barcodeStats.missingCount}
-                    className={kpiToneClass(
-                      viewModel.barcodeStats.missingCount > 0 ? 'warn' : 'success',
-                    )}
-                    testId="hub-kpi-missing-barcodes"
-                  />
-                  <KpiStat
-                    label={t('pickup.hub.kpi.coverage')}
-                    value={t('pickup.hub.coverageValue', {
-                      percent: viewModel.barcodeStats.coveragePercent,
-                    })}
-                    className={kpiToneClass(
-                      viewModel.barcodeStats.coveragePercent < 100 ? 'warn' : 'success',
-                    )}
-                    testId="hub-kpi-coverage"
-                  />
-                </>
-              ) : null}
-              {viewModel.canResupply && viewModel.stockStats.loadState === 'ready' ? (
-                <>
-                  <KpiStat
-                    label={t('pickup.hub.kpi.outOfStock')}
-                    value={viewModel.stockStats.outOfStockCount}
-                    className={kpiToneClass(
-                      viewModel.stockStats.outOfStockCount > 0 ? 'danger' : 'success',
-                    )}
-                    testId="hub-kpi-out-of-stock"
-                  />
-                  <KpiStat
-                    label={t('pickup.hub.kpi.belowReorder')}
-                    value={viewModel.stockStats.belowReorderCount}
-                    className={kpiToneClass(
-                      viewModel.stockStats.belowReorderCount > 0 ? 'warn' : 'success',
-                    )}
-                    testId="hub-kpi-below-reorder"
-                  />
-                  <KpiStat
-                    label={t('pickup.hub.kpi.onHold')}
-                    value={viewModel.stockStats.onHoldCount}
-                    testId="hub-kpi-on-hold"
-                  />
-                </>
-              ) : null}
-              {viewModel.canResupply && viewModel.stockStats.draftsLoadState === 'ready' ? (
-                <KpiStat
-                  label={t('pickup.hub.kpi.draftRestock')}
-                  value={viewModel.stockStats.draftBatchCount}
-                  className={kpiToneClass(
-                    viewModel.stockStats.draftBatchCount > 0 ? 'warn' : 'neutral',
-                  )}
-                  testId="hub-kpi-restock-drafts"
-                />
-              ) : null}
-              {viewModel.canResupply && viewModel.checkupStats.loadState === 'ready' ? (
-                <KpiStat
-                  label={t('pickup.hub.kpi.openCheckup')}
-                  value={viewModel.checkupStats.openCount}
-                  className={kpiToneClass(
-                    viewModel.checkupStats.openCount > 0 ? 'warn' : 'success',
-                  )}
-                  testId="hub-kpi-open-checkup"
-                />
-              ) : null}
-              {viewModel.canScan && viewModel.queueStats.loadState === 'ready' ? (
-                <KpiStat
-                  label={t('pickup.hub.kpi.queue')}
-                  value={viewModel.queueStats.waitingCount}
-                  className={kpiToneClass(
-                    viewModel.queueStats.waitingCount > 0 ? 'warn' : 'success',
-                  )}
-                  testId="hub-kpi-queue"
-                />
-              ) : null}
-            </div>
+            <StaffHubKpiStrip viewModel={viewModel} />
           ) : null}
           {viewModel.dashboardError && !viewModel.dashboardLoading ? (
             <ScreenState
@@ -242,74 +176,14 @@ export function StaffHubScreenView({ viewModel, actions }: StaffHubScreenViewPro
               onRetry={actions.retryDashboard}
             />
           ) : null}
-        </section>
-      ) : null}
-
-      {hasDashboard ? (
-        <section className="flex flex-col gap-3" aria-labelledby="pickup-hub-attention-heading">
-          <PageSectionHeader
-            titleId="pickup-hub-attention-heading"
-            title={t('pickup.hub.attentionTitle')}
-          />
-          {viewModel.dashboardLoading ? (
-            <div className="flex flex-col gap-2" aria-hidden="true">
-              {ATTENTION_SKELETON_KEYS.map((key) => (
-                <Skeleton key={key} className="h-14 w-full" />
-              ))}
-            </div>
-          ) : null}
-          {!viewModel.dashboardLoading && viewModel.attentionItems.length > 0 ? (
-            <ul className="m-0 flex list-none flex-col gap-2 p-0" data-testid="hub-attention-list">
-              {viewModel.attentionItems.map((item) => {
-                const copy = ATTENTION_COPY[item.kind];
-                const title =
-                  item.kind === 'checkup_open' && item.count === 0
-                    ? t('pickup.hub.attention.checkupInProgress')
-                    : t(copy.titleKey, { count: item.count });
-                return (
-                  <li key={item.id}>
-                    <Link
-                      to={item.href}
-                      className={attentionLinkClass}
-                      data-testid={`hub-attention-${item.kind}`}
-                    >
-                      <span className="min-w-0 flex-1 text-sm font-semibold text-[var(--color-on-surface)]">
-                        {title}
-                      </span>
-                      {item.kind === 'checkup_open' && item.count === 0 ? null : (
-                        <Badge tone={copy.tone} size="sm">
-                          {item.count}
-                        </Badge>
-                      )}
-                      <ChevronRight
-                        className="h-5 w-5 shrink-0 stroke-[1.75] text-[var(--color-on-surface-muted)]"
-                        aria-hidden
-                      />
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
-          ) : null}
-          {showAllClear ? (
-            <SectionCard data-testid="hub-all-clear">
-              <div className="flex items-start gap-3">
-                <span
-                  className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-[var(--radius-md)] bg-[var(--color-surface-muted)] text-[var(--color-success)]"
-                  aria-hidden
-                >
-                  <Check className="h-5 w-5 stroke-[1.75]" />
-                </span>
-                <div className="min-w-0">
-                  <p className="m-0 text-sm font-semibold text-[var(--color-on-surface)]">
-                    {t('pickup.hub.allClearTitle')}
-                  </p>
-                  <p className="m-0 mt-1 text-sm text-[var(--color-on-surface-muted)]">
-                    {t('pickup.hub.allClearMessage')}
-                  </p>
-                </div>
-              </div>
-            </SectionCard>
+          {!viewModel.dashboardLoading ? <StaffHubFactsGrid viewModel={viewModel} /> : null}
+          {lastUpdatedLabel !== null ? (
+            <p
+              className="m-0 text-xs text-[var(--color-on-surface-muted)]"
+              data-testid="hub-last-updated"
+            >
+              {lastUpdatedLabel}
+            </p>
           ) : null}
         </section>
       ) : null}

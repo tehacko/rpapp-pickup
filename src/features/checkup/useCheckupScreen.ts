@@ -106,6 +106,7 @@ export interface CheckupScreenActions {
   readonly dismissConflict: () => void;
   readonly setLineFilter: (id: string) => void;
   readonly toggleLineSelected: (lineId: string, selected: boolean) => void;
+  readonly clearLineSelection: () => void;
   readonly toggleSelectAllVisible: () => void;
   readonly acceptUncountedExpected: () => void;
   readonly setVisibleToExpected: () => void;
@@ -730,6 +731,9 @@ export function useCheckupScreen(
           }
           return next;
         });
+      },
+      clearLineSelection: (): void => {
+        setSelectedLineIds(new Set());
       },
       toggleSelectAllVisible: (): void => {
         const visibleIds = lineIdsMatchingFilter(draft.lines, lineFilter);

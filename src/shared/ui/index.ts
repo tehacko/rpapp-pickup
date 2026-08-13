@@ -26,7 +26,9 @@ export {
   type ClaimBadgeProps,
   type ClaimBadgeViewModel,
 } from './ClaimBadge.js';
+export { BulkActionBar, type BulkActionBarProps } from './BulkActionBar.js';
 export { ListRow, type ListRowProps } from './ListRow.js';
+export { SelectableListRow, type SelectableListRowProps } from './SelectableListRow.js';
 export { QueueRow, type QueueRowProps } from './QueueRow.js';
 export { OrderLineRow, type OrderLineRowProps } from './OrderLineRow.js';
 export { SailorMark, type SailorMarkProps } from './SailorMark.js';

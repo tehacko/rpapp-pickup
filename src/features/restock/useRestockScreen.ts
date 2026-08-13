@@ -11,9 +11,22 @@ import {
   writeInventoryDraft,
 } from '../../shared/inventory/inventoryDraftStore.js';
 import { generateClientDraftKey, generateInventoryIdempotencyKey } from '../../shared/inventory/inventoryHttp.js';
+import {
+  toggleSelectAllVisible,
+  toggleSelection,
+} from '../../shared/listSelection.js';
 import { confirmApi } from '../../shared/ui/confirm/confirmApi.js';
 import { buildRestockViewModel, type RestockViewModel } from './buildRestockViewModel.js';
+import {
+  parseRestockCatalogFilterId,
+  type RestockCatalogFilterId,
+} from './restockCatalogFilter.js';
 import type { IRestockGateway } from './IRestockGateway.js';
+import {
+  addKeysToDraft,
+  incrementKeysInDraft,
+  removeKeysFromDraft,
+} from './restockBulk.js';
 import { restockGateway } from './restockGateway.js';
 import {
   restockStockRowKey,
@@ -40,6 +53,7 @@ export interface RestockScreenActions {
   readonly retryOnlineCheck: () => void;
   readonly retryStock: () => void;
   readonly setQuery: (value: string) => void;
+  readonly setCatalogFilter: (id: string) => void;
   readonly addStockRow: (productId: number, variantId: number | null) => void;
   readonly incrementLine: (productId: number, variantId: number | null) => void;
   readonly decrementLine: (productId: number, variantId: number | null) => void;
@@ -49,6 +63,16 @@ export interface RestockScreenActions {
   readonly reopenSelectedBatch: () => void;
   readonly dismissStatus: () => void;
   readonly clearDraft: () => void;
+  readonly toggleCatalogSelected: (key: string, selected: boolean) => void;
+  readonly toggleSelectAllVisibleCatalog: () => void;
+  readonly clearCatalogSelection: () => void;
+  readonly addSelectedToDraft: () => void;
+  readonly addAllVisibleToDraft: () => void;
+  readonly toggleDraftSelected: (key: string, selected: boolean) => void;
+  readonly toggleSelectAllDraft: () => void;
+  readonly clearDraftSelection: () => void;
+  readonly removeSelectedDraftLines: () => void;
+  readonly incrementSelectedDraftLines: () => void;
 }
 
 export interface UseRestockScreenResult {
@@ -75,6 +99,7 @@ export function useRestockScreen(
   const [statusTone, setStatusTone] =
     useState<RestockViewModel['statusTone']>('neutral');
   const [query, setQuery] = useState('');
+  const [catalogFilter, setCatalogFilterState] = useState<RestockCatalogFilterId>('all');
   const [stockRows, setStockRows] = useState<readonly RestockStockRow[]>([]);
   const [stockLoading, setStockLoading] = useState(false);
   const [stockError, setStockError] = useState<string | null>(null);
@@ -91,6 +116,12 @@ export function useRestockScreen(
   const [resumeBatches, setResumeBatches] = useState<readonly RestockServerBatch[]>([]);
   const [selectedResumeId, setSelectedResumeId] = useState<string | null>(null);
   const [appliedSuccess, setAppliedSuccess] = useState(false);
+  const [catalogSelectedKeys, setCatalogSelectedKeys] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
+  const [draftSelectedKeys, setDraftSelectedKeys] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  );
   const [draft, setDraft] = useState<RestockBatchDraft>(() => {
     const stored = readInventoryDraft<RestockBatchDraft>(
       'restock',
@@ -381,6 +412,7 @@ export function useRestockScreen(
         statusMessage,
         statusTone,
         query,
+        catalogFilter,
         stockLoading,
         stockError,
         stockRows,
@@ -389,11 +421,16 @@ export function useRestockScreen(
         resumeCandidates,
         selectedResumeId,
         appliedSuccess,
+        catalogSelectedKeys: [...catalogSelectedKeys],
+        draftSelectedKeys: [...draftSelectedKeys],
       }),
     [
       applying,
       canResupply,
+      catalogFilter,
+      catalogSelectedKeys,
       draft.lines,
+      draftSelectedKeys,
       isOnline,
       query,
       resumeCandidates,
@@ -418,6 +455,9 @@ export function useRestockScreen(
         setStockReloadToken((value) => value + 1);
       },
       setQuery,
+      setCatalogFilter: (id): void => {
+        setCatalogFilterState(parseRestockCatalogFilterId(id));
+      },
       addStockRow: (productId, variantId): void => {
         const stock = stockRows.find(
           (row) =>
@@ -453,10 +493,90 @@ export function useRestockScreen(
       clearDraft: (): void => {
         setDraft(emptyDraft(generateClientDraftKey('restock')));
         setAppliedSuccess(false);
+        setCatalogSelectedKeys(new Set());
+        setDraftSelectedKeys(new Set());
         clearInventoryDraft('restock', tenantCode, salesPointId, DEFAULT_DRAFT_KEY);
       },
+      toggleCatalogSelected: (key, selected): void => {
+        setCatalogSelectedKeys((prev) => toggleSelection(prev, key, selected));
+      },
+      toggleSelectAllVisibleCatalog: (): void => {
+        const visibleKeys = viewModel.catalogRows.map((row) => row.key);
+        setCatalogSelectedKeys((prev) => toggleSelectAllVisible(prev, visibleKeys));
+      },
+      clearCatalogSelection: (): void => {
+        setCatalogSelectedKeys(new Set());
+      },
+      addSelectedToDraft: (): void => {
+        if (catalogSelectedKeys.size === 0) {
+          return;
+        }
+        setDraft((prev) => {
+          const { nextLines } = addKeysToDraft(prev.lines, catalogSelectedKeys, stockRows);
+          return { ...prev, lines: nextLines };
+        });
+      },
+      addAllVisibleToDraft: (): void => {
+        const visibleKeys = viewModel.catalogRows.map((row) => row.key);
+        if (visibleKeys.length === 0) {
+          return;
+        }
+        setDraft((prev) => {
+          const { nextLines } = addKeysToDraft(prev.lines, visibleKeys, stockRows);
+          return { ...prev, lines: nextLines };
+        });
+      },
+      toggleDraftSelected: (key, selected): void => {
+        setDraftSelectedKeys((prev) => toggleSelection(prev, key, selected));
+      },
+      toggleSelectAllDraft: (): void => {
+        const draftKeys = draft.lines.map((line) =>
+          restockStockRowKey(line.productId, line.variantId),
+        );
+        setDraftSelectedKeys((prev) => toggleSelectAllVisible(prev, draftKeys));
+      },
+      clearDraftSelection: (): void => {
+        setDraftSelectedKeys(new Set());
+      },
+      removeSelectedDraftLines: (): void => {
+        if (draftSelectedKeys.size === 0) {
+          return;
+        }
+        const keysToRemove = draftSelectedKeys;
+        setDraft((prev) => ({
+          ...prev,
+          lines: removeKeysFromDraft(prev.lines, keysToRemove),
+        }));
+        setDraftSelectedKeys((prev) => {
+          const next = new Set(prev);
+          for (const key of keysToRemove) {
+            next.delete(key);
+          }
+          return next;
+        });
+      },
+      incrementSelectedDraftLines: (): void => {
+        if (draftSelectedKeys.size === 0) {
+          return;
+        }
+        setDraft((prev) => ({
+          ...prev,
+          lines: incrementKeysInDraft(prev.lines, draftSelectedKeys),
+        }));
+      },
     }),
-    [attemptApply, reopenSelectedBatch, salesPointId, stockRows, tenantCode, upsertLine],
+    [
+      attemptApply,
+      catalogSelectedKeys,
+      draft.lines,
+      draftSelectedKeys,
+      reopenSelectedBatch,
+      salesPointId,
+      stockRows,
+      tenantCode,
+      upsertLine,
+      viewModel.catalogRows,
+    ],
   );
 
   return { accessToken, tenantCode, canResupply, viewModel, actions };
