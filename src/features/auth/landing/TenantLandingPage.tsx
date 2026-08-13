@@ -12,6 +12,7 @@ import {
 } from './filterPickupLandingOrgs.js';
 import {
   fetchPublicPickupTenants,
+  PublicPickupTenantsLoadError,
   type PublicPickupTenantDTO,
 } from './publicPickupTenantApi.js';
 import { TenantLandingOrgRow } from './TenantLandingOrgRow.js';
@@ -106,8 +107,10 @@ export const TenantLandingPage = memo((): JSX.Element => {
         if (controller.signal.aborted || cancelled) {
           return;
         }
+        const showRawHttpError =
+          err instanceof PublicPickupTenantsLoadError && err.kind === 'http';
         const message =
-          err instanceof Error && err.message.length > 0
+          showRawHttpError && err.message.length > 0
             ? err.message
             : t('pickup.landing.loadError');
         setLoadState({ status: 'error', message });

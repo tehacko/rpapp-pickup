@@ -1,0 +1,68 @@
+# Railway / Railpack: same-origin static + /api reverse_proxy.
+# Custom `npm start` disables SPA auto-Caddy — railpack.json installs mise `caddy`.
+# Set API_PROXY_UPSTREAM on the pickup service (scheme+host[+port] only — no path/trailing /).
+# Pair with empty VITE_API_URL so the SPA calls same-origin /api (HttpOnly cookies + SameSite=Lax).
+# Bare `serve -s` SPA-fallbacks /api to index.html → "Unexpected token '<' … is not valid JSON".
+
+{
+	admin off
+	persist_config off
+	auto_https off
+
+	log {
+		format json
+	}
+
+	servers {
+		trusted_proxies static private_ranges 100.0.0.0/8
+	}
+}
+
+:{$PORT:80} {
+	log {
+		format json
+	}
+
+	# Same-origin cookie topology — MUST: /api/* AND /events/* → API_PROXY_UPSTREAM
+	# /health matches Vite preview proxy so liveness can reflect the API when used.
+	@upstream_api path /api/* /events/* /health
+	handle @upstream_api {
+		reverse_proxy {$API_PROXY_UPSTREAM} {
+			header_up Host {http.reverse_proxy.upstream.hostport}
+			header_up X-Forwarded-Proto {http.request.scheme}
+			header_up X-Forwarded-Host {http.request.host}
+		}
+	}
+
+	# PWA no-cache + SW-Allowed — live spawn is start.js → Caddy (not serve.json).
+	# Exact HTML matcher: `path /` is a prefix and would poison /assets/* immutable cache.
+	@pwa_html path_regexp ^/(|index\.html)$
+	@pwa_sw path /sw.js
+	@pwa_manifests path /manifest.webmanifest /manifest-dev.webmanifest
+
+	handle {
+		root * dist
+
+		header {
+			X-Content-Type-Options "nosniff"
+			-Server
+		}
+
+		header @pwa_html Cache-Control "no-cache, must-revalidate"
+		header @pwa_sw Cache-Control "no-cache, must-revalidate"
+		header @pwa_sw Service-Worker-Allowed "/"
+		header @pwa_manifests Cache-Control "no-cache, must-revalidate"
+
+		encode {
+			gzip
+			zstd
+		}
+
+		file_server {
+			hide .git
+			hide .env*
+		}
+
+		try_files {path} {path}.html {path}/index.html /index.html
+	}
+}

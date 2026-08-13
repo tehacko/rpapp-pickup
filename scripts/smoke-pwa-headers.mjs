@@ -1,6 +1,13 @@
 #!/usr/bin/env node
 /**
  * P1-SMOKE — spawn start.js on PORT 4180, assert Cache-Control / SW headers, kill tree.
+ *
+ * Spawn path honesty: this script always `spawn('node', ['start.js'])`.
+ * Default (Caddyfile present + caddy on PATH) = start.js → Caddy. Headers must
+ * come from Caddyfile (`Cache-Control`, `Service-Worker-Allowed`), not from
+ * `public/serve.json`. serve.json applies only when Caddyfile is absent (bare
+ * `serve` fallback). If Caddyfile exists but caddy is missing, start.js exits 127
+ * (no silent bare-serve). Vite DEV middleware ≠ prod Pass.
  */
 
 import { spawn, spawnSync } from 'node:child_process';
@@ -51,7 +58,7 @@ async function waitForReady() {
   const deadline = Date.now() + TIMEOUT_MS;
   while (Date.now() < deadline) {
     try {
-      // `serve -s` 301-redirects `/index.html` → `/`; readiness is SPA root 200.
+      // Readiness is SPA root 200 on the live start.js spawn (Caddy by default).
       const res = await fetchOk(`${BASE}/`);
       if (res.status === 200) {
         return;
@@ -78,7 +85,7 @@ try {
 
   await waitForReady();
 
-  // Document URL under `serve -s` is `/` (index.html); headers come from serve.json source "index.html".
+  // Document URL is `/`. Default spawn is start.js → Caddy (Caddyfile headers).
   await assertPath('/', (headers, _body, status) => {
     if (status !== 200) {
       errors.push(`index document (/) status ${String(status)}`);

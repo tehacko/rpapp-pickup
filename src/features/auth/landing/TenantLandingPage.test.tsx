@@ -29,6 +29,7 @@ describe('TenantLandingPage', () => {
     globalThis.fetch = jest.fn(async () =>
       Promise.resolve({
         ok: true,
+        headers: new Headers({ 'content-type': 'application/json' }),
         json: async () =>
           Promise.resolve({
             success: true,
@@ -74,6 +75,7 @@ describe('TenantLandingPage', () => {
       Promise.resolve({
         ok: false,
         status: 503,
+        headers: new Headers({ 'content-type': 'application/json' }),
         json: async () =>
           Promise.resolve({
             success: false,
@@ -92,5 +94,29 @@ describe('TenantLandingPage', () => {
       expect(screen.getByTestId('pickup-tenant-landing-retry')).toBeTruthy();
     });
     expect(screen.getByRole('alert').textContent).toContain('Service unavailable');
+  });
+
+  it('shows the generic load error when /api returns HTML (SPA fallback)', async () => {
+    globalThis.fetch = jest.fn(async () =>
+      Promise.resolve({
+        ok: true,
+        status: 200,
+        headers: new Headers({ 'content-type': 'text/html; charset=utf-8' }),
+        json: async () => {
+          throw new SyntaxError('Unexpected token <');
+        },
+      }),
+    ) as unknown as typeof fetch;
+
+    render(
+      <MemoryRouter initialEntries={['/']}>
+        <TenantLandingPage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('pickup-tenant-landing-retry')).toBeTruthy();
+    });
+    expect(screen.getByRole('alert').textContent).toContain('pickup.landing.loadError');
   });
 });
