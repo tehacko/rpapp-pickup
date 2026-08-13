@@ -133,7 +133,7 @@ describe('checkupGateway', () => {
     });
   });
 
-  it('creates then starts with scopeMode on the create body', async () => {
+  it('creates then starts with clientDraftKey only on the create body', async () => {
     const fetchMock = jest
       .fn()
       .mockResolvedValueOnce(
@@ -174,7 +174,6 @@ describe('checkupGateway', () => {
         method: 'POST',
         body: JSON.stringify({
           clientDraftKey: 'checkup-key-1',
-          scopeMode: 'ACTIVE_STOCK',
         }),
       }),
     );

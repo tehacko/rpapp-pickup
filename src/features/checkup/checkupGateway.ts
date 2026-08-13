@@ -116,8 +116,6 @@ async function createCheckup(
   accessToken: string,
   input: {
     clientDraftKey: string;
-    scopeMode: CheckupScopeMode;
-    productIds?: readonly number[];
   },
 ): Promise<CheckupServerDocument> {
   const data = await inventoryFetchJson<Record<string, unknown>>(
@@ -127,8 +125,6 @@ async function createCheckup(
       method: 'POST',
       body: JSON.stringify({
         clientDraftKey: input.clientDraftKey,
-        scopeMode: input.scopeMode,
-        ...(input.productIds !== undefined ? { productIds: input.productIds } : {}),
       }),
     },
   );
@@ -184,7 +180,9 @@ export const checkupGateway: ICheckupGateway = {
 
   startFresh: (tenantCode, accessToken, input) =>
     withCheckupLog('startFresh', async (): Promise<CheckupServerDocument> => {
-      const created = await createCheckup(tenantCode, accessToken, input);
+      const created = await createCheckup(tenantCode, accessToken, {
+        clientDraftKey: input.clientDraftKey,
+      });
       return startCheckup(tenantCode, accessToken, created.id);
     }),
 
@@ -235,7 +233,6 @@ export const checkupGateway: ICheckupGateway = {
       );
       const created = await createCheckup(tenantCode, accessToken, {
         clientDraftKey: newClientDraftKey,
-        scopeMode: previous.scopeMode,
       });
       const started = await startCheckup(
         tenantCode,
