@@ -7,9 +7,9 @@ import {
   PackageMinus,
   PackagePlus,
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { cn } from '../../shared/ui/cn.js';
+import { PickupKpiCard, type PickupKpiTone } from '../../shared/ui/PickupKpiCard.js';
+import { PickupKpiGrid } from '../../shared/ui/PickupKpiGrid.js';
 import type { StaffHubViewModel } from './buildStaffHubViewModel.js';
 
 export interface StaffHubKpiStripProps {
@@ -24,33 +24,7 @@ interface HubKpiSpec {
   readonly value: string | number;
   readonly href: string;
   readonly icon: LucideIcon;
-  readonly tone: 'neutral' | 'warn' | 'danger' | 'success';
-}
-
-function kpiToneClass(tone: HubKpiSpec['tone']): string {
-  if (tone === 'danger') {
-    return 'border-[color-mix(in_oklab,var(--color-danger)_40%,var(--color-border))]';
-  }
-  if (tone === 'warn') {
-    return 'border-[color-mix(in_oklab,var(--color-warning)_40%,var(--color-border))]';
-  }
-  if (tone === 'success') {
-    return 'border-[color-mix(in_oklab,var(--color-success)_40%,var(--color-border))]';
-  }
-  return '';
-}
-
-function iconToneClass(tone: HubKpiSpec['tone']): string {
-  if (tone === 'danger') {
-    return 'text-[var(--color-danger)]';
-  }
-  if (tone === 'warn') {
-    return 'text-[var(--color-warning)]';
-  }
-  if (tone === 'success') {
-    return 'text-[var(--color-success)]';
-  }
-  return 'text-[var(--color-on-surface)]';
+  readonly tone: PickupKpiTone;
 }
 
 function buildKpis(viewModel: StaffHubViewModel, t: (key: string, opts?: Record<string, unknown>) => string): HubKpiSpec[] {
@@ -143,44 +117,19 @@ export function StaffHubKpiStrip({ viewModel }: StaffHubKpiStripProps): JSX.Elem
   }
 
   return (
-    <section
-      className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4"
-      data-testid="hub-kpi-grid"
-      aria-label={t('pickup.hub.statsTitle')}
-    >
-      {kpis.map((kpi) => {
-        const Icon = kpi.icon;
-        return (
-          <Link
-            key={kpi.id}
-            to={kpi.href}
-            className={cn(
-              'flex min-h-11 min-w-0 flex-col gap-0.5 rounded-[var(--radius-lg)] border bg-[var(--color-surface)] p-2 no-underline',
-              'hover:bg-[var(--color-surface-hover)]',
-              'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus-ring)]',
-              kpiToneClass(kpi.tone),
-            )}
-            data-testid={kpi.testId}
-            aria-label={t(kpi.labelKey)}
-          >
-            <span className="flex items-start justify-between gap-2">
-              <span className="min-w-0 text-xs font-medium uppercase tracking-wide text-[var(--color-on-surface-muted)]">
-                {t(kpi.labelKey)}
-              </span>
-              <Icon
-                className={cn('h-5 w-5 shrink-0 stroke-[1.75]', iconToneClass(kpi.tone))}
-                aria-hidden
-              />
-            </span>
-            <span className="text-xl font-bold tabular-nums text-[var(--color-on-surface)]">
-              {kpi.value}
-            </span>
-            <span className="hidden text-xs leading-snug text-[var(--color-on-surface-muted)] sm:block">
-              {kpi.hint}
-            </span>
-          </Link>
-        );
-      })}
-    </section>
+    <PickupKpiGrid testId="hub-kpi-grid" aria-label={t('pickup.hub.statsTitle')}>
+      {kpis.map((kpi) => (
+        <PickupKpiCard
+          key={kpi.id}
+          label={t(kpi.labelKey)}
+          value={kpi.value}
+          hint={kpi.hint}
+          href={kpi.href}
+          icon={kpi.icon}
+          tone={kpi.tone}
+          testId={kpi.testId}
+        />
+      ))}
+    </PickupKpiGrid>
   );
 }

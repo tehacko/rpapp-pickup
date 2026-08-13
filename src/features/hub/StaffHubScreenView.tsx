@@ -1,12 +1,14 @@
-import { LayoutDashboard, Lock, RefreshCw } from 'lucide-react';
+import { LayoutDashboard, Lock } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { canAccessPickupStaffQueue } from '../../shared/entitlements/pickupQueueAccess.js';
 import { Badge } from '../../shared/ui/Badge.js';
 import { EmptyState } from '../../shared/ui/EmptyState.js';
-import { IconButton } from '../../shared/ui/IconButton.js';
 import { MetaRow } from '../../shared/ui/MetaRow.js';
 import { PageHeader } from '../../shared/ui/PageHeader.js';
+import { PickupHubDashboardLayout } from '../../shared/ui/PickupHubDashboardLayout.js';
+import { PickupScreenContentActions } from '../../shared/ui/PickupScreenContentActions.js';
+import { PickupScreenRefreshButton } from '../../shared/ui/PickupScreenRefreshButton.js';
 import { PickupSelect } from '../../shared/ui/PickupSelect.js';
 import { ScreenState } from '../../shared/ui/ScreenState.js';
 import { SectionCard } from '../../shared/ui/SectionCard.js';
@@ -83,28 +85,65 @@ export function StaffHubScreenView({ viewModel, actions }: StaffHubScreenViewPro
   const hasDashboard = viewModel.canAssign || viewModel.canResupply || viewModel.canScan;
   const devicePairingPath = `/${encodeURIComponent(viewModel.tenantCode)}/device-pairing`;
   const lastUpdatedLabel = formatHubLastUpdated(viewModel.lastUpdatedAt, i18n.language, t);
-  const refreshLabel = viewModel.dashboardRefreshing
-    ? t('pickup.hub.refreshing')
-    : t('pickup.hub.refresh');
+
+  const deviceCard = viewModel.showDeviceRegistry ? (
+    <SectionCard title={t('pickup.hub.deviceTitle')} data-testid="hub-device-card">
+      <MetaRow
+        label={t('pickup.hub.deviceStatusLabel')}
+        value={
+          viewModel.pairedDeviceLabel ? (
+            <span className="inline-flex items-center gap-2">
+              <Badge tone="success" data-testid="hub-device-status-chip">
+                {t('pickup.hub.deviceStatusPaired')}
+              </Badge>
+              <span className="truncate">
+                {t('pickup.hub.devicePaired', { label: viewModel.pairedDeviceLabel })}
+              </span>
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-2">
+              <Badge tone="warn" data-testid="hub-device-status-chip">
+                {t('pickup.hub.deviceStatusUnpaired')}
+              </Badge>
+              <span>{t('pickup.hub.deviceNotPaired')}</span>
+            </span>
+          )
+        }
+        action={
+          <Link to={devicePairingPath} className={deviceLinkClass} data-testid="hub-device-manage">
+            {viewModel.pairedDeviceLabel
+              ? t('pickup.hub.deviceManage')
+              : t('pickup.hub.devicePair')}
+          </Link>
+        }
+      />
+    </SectionCard>
+  ) : null;
+
+  const kpiSlot = viewModel.dashboardLoading ? (
+    <div
+      className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4"
+      data-testid="hub-kpi-skeleton"
+      aria-busy="true"
+      aria-label={t('pickup.common.loading')}
+    >
+      {KPI_SKELETON_KEYS.map((key) => (
+        <Skeleton key={key} className="h-16 w-full" />
+      ))}
+    </div>
+  ) : hasReadyKpis(viewModel) ? (
+    <StaffHubKpiStrip viewModel={viewModel} />
+  ) : undefined;
 
   return (
-    <div className="flex flex-col gap-3" data-testid="staff-hub-screen">
+    <div
+      className="flex flex-col gap-[var(--pickup-stack-gap)]"
+      data-testid="staff-hub-screen"
+    >
       <PageHeader
         title={t('pickup.hub.title')}
         lead={t('pickup.hub.lead')}
         titleIcon={LayoutDashboard}
-        actions={
-          hasDashboard ? (
-            <IconButton
-              icon={RefreshCw}
-              aria-label={refreshLabel}
-              onClick={actions.retryDashboard}
-              disabled={viewModel.dashboardRefreshing}
-              className={viewModel.dashboardRefreshing ? 'animate-spin' : undefined}
-              data-testid="hub-refresh"
-            />
-          ) : undefined
-        }
       />
 
       {viewModel.showPickupPointSwitcher ? (
@@ -143,48 +182,53 @@ export function StaffHubScreenView({ viewModel, actions }: StaffHubScreenViewPro
       ) : null}
 
       {hasDashboard ? (
-        <section className="flex flex-col gap-2" aria-labelledby="pickup-hub-stats-heading">
+        <section aria-labelledby="pickup-hub-stats-heading">
           <h2 id="pickup-hub-stats-heading" className="sr-only">
             {t('pickup.hub.statsTitle')}
           </h2>
-          {viewModel.dashboardLoading ? (
-            <>
-              <div
-                className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4"
-                data-testid="hub-kpi-skeleton"
-                aria-busy="true"
-                aria-label={t('pickup.common.loading')}
-              >
-                {KPI_SKELETON_KEYS.map((key) => (
-                  <Skeleton key={key} className="h-16 w-full" />
-                ))}
-              </div>
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2" aria-hidden="true">
-                {WIDGET_SKELETON_KEYS.map((key) => (
-                  <Skeleton key={key} className="h-32 w-full" />
-                ))}
-              </div>
-            </>
-          ) : null}
-          {!viewModel.dashboardLoading && hasReadyKpis(viewModel) ? (
-            <StaffHubKpiStrip viewModel={viewModel} />
-          ) : null}
-          {viewModel.dashboardError && !viewModel.dashboardLoading ? (
-            <ScreenState
-              variant="error"
-              message={t('pickup.hub.statsLoadFailed')}
-              onRetry={actions.retryDashboard}
-            />
-          ) : null}
-          {!viewModel.dashboardLoading ? <StaffHubFactsGrid viewModel={viewModel} /> : null}
-          {lastUpdatedLabel !== null ? (
-            <p
-              className="m-0 text-xs text-[var(--color-on-surface-muted)]"
-              data-testid="hub-last-updated"
-            >
-              {lastUpdatedLabel}
-            </p>
-          ) : null}
+          <PickupHubDashboardLayout
+            kind="ops"
+            kpi={kpiSlot}
+            contentActions={
+              <PickupScreenContentActions>
+                <PickupScreenRefreshButton
+                  onClick={actions.retryDashboard}
+                  loading={viewModel.dashboardRefreshing}
+                  testId="hub-refresh"
+                />
+              </PickupScreenContentActions>
+            }
+            zones={
+              <>
+                {viewModel.dashboardLoading ? (
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2" aria-hidden="true">
+                    {WIDGET_SKELETON_KEYS.map((key) => (
+                      <Skeleton key={key} className="h-32 w-full" />
+                    ))}
+                  </div>
+                ) : null}
+                {viewModel.dashboardError && !viewModel.dashboardLoading ? (
+                  <ScreenState
+                    variant="error"
+                    message={t('pickup.hub.statsLoadFailed')}
+                    onRetry={actions.retryDashboard}
+                  />
+                ) : null}
+                {!viewModel.dashboardLoading ? (
+                  <StaffHubFactsGrid viewModel={viewModel} />
+                ) : null}
+                {lastUpdatedLabel !== null ? (
+                  <p
+                    className="m-0 text-xs text-[var(--color-on-surface-muted)]"
+                    data-testid="hub-last-updated"
+                  >
+                    {lastUpdatedLabel}
+                  </p>
+                ) : null}
+                {deviceCard}
+              </>
+            }
+          />
         </section>
       ) : null}
 
@@ -204,43 +248,7 @@ export function StaffHubScreenView({ viewModel, actions }: StaffHubScreenViewPro
         </SectionCard>
       ) : null}
 
-      {viewModel.showDeviceRegistry ? (
-        <SectionCard title={t('pickup.hub.deviceTitle')} data-testid="hub-device-card">
-          <MetaRow
-            label={t('pickup.hub.deviceStatusLabel')}
-            value={
-              viewModel.pairedDeviceLabel ? (
-                <span className="inline-flex items-center gap-2">
-                  <Badge tone="success" data-testid="hub-device-status-chip">
-                    {t('pickup.hub.deviceStatusPaired')}
-                  </Badge>
-                  <span className="truncate">
-                    {t('pickup.hub.devicePaired', { label: viewModel.pairedDeviceLabel })}
-                  </span>
-                </span>
-              ) : (
-                <span className="inline-flex items-center gap-2">
-                  <Badge tone="warn" data-testid="hub-device-status-chip">
-                    {t('pickup.hub.deviceStatusUnpaired')}
-                  </Badge>
-                  <span>{t('pickup.hub.deviceNotPaired')}</span>
-                </span>
-              )
-            }
-            action={
-              <Link
-                to={devicePairingPath}
-                className={deviceLinkClass}
-                data-testid="hub-device-manage"
-              >
-                {viewModel.pairedDeviceLabel
-                  ? t('pickup.hub.deviceManage')
-                  : t('pickup.hub.devicePair')}
-              </Link>
-            }
-          />
-        </SectionCard>
-      ) : null}
+      {!hasDashboard ? deviceCard : null}
     </div>
   );
 }

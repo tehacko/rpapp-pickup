@@ -112,77 +112,92 @@ export function DevicePairingPage(): JSX.Element {
     // items-start + my-auto: center when content fits; keep SailorMark scrollable/visible when
     // errors make the column taller than the viewport (justify-center clips the top).
     <main className="mx-auto flex min-h-[100dvh] w-full max-w-md flex-col items-start overflow-y-auto px-4 py-8">
-      <div className="my-auto flex w-full min-w-0 flex-col gap-4">
-      <SectionCard elevated data-testid="pickup-device-pairing-card">
-        <div className="flex flex-col gap-4">
-        <div className="flex flex-col items-center gap-3 text-center">
-          <SailorMark size="lg" />
-          <h1 className="m-0 text-xl font-bold tracking-tight text-[var(--color-on-surface)]">
-            {t('pickup.device.title')}
-          </h1>
-          <p className="m-0 text-sm text-[var(--color-on-surface-muted)]">{t('pickup.device.lead')}</p>
-        </div>
+      <div className="my-auto flex w-full min-w-0 flex-col gap-[var(--pickup-stack-gap)]">
+        <SectionCard elevated data-testid="pickup-device-pairing-card">
+          <div className="flex flex-col gap-[var(--pickup-space-4)]">
+            <div className="flex flex-col items-center gap-[var(--pickup-space-3)] text-center">
+              <SailorMark size="lg" />
+              <h1 className="m-0 text-xl font-bold tracking-tight text-[var(--color-on-surface)]">
+                {t('pickup.device.title')}
+              </h1>
+              <p className="m-0 text-sm text-[var(--color-on-surface-muted)]">
+                {t('pickup.device.lead')}
+              </p>
+            </div>
 
-        <Button type="button" intent="secondary" onClick={() => navigate(hubPath)}>
-          {t('pickup.device.backToHub')}
-        </Button>
-
-        {pairedDevice !== null ? (
-          <section className="flex flex-col gap-3" aria-labelledby="pickup-device-status-heading">
-            <h2
-              id="pickup-device-status-heading"
-              className="m-0 text-sm font-semibold text-[var(--color-on-surface)]"
-            >
-              {t('pickup.device.pairedTitle')}
-            </h2>
-            <ul className="m-0 flex list-none flex-col gap-1 p-0 text-sm text-[var(--color-on-surface-muted)]">
-              <li>{t('pickup.device.pairedLabel', { label: pairedDevice.deviceLabel })}</li>
-              <li className="font-mono">
-                {t('pickup.device.pairedCode', { code: pairedDevice.deviceCode })}
-              </li>
-            </ul>
-            <Button type="button" intent="danger" onClick={onUnpair}>
-              {t('pickup.device.unpair')}
+            <Button type="button" intent="secondary" onClick={() => navigate(hubPath)}>
+              {t('pickup.device.backToHub')}
             </Button>
-          </section>
-        ) : null}
 
-        <section className="flex flex-col gap-3" aria-labelledby="pickup-device-pair-heading">
-          <h2
-            id="pickup-device-pair-heading"
-            className="m-0 text-sm font-semibold text-[var(--color-on-surface)]"
-          >
-            {t('pickup.device.pairTitle')}
-          </h2>
-          <p className="m-0 text-sm text-[var(--color-on-surface-muted)]">{t('pickup.device.pairHint')}</p>
-          <form className="flex flex-col gap-3" onSubmit={(event) => void onSubmit(event)}>
-            <FormField
-              id="pickup-pairing-code"
-              label={t('pickup.device.pairingCode')}
-              value={pairingCode}
-              onChange={(event) => setPairingCode(event.target.value)}
-              disabled={submitCooldown.isCoolingDown}
-              placeholder={t('pickup.device.pairingCodePlaceholder')}
-              autoComplete="off"
-            />
-            <Button
-              type="submit"
-              disabled={isSubmitting || submitCooldown.isCoolingDown || pairingCode.trim().length === 0}
+            {pairedDevice !== null ? (
+              <section
+                className="flex flex-col gap-[var(--pickup-space-3)]"
+                aria-labelledby="pickup-device-status-heading"
+              >
+                <h2
+                  id="pickup-device-status-heading"
+                  className="m-0 text-sm font-semibold text-[var(--color-on-surface)]"
+                >
+                  {t('pickup.device.pairedTitle')}
+                </h2>
+                <ul className="m-0 flex list-none flex-col gap-1 p-0 text-sm text-[var(--color-on-surface-muted)]">
+                  <li>{t('pickup.device.pairedLabel', { label: pairedDevice.deviceLabel })}</li>
+                  <li className="font-mono">
+                    {t('pickup.device.pairedCode', { code: pairedDevice.deviceCode })}
+                  </li>
+                </ul>
+                <Button type="button" intent="danger" onClick={onUnpair}>
+                  {t('pickup.device.unpair')}
+                </Button>
+              </section>
+            ) : null}
+
+            <section
+              className="flex flex-col gap-[var(--pickup-space-3)]"
+              aria-labelledby="pickup-device-pair-heading"
             >
-              {t('pickup.device.pairSubmit')}
-            </Button>
-          </form>
-        </section>
+              <h2
+                id="pickup-device-pair-heading"
+                className="m-0 text-sm font-semibold text-[var(--color-on-surface)]"
+              >
+                {t('pickup.device.pairTitle')}
+              </h2>
+              <p className="m-0 text-sm text-[var(--color-on-surface-muted)]">
+                {t('pickup.device.pairHint')}
+              </p>
+              <form
+                className="flex flex-col gap-[var(--pickup-space-3)]"
+                onSubmit={(event) => void onSubmit(event)}
+              >
+                <FormField
+                  id="pickup-pairing-code"
+                  label={t('pickup.device.pairingCode')}
+                  value={pairingCode}
+                  onChange={(event) => setPairingCode(event.target.value)}
+                  disabled={submitCooldown.isCoolingDown}
+                  placeholder={t('pickup.device.pairingCodePlaceholder')}
+                  autoComplete="off"
+                />
+                <Button
+                  type="submit"
+                  disabled={
+                    isSubmitting || submitCooldown.isCoolingDown || pairingCode.trim().length === 0
+                  }
+                >
+                  {t('pickup.device.pairSubmit')}
+                </Button>
+              </form>
+            </section>
 
-        {cooldownMessage ? (
-          <AlertBanner tone="danger" role="alert" message={cooldownMessage} />
-        ) : null}
-        {error && !cooldownMessage ? (
-          <AlertBanner tone="danger" role="alert" message={error} />
-        ) : null}
-        </div>
-      </SectionCard>
-      {rePinModal}
+            {cooldownMessage ? (
+              <AlertBanner tone="danger" role="alert" message={cooldownMessage} />
+            ) : null}
+            {error && !cooldownMessage ? (
+              <AlertBanner tone="danger" role="alert" message={error} />
+            ) : null}
+          </div>
+        </SectionCard>
+        {rePinModal}
       </div>
     </main>
   );

@@ -12,8 +12,13 @@ export interface PageHeaderProps {
   readonly className?: string;
 }
 
+function hasLead(lead: ReactNode | undefined): boolean {
+  return lead !== undefined && lead !== null && lead !== '';
+}
+
 /**
  * Screen-level page toolbar header (pickup Sailor tokens).
+ * Title hierarchy mirrors admin `EnterprisePageHeader` spirit — icon well + bold title + muted lead.
  */
 export function PageHeader({
   title,
@@ -26,7 +31,8 @@ export function PageHeader({
   return (
     <header
       className={cn(
-        'flex flex-wrap items-start justify-between gap-3 border-b border-[var(--color-border)] pb-3',
+        'flex flex-wrap items-start justify-between border-b border-[var(--color-border)]',
+        'gap-[var(--pickup-space-3)] pb-[var(--pickup-space-3)]',
         className,
       )}
       data-testid="pickup-page-header"
@@ -34,11 +40,16 @@ export function PageHeader({
       <div className="min-w-0 flex-1">
         <h1
           id={titleId}
-          className="m-0 flex min-w-0 items-center gap-2 text-xl font-bold tracking-tight text-[var(--color-on-surface)]"
+          className="m-0 flex min-w-0 items-center gap-[var(--pickup-space-3)] text-xl font-bold leading-tight tracking-tight text-[var(--color-on-surface)]"
         >
           {TitleIcon ? (
             <span
-              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--radius-md)] bg-[var(--color-surface-muted)] text-[var(--color-on-surface)]"
+              className={cn(
+                'inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-[var(--radius-md)]',
+                'bg-[color-mix(in_oklab,var(--brand-consumer-accent)_14%,transparent)]',
+                'text-[var(--brand-consumer-accent)]',
+                'shadow-[inset_0_1px_0_color-mix(in_oklab,var(--color-on-surface)_6%,transparent)]',
+              )}
               aria-hidden="true"
               data-testid="pickup-page-header-title-icon"
             >
@@ -47,17 +58,22 @@ export function PageHeader({
           ) : null}
           <span className="truncate">{title}</span>
         </h1>
-        {(() => {
-          if (lead === undefined || lead === null || lead === '') {
-            return null;
-          }
-          return (
-            <p className="m-0 mt-1 max-w-3xl text-sm text-[var(--color-on-surface-muted)]">{lead}</p>
-          );
-        })()}
+        {hasLead(lead) ? (
+          <p
+            className={cn(
+              'm-0 mt-[var(--pickup-space-3)] max-w-3xl text-sm leading-snug text-[var(--color-on-surface-muted)]',
+              TitleIcon ? 'ps-[calc(2.25rem+var(--pickup-space-3))]' : null,
+            )}
+          >
+            {lead}
+          </p>
+        ) : null}
       </div>
       {actions !== undefined ? (
-        <div className="flex shrink-0 flex-wrap items-center gap-2" data-testid="pickup-page-header-actions">
+        <div
+          className="flex shrink-0 flex-wrap items-center gap-[var(--pickup-space-3)]"
+          data-testid="pickup-page-header-actions"
+        >
           {actions}
         </div>
       ) : null}

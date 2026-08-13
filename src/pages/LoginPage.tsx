@@ -10,8 +10,7 @@ import {
 } from 'pi-kiosk-shared';
 import { TurnstileExecuteWidget, useSubmitCooldown, useTurnstileExecute } from 'pi-kiosk-shared/ui';
 import { Button, FormField } from '../shared/ui/surfacePrimitives.js';
-import { AlertBanner, InlineNotice } from '../shared/ui/AlertBanner.js';
-import { Input } from '../shared/ui/Input.js';
+import { AlertBanner } from '../shared/ui/AlertBanner.js';
 import { SailorMark } from '../shared/ui/SailorMark.js';
 import { SectionCard } from '../shared/ui/SectionCard.js';
 import { fetchSalesPointById, loginPickupStaff, PickupApiError } from '../api/pickupApi';
@@ -182,142 +181,135 @@ export function LoginPage(): JSX.Element {
     // items-start + my-auto: center when content fits; keep SailorMark scrollable/visible when
     // errors/Turnstile make the column taller than the viewport (justify-center clips the top).
     <main className="mx-auto flex min-h-[100dvh] w-full max-w-md flex-col items-start overflow-y-auto px-4 py-8">
-      <div className="my-auto w-full min-w-0">
-      <SectionCard elevated data-testid="pickup-login-card">
-        <div className="flex flex-col gap-4">
-        <div className="flex flex-col items-center gap-3 text-center">
-          <SailorMark size="lg" />
-          <h1 className="m-0 inline-flex items-center gap-2 text-xl font-bold tracking-tight text-[var(--color-on-surface)]">
-            <LogIn
-              className="h-5 w-5 shrink-0 stroke-[1.75] text-[var(--brand-consumer-accent)]"
-              aria-hidden
-            />
-            {t('pickup.login.title')}
-          </h1>
-          <Link
-            to="/"
-            className="inline-flex items-center gap-1.5 text-sm font-medium text-[var(--color-on-surface-muted)] underline-offset-2 hover:text-[var(--color-on-surface)] hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus-ring)]"
-            data-testid="pickup-login-back-to-organizations"
-          >
-            <ArrowLeft className="h-4 w-4 shrink-0 stroke-[1.75]" aria-hidden />
-            {t('pickup.login.backToOrganizations')}
-          </Link>
-        </div>
+      <div className="my-auto flex w-full min-w-0 flex-col gap-[var(--pickup-stack-gap)]">
+        <SectionCard elevated data-testid="pickup-login-card">
+          <div className="flex flex-col gap-[var(--pickup-space-4)]">
+            <div className="flex flex-col items-center gap-[var(--pickup-space-3)] text-center">
+              <SailorMark size="lg" />
+              <h1 className="m-0 inline-flex items-center gap-2 text-xl font-bold tracking-tight text-[var(--color-on-surface)]">
+                <LogIn
+                  className="h-5 w-5 shrink-0 stroke-[1.75] text-[var(--brand-consumer-accent)]"
+                  aria-hidden
+                />
+                {t('pickup.login.title')}
+              </h1>
+              <Link
+                to="/"
+                className="inline-flex items-center gap-1.5 text-sm font-medium text-[var(--color-on-surface-muted)] underline-offset-2 hover:text-[var(--color-on-surface)] hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus-ring)]"
+                data-testid="pickup-login-back-to-organizations"
+              >
+                <ArrowLeft className="h-4 w-4 shrink-0 stroke-[1.75]" aria-hidden />
+                {t('pickup.login.backToOrganizations')}
+              </Link>
+            </div>
 
-        {isTenantInactive ? (
-          <div
-            className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-muted)] p-4"
-            data-testid={PICKUP_TENANT_INACTIVE_TEST_ID}
-            role="alert"
-          >
-            <h2 className="m-0 text-lg font-semibold text-[var(--color-on-surface)]">
-              {t('pickup.tenantInactive.title')}
-            </h2>
-            <p className="mb-0 mt-2 text-sm text-[var(--color-on-surface-muted)]">
-              {t('pickup.tenantInactive.body')}
-            </p>
-          </div>
-        ) : null}
+            {isTenantInactive ? (
+              <div
+                className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-muted)] p-4"
+                data-testid={PICKUP_TENANT_INACTIVE_TEST_ID}
+                role="alert"
+              >
+                <h2 className="m-0 text-lg font-semibold text-[var(--color-on-surface)]">
+                  {t('pickup.tenantInactive.title')}
+                </h2>
+                <p className="mb-0 mt-2 text-sm text-[var(--color-on-surface-muted)]">
+                  {t('pickup.tenantInactive.body')}
+                </p>
+              </div>
+            ) : null}
 
-        {entitlementLoading ? (
-          <p className="m-0 text-sm text-[var(--color-on-surface-muted)]" role="status">
-            {t('pickup.login.entitlementLoading')}
-          </p>
-        ) : null}
+            {entitlementLoading ? (
+              <p className="m-0 text-sm text-[var(--color-on-surface-muted)]" role="status">
+                {t('pickup.login.entitlementLoading')}
+              </p>
+            ) : null}
 
-        {entitlementDenied ? (
-          <AlertBanner
-            tone="danger"
-            role="alert"
-            message={t('pickup.login.entitlementDenied', {
-              block: denialReason ?? 'staff_pickup_scan',
-            })}
-          />
-        ) : null}
+            {entitlementDenied ? (
+              <AlertBanner
+                tone="danger"
+                role="alert"
+                message={t('pickup.login.entitlementDenied', {
+                  block: denialReason ?? 'staff_pickup_scan',
+                })}
+              />
+            ) : null}
 
-        {displayPmLoading ? (
-          <p className="m-0 text-sm text-[var(--color-on-surface-muted)]">
-            {t('pickup.login.pmLoading')}
-          </p>
-        ) : null}
-        {displayPmName ? (
-          <p className="m-0 text-sm text-[var(--color-on-surface-muted)]">
-            {t('pickup.login.pmName', { name: displayPmName })}
-          </p>
-        ) : null}
-        {isSuperPickuperLogin ? (
-          <InlineNotice tone="neutral">{t('pickup.login.superPickuperHint')}</InlineNotice>
-        ) : null}
+            {displayPmLoading ? (
+              <p className="m-0 text-sm text-[var(--color-on-surface-muted)]">
+                {t('pickup.login.pmLoading')}
+              </p>
+            ) : null}
+            {displayPmName ? (
+              <p className="m-0 text-sm text-[var(--color-on-surface-muted)]">
+                {t('pickup.login.pmName', { name: displayPmName })}
+              </p>
+            ) : null}
 
-        <form className="flex flex-col gap-3" onSubmit={(event) => void onSubmit(event)}>
-          <FormField
-            id="pickup-sales-point-id"
-            label={t('pickup.login.salesPointId')}
-            value={salesPointId}
-            onChange={(event) => setSalesPointId(event.target.value)}
-            disabled={submitCooldown.isCoolingDown || isTenantInactive}
-            placeholder={t('pickup.login.salesPointIdPlaceholder')}
-            autoComplete="username"
-          />
-          <div className="flex w-full flex-col gap-1.5">
-            <label
-              htmlFor="pickup-pin"
-              className="text-sm font-medium text-[var(--color-on-surface)]"
+            <form
+              className="flex flex-col gap-[var(--pickup-space-3)]"
+              onSubmit={(event) => void onSubmit(event)}
             >
-              {t('pickup.login.pin')}
-            </label>
-            <Input
-              id="pickup-pin"
-              data-testid="pickup-pin"
-              type="password"
-              inputMode="numeric"
-              value={pin}
-              onChange={(event) => setPin(event.target.value)}
-              disabled={submitCooldown.isCoolingDown || isTenantInactive}
-              placeholder={t('pickup.login.pinPlaceholder')}
-              autoComplete="current-password"
-            />
-          </div>
-          {showDeviceCodeField ? (
-            <FormField
-              id="pickup-device-code"
-              label={t('pickup.login.deviceCode')}
-              value={deviceCode}
-              onChange={(event) => setDeviceCode(event.target.value)}
-              disabled={submitCooldown.isCoolingDown || isTenantInactive}
-              placeholder={t('pickup.login.deviceCodePlaceholder')}
-              autoComplete="off"
-            />
-          ) : null}
-          <div className="pt-1">
-            <TurnstileExecuteWidget
-              turnstile={turnstile}
-              className="w-full"
-              testId="pickup-turnstile-execute-field"
-            />
-          </div>
-          <Button
-            type="submit"
-            block
-            disabled={
-              isSubmitting ||
-              submitCooldown.isCoolingDown ||
-              isTenantInactive ||
-              entitlementDenied
-            }
-          >
-            {t('pickup.login.submit')}
-          </Button>
-        </form>
+              <FormField
+                id="pickup-sales-point-id"
+                label={t('pickup.login.salesPointId')}
+                value={salesPointId}
+                onChange={(event) => setSalesPointId(event.target.value)}
+                disabled={submitCooldown.isCoolingDown || isTenantInactive}
+                placeholder={t('pickup.login.salesPointIdPlaceholder')}
+                autoComplete="username"
+              />
+              <FormField
+                id="pickup-pin"
+                data-testid="pickup-pin"
+                label={t('pickup.login.pin')}
+                type="password"
+                inputMode="numeric"
+                value={pin}
+                onChange={(event) => setPin(event.target.value)}
+                disabled={submitCooldown.isCoolingDown || isTenantInactive}
+                placeholder={t('pickup.login.pinPlaceholder')}
+                autoComplete="current-password"
+              />
+              {showDeviceCodeField ? (
+                <FormField
+                  id="pickup-device-code"
+                  label={t('pickup.login.deviceCode')}
+                  value={deviceCode}
+                  onChange={(event) => setDeviceCode(event.target.value)}
+                  disabled={submitCooldown.isCoolingDown || isTenantInactive}
+                  placeholder={t('pickup.login.deviceCodePlaceholder')}
+                  autoComplete="off"
+                />
+              ) : null}
+              <div className="pt-1">
+                <TurnstileExecuteWidget
+                  turnstile={turnstile}
+                  className="w-full"
+                  testId="pickup-turnstile-execute-field"
+                />
+              </div>
+              <Button
+                type="submit"
+                block
+                disabled={
+                  isSubmitting ||
+                  submitCooldown.isCoolingDown ||
+                  isTenantInactive ||
+                  entitlementDenied
+                }
+              >
+                {t('pickup.login.submit')}
+              </Button>
+            </form>
 
-        {cooldownMessage ? (
-          <AlertBanner tone="danger" role="alert" message={cooldownMessage} />
-        ) : null}
-        {error && !cooldownMessage ? (
-          <AlertBanner tone="danger" role="alert" message={error} />
-        ) : null}
-        </div>
-      </SectionCard>
+            {cooldownMessage ? (
+              <AlertBanner tone="danger" role="alert" message={cooldownMessage} />
+            ) : null}
+            {error && !cooldownMessage ? (
+              <AlertBanner tone="danger" role="alert" message={error} />
+            ) : null}
+          </div>
+        </SectionCard>
       </div>
     </main>
   );

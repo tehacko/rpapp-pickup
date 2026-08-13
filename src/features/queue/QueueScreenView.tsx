@@ -1,19 +1,20 @@
 import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Clock, RefreshCw } from 'lucide-react';
+import { Clock } from 'lucide-react';
 import { usePickupLocaleTag } from '../../shared/hooks/usePickupLocaleTag.js';
 import { ClaimBadge } from '../../shared/ui/ClaimBadge.js';
 import { EmptyState } from '../../shared/ui/EmptyState.js';
 import { OfflineBanner } from '../../shared/ui/OfflineBanner.js';
 import { PageHeader } from '../../shared/ui/PageHeader.js';
 import { PickupListLayout } from '../../shared/ui/PickupListLayout.js';
-import { PickupStickyCta } from '../../shared/ui/PickupStickyCta.js';
+import { PickupScreenContentActions } from '../../shared/ui/PickupScreenContentActions.js';
+import { PickupScreenRefreshButton } from '../../shared/ui/PickupScreenRefreshButton.js';
 import { QueueRow } from '../../shared/ui/QueueRow.js';
 import { ScreenState } from '../../shared/ui/ScreenState.js';
+import { SectionCard } from '../../shared/ui/SectionCard.js';
 import { SegmentTabs, type SegmentTabItem } from '../../shared/ui/SegmentTabs.js';
 import { StatusBadge } from '../../shared/ui/StatusBadge.js';
-import { Button } from '../../shared/ui/surfacePrimitives.js';
 import type { QueueListItemViewModel, QueuePageViewModel } from './buildQueuePageViewModel.js';
 import type { QueueScreenActions } from './useQueueScreen.js';
 import type { QueueScreenState } from './queueScreenState.js';
@@ -22,6 +23,8 @@ const CHROME_PAD = {
   paddingBottom:
     'calc(var(--pickup-sticky-cta-clearance, 5.5rem) + var(--pickup-bottom-chrome, 0px) + var(--keyboard-inset, 0px))',
 } as const;
+
+const STACK_CLASS = 'flex flex-col gap-[var(--pickup-stack-gap)]';
 
 function resolveAgeDisplayLabel(
   item: QueueListItemViewModel,
@@ -99,23 +102,20 @@ export function QueueScreenView({
     ];
   }, [t, viewModel]);
 
-  const stickyRefresh = (
-    <Button
-      intent="secondary"
-      type="button"
-      onClick={actions.refresh}
-      aria-label={t('pickup.queue.refresh')}
-      data-testid="queue-sticky-refresh"
-      className="inline-flex items-center gap-2"
-    >
-      <RefreshCw className="h-4 w-4 stroke-[1.75]" aria-hidden />
-      {t('pickup.queue.refresh')}
-    </Button>
+  const refreshActions = (
+    <PickupScreenContentActions>
+      <PickupScreenRefreshButton
+        onClick={actions.refresh}
+        testId="queue-refresh"
+        labelKey="pickup.queue.refresh"
+        refreshingLabelKey="pickup.queue.refresh"
+      />
+    </PickupScreenContentActions>
   );
 
   if (screenState.kind === 'loading') {
     return (
-      <div className="flex flex-col gap-4" data-testid="queue-screen-loading">
+      <div className={STACK_CLASS} data-testid="queue-screen-loading">
         <PageHeader title={t('pickup.queue.title')} />
         <ScreenState variant="loading" message={t('pickup.queue.loading')} skeletonCount={4} />
       </div>
@@ -124,14 +124,15 @@ export function QueueScreenView({
 
   if (screenState.kind === 'loadFailed' || viewModel === null) {
     return (
-      <div className="flex flex-col gap-4" style={CHROME_PAD} data-testid="queue-screen-failed">
+      <div className={STACK_CLASS} style={CHROME_PAD} data-testid="queue-screen-failed">
         <PageHeader title={t('pickup.queue.title')} />
-        <ScreenState
-          variant="error"
-          message={viewModel?.errorMessage ?? t('pickup.toast.queueLoadFailed')}
-          onRetry={actions.refresh}
-        />
-        <PickupStickyCta secondary={stickyRefresh} />
+        <PickupListLayout contentActions={refreshActions}>
+          <ScreenState
+            variant="error"
+            message={viewModel?.errorMessage ?? t('pickup.toast.queueLoadFailed')}
+            onRetry={actions.refresh}
+          />
+        </PickupListLayout>
       </div>
     );
   }
@@ -140,7 +141,7 @@ export function QueueScreenView({
   const activeSegmentId = String(viewModel.activePickupPointId);
 
   return (
-    <div className="flex flex-col gap-4" style={CHROME_PAD} data-testid="queue-screen">
+    <div className={STACK_CLASS} style={CHROME_PAD} data-testid="queue-screen">
       <PageHeader title={t('pickup.queue.title')} lead={lastUpdatedLabel ?? undefined} />
 
       <PickupListLayout
@@ -157,6 +158,7 @@ export function QueueScreenView({
             </div>
           ) : null
         }
+        contentActions={refreshActions}
       >
         {viewModel.showPickupPointTabs && segmentTabs.length > 0 ? (
           <SegmentTabs
@@ -203,51 +205,55 @@ export function QueueScreenView({
             }}
           />
         ) : (
-          <ul className="m-0 flex list-none flex-col gap-0 overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-0">
-            {viewModel.items.map((item) => {
-              const ageLabel = resolveAgeDisplayLabel(item, t);
-              const urgency = item.age?.urgency;
-              const ageTone = item.ageTone;
-              return (
-                <li key={item.fulfillmentId} className="list-none">
-                  <QueueRow
-                    fulfillmentId={String(item.fulfillmentId)}
-                    status={item.status}
-                    statusLabel={item.status}
-                    title={`#${String(item.fulfillmentId)}`}
-                    subtitle={item.pickupPointName ?? undefined}
-                    urgency={urgency}
-                    onSelect={() => {
-                      navigate(`/${encodedTenant}/order/${String(item.fulfillmentId)}`);
-                    }}
-                    badges={
-                      <>
-                        {item.claimBadge !== null ? (
-                          <ClaimBadge claim={item.claimBadge} />
-                        ) : null}
-                        {ageLabel !== null && ageTone !== null ? (
-                          <StatusBadge
-                            label={ageLabel}
-                            status="aging"
-                            tone={ageTone === 'neutral' ? 'neutral' : ageTone}
-                            variant="outline"
-                            urgency={urgency}
-                            icon={Clock}
-                            testId="queue-age-badge"
-                            data-age-tone={ageTone}
-                          />
-                        ) : null}
-                      </>
-                    }
-                  />
-                </li>
-              );
-            })}
-          </ul>
+          <SectionCard
+            elevated
+            className="overflow-hidden [&>div]:p-0"
+            data-testid="queue-list-card"
+          >
+            <ul className="m-0 flex list-none flex-col gap-0 p-0">
+              {viewModel.items.map((item) => {
+                const ageLabel = resolveAgeDisplayLabel(item, t);
+                const urgency = item.age?.urgency;
+                const ageTone = item.ageTone;
+                return (
+                  <li key={item.fulfillmentId} className="list-none">
+                    <QueueRow
+                      fulfillmentId={String(item.fulfillmentId)}
+                      status={item.status}
+                      statusLabel={item.status}
+                      title={`#${String(item.fulfillmentId)}`}
+                      subtitle={item.pickupPointName ?? undefined}
+                      urgency={urgency}
+                      onSelect={() => {
+                        navigate(`/${encodedTenant}/order/${String(item.fulfillmentId)}`);
+                      }}
+                      badges={
+                        <>
+                          {item.claimBadge !== null ? (
+                            <ClaimBadge claim={item.claimBadge} />
+                          ) : null}
+                          {ageLabel !== null && ageTone !== null ? (
+                            <StatusBadge
+                              label={ageLabel}
+                              status="aging"
+                              tone={ageTone === 'neutral' ? 'neutral' : ageTone}
+                              variant="outline"
+                              urgency={urgency}
+                              icon={Clock}
+                              testId="queue-age-badge"
+                              data-age-tone={ageTone}
+                            />
+                          ) : null}
+                        </>
+                      }
+                    />
+                  </li>
+                );
+              })}
+            </ul>
+          </SectionCard>
         )}
       </PickupListLayout>
-
-      <PickupStickyCta secondary={stickyRefresh} />
     </div>
   );
 }

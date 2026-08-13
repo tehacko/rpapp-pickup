@@ -1,0 +1,13 @@
+/**
+ * Pickup layout rhythm — mirrors admin ListPageLayout / HubDashboardLayout
+ * Card→Card band spacing (`--space-6` in admin). Pickup owns these tokens so
+ * screens share one stack rule without depending on admin CSS.
+ */
+:root {
+  --pickup-space-3: 0.75rem;
+  --pickup-space-4: 1rem;
+  --pickup-space-6: 1.5rem;
+  --pickup-stack-gap: var(--pickup-space-6);
+  --pickup-zone-gap: var(--pickup-space-6);
+  --pickup-kpi-min-height: 5.25rem;
+}

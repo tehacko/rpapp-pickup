@@ -31,6 +31,7 @@ Production (Railway): Caddy same-origin `/api` proxy — set `API_PROXY_UPSTREAM
 | Doc | Purpose |
 | --- | --- |
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | Humble-object screen split, features |
+| [`docs/SCREEN_TEMPLATE.md`](docs/SCREEN_TEMPLATE.md) | Screen layering, `shared/ui` shell layouts, chrome / ATPS-like checklist |
 | [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) | Railway / Caddy same-origin `/api` proxy |
 | [`docs/BARCODE_ASSIGN.md`](docs/BARCODE_ASSIGN.md) | Barcode assign flows |
 | [`docs/STYLING.md`](docs/STYLING.md) | Styling tokens |

@@ -7,6 +7,7 @@
 @import "pi-kiosk-shared/theme.css";
 @import "pi-kiosk-shared/responsive.css";
 @import "./pickup.extensions.css";
+@import "./pickupLayoutRhythm.css";
 
 /**
  * Tailwind v4 breakpoint mirror — SSOT px values live in pi-kiosk-shared/responsive.css

@@ -14,6 +14,7 @@ export interface ActionTileProps {
 
 /**
  * Hub entitlement action tile — navigates via react-router Link.
+ * Elevation matches PickupKpiCard / PickupWidgetCard (radius-xl, shadow-card, soft surface).
  */
 export function ActionTile({
   to,
@@ -27,7 +28,7 @@ export function ActionTile({
   const content = (
     <>
       <span
-        className="inline-flex h-11 w-11 items-center justify-center rounded-[var(--radius-md)] bg-[var(--color-surface-muted)] text-[var(--color-on-surface)]"
+        className="inline-flex h-11 w-11 items-center justify-center rounded-[var(--radius-md)] bg-[color-mix(in_oklab,var(--color-on-surface-muted)_12%,transparent)] text-[var(--color-on-surface)]"
         aria-hidden="true"
       >
         <Icon className="h-5 w-5 stroke-[1.75]" />
@@ -44,12 +45,14 @@ export function ActionTile({
   );
 
   const tileClass = cn(
-    'flex items-center gap-3 rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-3 shadow-[var(--shadow-card)]',
+    'flex min-h-[var(--pickup-kpi-min-height)] items-center gap-3 overflow-hidden rounded-[var(--radius-xl)] border border-[var(--color-border)] p-3 shadow-[var(--shadow-card)]',
+    'bg-[linear-gradient(180deg,color-mix(in_oklab,var(--color-surface-elevated)_55%,var(--color-surface))_0%,var(--color-surface)_100%)]',
     'pickup-touch-target text-left no-underline',
+    'transition-[transform,background-color,border-color] duration-150',
     'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus-ring)]',
     disabled
       ? 'pointer-events-none opacity-[var(--color-disabled-opacity)]'
-      : 'hover:bg-[var(--color-surface-hover)]',
+      : 'hover:-translate-y-px hover:brightness-[1.03] hover:bg-[var(--color-surface-hover)]',
     className,
   );
 

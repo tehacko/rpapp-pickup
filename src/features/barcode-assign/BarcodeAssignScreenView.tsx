@@ -2,6 +2,7 @@ import { Barcode, ChevronRight } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Badge, type BadgeTone } from '../../shared/ui/Badge.js';
 import { PageHeader } from '../../shared/ui/PageHeader.js';
+import { PickupListLayout } from '../../shared/ui/PickupListLayout.js';
 import { SearchField } from '../../shared/ui/SearchField.js';
 import { ScreenState } from '../../shared/ui/ScreenState.js';
 import { SegmentTabs } from '../../shared/ui/SegmentTabs.js';
@@ -22,7 +23,7 @@ export interface BarcodeAssignScreenViewProps {
 }
 
 const CATALOG_GRID_CLASS =
-  'm-0 grid list-none grid-cols-1 gap-3 p-0 sm:grid-cols-2 lg:grid-cols-3';
+  'm-0 grid list-none grid-cols-1 gap-[var(--pickup-stack-gap)] p-0 sm:grid-cols-2 lg:grid-cols-3';
 
 const CATALOG_SKELETON_KEYS = ['sk-ba-1', 'sk-ba-2', 'sk-ba-3', 'sk-ba-4', 'sk-ba-5', 'sk-ba-6'] as const;
 
@@ -127,75 +128,77 @@ export function BarcodeAssignScreenView({
         lead={t('pickup.barcodeAssign.lead')}
         titleIcon={Barcode}
       />
-      <SearchField
-        value={viewModel.query}
-        onChange={actions.setQuery}
-        onClear={() => {
-          actions.setQuery('');
-        }}
-        placeholder={t('pickup.barcodeAssign.searchPlaceholder')}
-        aria-label={t('pickup.barcodeAssign.searchLabel')}
-        testId="barcode-assign-search"
-      />
-      {showCatalog ? (
-        <div data-testid={BARCODE_ASSIGN_CATALOG_FILTER_TEST_ID}>
-          <SegmentTabs
-            tabs={barcodeAssignCatalogSegmentTabs(t, viewModel.filterCounts)}
-            activeId={viewModel.catalogFilter}
-            ariaLabel={t(BARCODE_ASSIGN_CATALOG_FILTER_I18N_KEYS.aria)}
-            idPrefix={BARCODE_ASSIGN_CATALOG_FILTER_ID_PREFIX}
-            onChange={actions.setCatalogFilter}
+      <PickupListLayout>
+        <SearchField
+          value={viewModel.query}
+          onChange={actions.setQuery}
+          onClear={() => {
+            actions.setQuery('');
+          }}
+          placeholder={t('pickup.barcodeAssign.searchPlaceholder')}
+          aria-label={t('pickup.barcodeAssign.searchLabel')}
+          testId="barcode-assign-search"
+        />
+        {showCatalog ? (
+          <div data-testid={BARCODE_ASSIGN_CATALOG_FILTER_TEST_ID}>
+            <SegmentTabs
+              tabs={barcodeAssignCatalogSegmentTabs(t, viewModel.filterCounts)}
+              activeId={viewModel.catalogFilter}
+              ariaLabel={t(BARCODE_ASSIGN_CATALOG_FILTER_I18N_KEYS.aria)}
+              idPrefix={BARCODE_ASSIGN_CATALOG_FILTER_ID_PREFIX}
+              onChange={actions.setCatalogFilter}
+            />
+          </div>
+        ) : null}
+        {viewModel.loading ? (
+          <ul
+            className={CATALOG_GRID_CLASS}
+            aria-busy="true"
+            aria-label={t('pickup.barcodeAssign.loading')}
+            data-testid="barcode-assign-catalog-skeleton"
+          >
+            {CATALOG_SKELETON_KEYS.map((key) => (
+              <li key={key} className="list-none">
+                <Skeleton className="h-24 w-full rounded-[var(--radius-lg)]" />
+              </li>
+            ))}
+          </ul>
+        ) : null}
+        {!viewModel.loading && viewModel.errorMessage ? (
+          <ScreenState
+            variant="error"
+            message={viewModel.errorMessage}
+            onRetry={actions.retry}
           />
-        </div>
-      ) : null}
-      {viewModel.loading ? (
-        <ul
-          className={CATALOG_GRID_CLASS}
-          aria-busy="true"
-          aria-label={t('pickup.barcodeAssign.loading')}
-          data-testid="barcode-assign-catalog-skeleton"
-        >
-          {CATALOG_SKELETON_KEYS.map((key) => (
-            <li key={key} className="list-none">
-              <Skeleton className="h-24 w-full rounded-[var(--radius-lg)]" />
-            </li>
-          ))}
-        </ul>
-      ) : null}
-      {!viewModel.loading && viewModel.errorMessage ? (
-        <ScreenState
-          variant="error"
-          message={viewModel.errorMessage}
-          onRetry={actions.retry}
-        />
-      ) : null}
-      {showCatalog && viewModel.rows.length === 0 ? (
-        <ScreenState
-          variant="empty"
-          title={t('pickup.barcodeAssign.emptyTitle')}
-          message={(() => {
-            if (viewModel.query.trim().length > 0) {
-              return t('pickup.barcodeAssign.emptySearch');
-            }
-            if (viewModel.catalogFilter !== 'all') {
-              return t('pickup.barcodeAssign.emptyFiltered');
-            }
-            return t('pickup.barcodeAssign.emptyMessage');
-          })()}
-        />
-      ) : null}
-      {showCatalog && viewModel.rows.length > 0 ? (
-        <ul className={CATALOG_GRID_CLASS} data-testid="barcode-assign-catalog-grid">
-          {viewModel.rows.map((row) => (
-            <li key={row.key} className="list-none min-w-0">
-              <BarcodeAssignCatalogCard
-                row={row}
-                onOpen={() => actions.openRow(row.productId, row.variantId)}
-              />
-            </li>
-          ))}
-        </ul>
-      ) : null}
+        ) : null}
+        {showCatalog && viewModel.rows.length === 0 ? (
+          <ScreenState
+            variant="empty"
+            title={t('pickup.barcodeAssign.emptyTitle')}
+            message={(() => {
+              if (viewModel.query.trim().length > 0) {
+                return t('pickup.barcodeAssign.emptySearch');
+              }
+              if (viewModel.catalogFilter !== 'all') {
+                return t('pickup.barcodeAssign.emptyFiltered');
+              }
+              return t('pickup.barcodeAssign.emptyMessage');
+            })()}
+          />
+        ) : null}
+        {showCatalog && viewModel.rows.length > 0 ? (
+          <ul className={CATALOG_GRID_CLASS} data-testid="barcode-assign-catalog-grid">
+            {viewModel.rows.map((row) => (
+              <li key={row.key} className="list-none min-w-0">
+                <BarcodeAssignCatalogCard
+                  row={row}
+                  onOpen={() => actions.openRow(row.productId, row.variantId)}
+                />
+              </li>
+            ))}
+          </ul>
+        ) : null}
+      </PickupListLayout>
     </div>
   );
 }

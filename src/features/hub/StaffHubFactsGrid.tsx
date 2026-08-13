@@ -1,8 +1,8 @@
 import { Check } from 'lucide-react';
-import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { cn } from '../../shared/ui/cn.js';
+import { PickupWidgetCard } from '../../shared/ui/PickupWidgetCard.js';
 import type { HubNamedItem, HubNamedKind, StaffHubStockStats } from './buildStaffHubDashboard.js';
 import type { StaffHubViewModel } from './buildStaffHubViewModel.js';
 import { HubDonut, HubMiniBars, HubStackedBar, type HubMiniBarItem } from './StaffHubViz.js';
@@ -27,10 +27,42 @@ const KIND_BADGE: Record<HubNamedKind, { readonly key: string; readonly tone: 'd
 };
 
 const compactRowClass = cn(
-  'flex min-h-11 min-w-0 items-center gap-2 rounded-[var(--radius-md)] py-0 no-underline',
-  'hover:bg-[var(--color-surface-hover)]',
+  'flex min-h-11 min-w-0 items-center gap-2 rounded-[var(--radius-md)] px-1.5 py-0.5 no-underline',
+  'hover:bg-[color-mix(in_oklab,var(--color-surface-hover)_80%,transparent)]',
   'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus-ring)]',
 );
+
+const listStackClass = 'm-0 flex list-none flex-col gap-[var(--pickup-space-3)] p-0';
+
+function kindBadgeClass(tone: 'danger' | 'warn' | 'neutral'): string {
+  if (tone === 'danger') {
+    return 'border-[color-mix(in_oklab,var(--color-danger)_35%,var(--color-border))] bg-[color-mix(in_oklab,var(--color-danger)_14%,transparent)] text-[var(--color-danger)]';
+  }
+  if (tone === 'warn') {
+    return 'border-[color-mix(in_oklab,var(--color-warning)_35%,var(--color-border))] bg-[color-mix(in_oklab,var(--color-warning)_14%,transparent)] text-[var(--color-warning)]';
+  }
+  return 'border-[var(--color-border)] bg-[color-mix(in_oklab,var(--color-surface-muted)_70%,transparent)] text-[var(--color-on-surface-muted)]';
+}
+
+function KindBadge({
+  tone,
+  label,
+}: {
+  readonly tone: 'danger' | 'warn' | 'neutral';
+  readonly label: string;
+}): JSX.Element {
+  return (
+    <span
+      className={cn(
+        'inline-flex shrink-0 items-center whitespace-nowrap rounded-full border px-2 py-0.5',
+        'text-[0.68rem] font-semibold leading-none tracking-wide',
+        kindBadgeClass(tone),
+      )}
+    >
+      {label}
+    </span>
+  );
+}
 
 function takePreview(items: readonly HubNamedItem[], limit = HUB_WIDGET_LIST_LIMIT): readonly HubNamedItem[] {
   return items.slice(0, limit);
@@ -78,45 +110,6 @@ function namedDetail(
   return '';
 }
 
-function WidgetCard({
-  title,
-  subtitle,
-  href,
-  viewAllLabel,
-  testId,
-  children,
-}: {
-  readonly title: string;
-  readonly subtitle: string;
-  readonly href?: string;
-  readonly viewAllLabel?: string;
-  readonly testId: string;
-  readonly children: ReactNode;
-}): JSX.Element {
-  return (
-    <article
-      data-testid={testId}
-      className="flex min-h-0 flex-col rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-3"
-    >
-      <div className="mb-2 flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <h3 className="m-0 text-sm font-semibold tracking-tight">{title}</h3>
-          <p className="m-0 truncate text-xs text-[var(--color-on-surface-muted)]">{subtitle}</p>
-        </div>
-        {href !== undefined && viewAllLabel !== undefined ? (
-          <Link
-            to={href}
-            className="shrink-0 text-xs font-medium text-[var(--color-on-surface)] underline-offset-2 hover:underline"
-          >
-            {viewAllLabel}
-          </Link>
-        ) : null}
-      </div>
-      {children}
-    </article>
-  );
-}
-
 function CompactNamedList({
   items,
   empty,
@@ -142,7 +135,7 @@ function CompactNamedList({
   }
   return (
     <div>
-      <ul className="m-0 flex list-none flex-col p-0" data-testid={testId}>
+      <ul className={listStackClass} data-testid={testId}>
         {preview.map((item) => {
           const badge = KIND_BADGE[item.kind];
           const detail = namedDetail(item, t);
@@ -154,16 +147,7 @@ function CompactNamedList({
                   <span className="text-[var(--color-on-surface-muted)]"> · {detail}</span>
                 ) : null}
               </span>
-              <span
-                className={cn(
-                  'shrink-0 text-xs font-semibold',
-                  badge.tone === 'danger' ? 'text-[var(--color-danger)]' : null,
-                  badge.tone === 'warn' ? 'text-[var(--color-warning)]' : null,
-                  badge.tone === 'neutral' ? 'text-[var(--color-on-surface-muted)]' : null,
-                )}
-              >
-                {t(badge.key)}
-              </span>
+              <KindBadge tone={badge.tone} label={t(badge.key)} />
             </>
           );
           return (
@@ -182,7 +166,7 @@ function CompactNamedList({
       {overflow > 0 && moreHref !== undefined && moreLabel !== undefined ? (
         <Link
           to={moreHref}
-          className="mt-1 inline-flex min-h-11 items-center text-xs font-medium text-[var(--color-on-surface-muted)] underline-offset-2 hover:underline"
+          className="mt-[var(--pickup-space-3)] inline-flex min-h-11 items-center text-xs font-medium text-[var(--color-on-surface-muted)] underline-offset-2 hover:underline"
         >
           {moreLabel}
         </Link>
@@ -218,11 +202,15 @@ export function StaffHubFactsGrid({ viewModel }: StaffHubFactsGridProps): JSX.El
     0,
     viewModel.queueStats.waitingCount - viewModel.queueStats.claimedCount,
   );
+  const draftBadge = KIND_BADGE.restock_draft;
 
   return (
-    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2" data-testid="hub-facts-grid">
+    <div
+      className="grid grid-cols-1 gap-[var(--pickup-zone-gap)] sm:grid-cols-2"
+      data-testid="hub-facts-grid"
+    >
       {viewModel.canAssign && viewModel.barcodeStats.loadState === 'ready' ? (
-        <WidgetCard
+        <PickupWidgetCard
           title={t('pickup.hub.widget.barcodes.title')}
           subtitle={t('pickup.hub.widget.barcodes.subtitle', {
             tagged: viewModel.barcodeStats.withCodeCount,
@@ -232,7 +220,7 @@ export function StaffHubFactsGrid({ viewModel }: StaffHubFactsGridProps): JSX.El
           viewAllLabel={t('pickup.hub.widget.viewAll')}
           testId="hub-widget-barcodes"
         >
-          <div className="mb-2 flex min-w-0 items-center gap-3">
+          <div className="mb-[var(--pickup-space-3)] flex min-w-0 items-center gap-3.5">
             <HubDonut
               percent={viewModel.barcodeStats.coveragePercent}
               label={t('pickup.hub.widget.barcodes.meter', {
@@ -269,11 +257,11 @@ export function StaffHubFactsGrid({ viewModel }: StaffHubFactsGridProps): JSX.El
             })}
             testId="hub-barcode-missing-list"
           />
-        </WidgetCard>
+        </PickupWidgetCard>
       ) : null}
 
       {viewModel.canResupply && viewModel.stockStats.loadState === 'ready' ? (
-        <WidgetCard
+        <PickupWidgetCard
           title={t('pickup.hub.widget.stock.title')}
           subtitle={t('pickup.hub.widget.stock.subtitle', {
             skus: viewModel.stockStats.skuCount,
@@ -283,18 +271,25 @@ export function StaffHubFactsGrid({ viewModel }: StaffHubFactsGridProps): JSX.El
           viewAllLabel={t('pickup.hub.widget.viewAll')}
           testId="hub-widget-stock"
         >
-          <div className="mb-2 flex items-baseline justify-between gap-2">
-            <p className="m-0 text-lg font-bold tabular-nums text-[var(--color-on-surface)]" data-testid="hub-kpi-units">
-              {viewModel.stockStats.totalUnits}
-            </p>
-            <p className="m-0 text-xs text-[var(--color-on-surface-muted)]">
-              {t('pickup.hub.kpi.unitsOnHand')}
-              {viewModel.stockStats.totalHoldUnits > 0
-                ? ` · ${t('pickup.hub.kpi.hint.holdUnits', { count: viewModel.stockStats.totalHoldUnits })}`
-                : ''}
-            </p>
+          <div className="mb-[var(--pickup-space-3)] flex items-end justify-between gap-2 rounded-[var(--radius-lg)] border border-[color-mix(in_oklab,var(--color-border)_70%,transparent)] bg-[color-mix(in_oklab,var(--color-surface-muted)_45%,transparent)] px-3 py-2">
+            <div>
+              <p
+                className="m-0 text-2xl font-bold tabular-nums tracking-tight text-[var(--color-on-surface)]"
+                data-testid="hub-kpi-units"
+              >
+                {viewModel.stockStats.totalUnits}
+              </p>
+              <p className="m-0 text-xs text-[var(--color-on-surface-muted)]">
+                {t('pickup.hub.kpi.unitsOnHand')}
+              </p>
+            </div>
+            {viewModel.stockStats.totalHoldUnits > 0 ? (
+              <p className="m-0 text-xs font-medium text-[var(--color-on-surface-muted)]">
+                {t('pickup.hub.kpi.hint.holdUnits', { count: viewModel.stockStats.totalHoldUnits })}
+              </p>
+            ) : null}
           </div>
-          <div className="mb-2">
+          <div className="mb-[var(--pickup-space-3)]">
             <HubStackedBar
               testId="hub-chart-stock"
               segments={[
@@ -320,20 +315,20 @@ export function StaffHubFactsGrid({ viewModel }: StaffHubFactsGridProps): JSX.El
             />
           </div>
           <HubMiniBars items={stockChartItems(viewModel.stockStats)} testId="hub-stock-bars" />
-        </WidgetCard>
+        </PickupWidgetCard>
       ) : null}
 
       {viewModel.canResupply &&
       viewModel.checkupStats.loadState === 'ready' &&
       viewModel.checkupStats.openCount > 0 ? (
-        <WidgetCard
+        <PickupWidgetCard
           title={t('pickup.hub.widget.checkup.title')}
           subtitle={checkupSubtitle}
           href={checkupHref}
           viewAllLabel={t('pickup.hub.widget.viewAll')}
           testId="hub-widget-checkup"
         >
-          <div className="mb-2">
+          <div className="mb-[var(--pickup-space-3)]">
             <HubStackedBar
               testId="hub-chart-checkup"
               segments={[
@@ -373,11 +368,11 @@ export function StaffHubFactsGrid({ viewModel }: StaffHubFactsGridProps): JSX.El
             })}
             testId="hub-checkup-list"
           />
-        </WidgetCard>
+        </PickupWidgetCard>
       ) : null}
 
       {viewModel.canScan && viewModel.queueStats.loadState === 'ready' ? (
-        <WidgetCard
+        <PickupWidgetCard
           title={t('pickup.hub.widget.queue.title')}
           subtitle={t('pickup.hub.widget.queue.subtitle', {
             waiting: viewModel.queueStats.waitingCount,
@@ -387,7 +382,7 @@ export function StaffHubFactsGrid({ viewModel }: StaffHubFactsGridProps): JSX.El
           viewAllLabel={t('pickup.hub.widget.viewAll')}
           testId="hub-widget-queue"
         >
-          <div className="mb-2">
+          <div className="mb-[var(--pickup-space-3)]">
             <HubStackedBar
               testId="hub-chart-queue"
               segments={[
@@ -412,14 +407,14 @@ export function StaffHubFactsGrid({ viewModel }: StaffHubFactsGridProps): JSX.El
             </p>
           ) : (
             <ul
-              className="m-0 flex list-none flex-wrap gap-1.5 p-0"
+              className="m-0 flex list-none flex-wrap gap-[var(--pickup-space-3)] p-0"
               data-testid="hub-queue-list"
             >
               {takePreview(viewModel.queueStats.items, 6).map((item) => (
                 <li key={item.id}>
                   <Link
                     to={item.href}
-                    className="inline-flex min-h-11 items-center rounded-full border border-[var(--color-border)] px-2.5 text-xs font-medium text-[var(--color-on-surface)] no-underline hover:bg-[var(--color-surface-hover)]"
+                    className="inline-flex min-h-11 items-center rounded-full border border-[var(--color-border)] bg-[color-mix(in_oklab,var(--color-surface-muted)_40%,transparent)] px-3 text-xs font-semibold text-[var(--color-on-surface)] no-underline shadow-[inset_0_1px_0_color-mix(in_oklab,var(--color-on-surface)_6%,transparent)] hover:bg-[var(--color-surface-hover)]"
                   >
                     {item.label}
                   </Link>
@@ -427,20 +422,20 @@ export function StaffHubFactsGrid({ viewModel }: StaffHubFactsGridProps): JSX.El
               ))}
             </ul>
           )}
-        </WidgetCard>
+        </PickupWidgetCard>
       ) : null}
 
       {viewModel.canResupply &&
       viewModel.stockStats.draftsLoadState === 'ready' &&
       viewModel.stockStats.drafts.length > 0 ? (
-        <WidgetCard
+        <PickupWidgetCard
           title={t('pickup.hub.widget.drafts.title')}
           subtitle={t('pickup.hub.widget.drafts.subtitle')}
           href={restockHref}
           viewAllLabel={t('pickup.hub.widget.viewAll')}
           testId="hub-widget-drafts"
         >
-          <ul className="m-0 flex list-none flex-col p-0">
+          <ul className={listStackClass}>
             {takePreview(
               viewModel.stockStats.drafts.map((draft) => ({
                 id: draft.id,
@@ -461,26 +456,34 @@ export function StaffHubFactsGrid({ viewModel }: StaffHubFactsGridProps): JSX.El
             ).map((item) => (
               <li key={item.id}>
                 <Link to={item.href} className={compactRowClass} data-testid="hub-draft-row">
-                  <span className="min-w-0 flex-1 truncate text-sm">{item.label}</span>
-                  <span className="shrink-0 text-xs text-[var(--color-on-surface-muted)]">
-                    {item.meta}
+                  <span className="min-w-0 flex-1 truncate text-sm text-[var(--color-on-surface)]">
+                    {item.label}
+                    {item.meta !== null && item.meta.length > 0 ? (
+                      <span className="text-[var(--color-on-surface-muted)]"> · {item.meta}</span>
+                    ) : null}
                   </span>
+                  <KindBadge tone={draftBadge.tone} label={t(draftBadge.key)} />
                 </Link>
               </li>
             ))}
           </ul>
-        </WidgetCard>
+        </PickupWidgetCard>
       ) : null}
 
       <div className="sm:col-span-2">
-        <WidgetCard
+        <PickupWidgetCard
           title={t('pickup.hub.work.title')}
           subtitle={t('pickup.hub.work.subtitle')}
           testId="hub-work-queue"
         >
           {showAllClear ? (
-            <div className="flex min-h-11 items-center gap-2" data-testid="hub-all-clear">
-              <Check className="h-4 w-4 shrink-0 stroke-[1.75] text-[var(--color-success)]" aria-hidden />
+            <div
+              className="flex min-h-11 items-center gap-2.5 rounded-[var(--radius-lg)] border border-[color-mix(in_oklab,var(--color-success)_28%,var(--color-border))] bg-[color-mix(in_oklab,var(--color-success)_10%,transparent)] px-3"
+              data-testid="hub-all-clear"
+            >
+              <span className="inline-flex size-7 shrink-0 items-center justify-center rounded-full bg-[color-mix(in_oklab,var(--color-success)_20%,transparent)]">
+                <Check className="h-4 w-4 stroke-[1.75] text-[var(--color-success)]" aria-hidden />
+              </span>
               <p className="m-0 truncate text-sm text-[var(--color-on-surface)]">
                 {t('pickup.hub.allClearTitle')}
                 <span className="text-[var(--color-on-surface-muted)]">
@@ -497,13 +500,13 @@ export function StaffHubFactsGrid({ viewModel }: StaffHubFactsGridProps): JSX.El
                 testId="hub-work-list"
               />
               {workOverflow > 0 ? (
-                <p className="m-0 mt-1 text-xs text-[var(--color-on-surface-muted)]">
+                <p className="m-0 mt-[var(--pickup-space-3)] text-xs text-[var(--color-on-surface-muted)]">
                   {t('pickup.hub.widget.more', { count: workOverflow })}
                 </p>
               ) : null}
             </>
           )}
-        </WidgetCard>
+        </PickupWidgetCard>
       </div>
     </div>
   );

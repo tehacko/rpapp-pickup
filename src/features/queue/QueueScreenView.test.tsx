@@ -127,20 +127,22 @@ describe('QueueScreenView', () => {
     expect(screen.getByTestId('location-path').textContent).toBe('/demo/order/42');
   });
 
-  it('renders offline banner retry and sticky refresh', () => {
+  it('renders offline banner retry and contentActions refresh', () => {
     const actions = renderQueueScreen({
       viewModel: createViewModel({ showOfflineRetryBanner: true }),
     });
 
     expect(screen.getByTestId('queue-offline-banner')).toBeTruthy();
+    expect(screen.getByTestId('pickup-list-layout-content-actions')).toBeTruthy();
+    expect(screen.getByTestId('queue-refresh')).toBeTruthy();
 
     const retryButton = screen.getByTestId('queue-offline-banner').querySelector('button');
-    expect(screen.getByTestId('queue-sticky-refresh')).toBeTruthy();
-    expect(screen.getByTestId('queue-sticky-refresh')).toBeTruthy();
-
     expect(retryButton).toBeTruthy();
     fireEvent.click(retryButton as HTMLButtonElement);
     expect(actions.refresh).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByTestId('queue-refresh'));
+    expect(actions.refresh).toHaveBeenCalledTimes(2);
   });
 
   it('switches pickup-point tabs through SegmentTabs', () => {

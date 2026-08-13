@@ -1,5 +1,5 @@
 import { describe, expect, it, jest } from '@jest/globals';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { StaffHubScreenView } from './StaffHubScreenView.js';
 import type { StaffHubViewModel } from './buildStaffHubViewModel.js';
@@ -127,7 +127,9 @@ describe('StaffHubScreenView', () => {
     expect(screen.getByTestId('hub-widget-checkup')).toBeInTheDocument();
     expect(screen.getByTestId('hub-chart-checkup')).toBeInTheDocument();
     expect(screen.getAllByText('Coffee').length).toBeGreaterThan(0);
-    expect(screen.getByTestId('hub-refresh')).toBeInTheDocument();
+    expect(screen.getByTestId('pickup-hub-dashboard-layout')).toHaveAttribute('data-kind', 'ops');
+    const contentActions = screen.getByTestId('pickup-hub-dashboard-content-actions');
+    expect(within(contentActions).getByTestId('hub-refresh')).toBeInTheDocument();
     expect(screen.getByTestId('hub-last-updated')).toBeInTheDocument();
     expect(screen.queryByTestId('hub-action-restock')).toBeNull();
     expect(screen.queryByTestId('hub-action-checkup')).toBeNull();
@@ -187,6 +189,41 @@ describe('StaffHubScreenView', () => {
     expect(screen.getByTestId('hub-kpi-coverage')).toBeInTheDocument();
     expect(screen.getByTestId('hub-chart-coverage')).toBeInTheDocument();
     expect(screen.getByTestId('hub-all-clear')).toBeInTheDocument();
-    expect(screen.getByTestId('hub-refresh')).toBeInTheDocument();
+    const contentActions = screen.getByTestId('pickup-hub-dashboard-content-actions');
+    expect(within(contentActions).getByTestId('hub-refresh')).toBeInTheDocument();
+  });
+
+  it('keeps Obnovit out of PageHeader and mounts device card in dashboard zones', () => {
+    render(
+      <MemoryRouter>
+        <StaffHubScreenView
+          viewModel={createViewModel({
+            canAssign: true,
+            showDeviceRegistry: true,
+            pairedDeviceLabel: 'Counter tablet',
+            barcodeStats: {
+              ...IDLE_BARCODE_STATS,
+              loadState: 'ready',
+              assignableCount: 1,
+              withCodeCount: 1,
+              missingCount: 0,
+              coveragePercent: 100,
+            },
+          })}
+          actions={actions}
+        />
+      </MemoryRouter>,
+    );
+
+    const layout = screen.getByTestId('pickup-hub-dashboard-layout');
+    const zones = within(layout).getByTestId('pickup-hub-dashboard-zones');
+    expect(within(zones).getByTestId('hub-device-card')).toBeInTheDocument();
+    expect(within(zones).getByTestId('hub-device-status-chip')).toHaveTextContent(
+      'pickup.hub.deviceStatusPaired',
+    );
+    expect(screen.getByTestId('hub-refresh').closest('[data-testid="staff-hub-screen"]')).toBeTruthy();
+    expect(
+      screen.getByTestId('hub-refresh').closest('[data-testid="pickup-hub-dashboard-content-actions"]'),
+    ).toBeTruthy();
   });
 });

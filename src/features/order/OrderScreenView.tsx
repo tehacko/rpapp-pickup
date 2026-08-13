@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Button } from '../../shared/ui/surfacePrimitives.js';
 import { MetaRow } from '../../shared/ui/MetaRow.js';
 import { PageHeader } from '../../shared/ui/PageHeader.js';
+import { PickupListLayout } from '../../shared/ui/PickupListLayout.js';
 import { PickupStickyCta } from '../../shared/ui/PickupStickyCta.js';
 import { ScreenState } from '../../shared/ui/ScreenState.js';
 import { SectionCard } from '../../shared/ui/SectionCard.js';
@@ -45,50 +46,66 @@ export function OrderScreenView({
 
   if (screenState.kind === 'loading') {
     return (
-      <div className="flex flex-col gap-4" data-testid="pickup-order-loading">
+      <div
+        className="flex flex-col gap-[var(--pickup-stack-gap)]"
+        data-testid="pickup-order-loading"
+      >
         <PageHeader title={t('pickup.order.title', { id: '…' })} titleIcon={Package} />
-        <ScreenState variant="loading" message={t('pickup.order.loading')} skeletonCount={3} />
+        <PickupListLayout testId="pickup-order-loading-layout">
+          <ScreenState variant="loading" message={t('pickup.order.loading')} skeletonCount={3} />
+        </PickupListLayout>
       </div>
     );
   }
 
   if (screenState.kind === 'claimConflict') {
     return (
-      <div className="flex flex-col gap-4" data-testid="pickup-order-claim-conflict-wrap">
-        <SectionCard
-          elevated
-          title={t('pickup.order.claimConflictTitle')}
-          data-testid="pickup-order-claim-conflict"
-        >
-          <p className="m-0 text-sm text-[var(--color-on-surface-muted)]">
-            {screenState.claimedByDeviceLabel
-              ? t('pickup.order.claimConflictByDevice', {
-                  device: screenState.claimedByDeviceLabel,
-                })
-              : t('pickup.order.claimConflictLead')}
-          </p>
-          <div className="mt-4">
-            <Button type="button" intent="secondary" onClick={() => navigate(queuePath)}>
-              {t('pickup.order.queue')}
-            </Button>
-          </div>
-        </SectionCard>
+      <div
+        className="flex flex-col gap-[var(--pickup-stack-gap)]"
+        data-testid="pickup-order-claim-conflict-wrap"
+      >
+        <PickupListLayout testId="pickup-order-claim-conflict-layout">
+          <SectionCard
+            elevated
+            title={t('pickup.order.claimConflictTitle')}
+            data-testid="pickup-order-claim-conflict"
+          >
+            <p className="m-0 text-sm text-[var(--color-on-surface-muted)]">
+              {screenState.claimedByDeviceLabel
+                ? t('pickup.order.claimConflictByDevice', {
+                    device: screenState.claimedByDeviceLabel,
+                  })
+                : t('pickup.order.claimConflictLead')}
+            </p>
+            <div className="mt-[var(--pickup-space-4)]">
+              <Button type="button" intent="secondary" onClick={() => navigate(queuePath)}>
+                {t('pickup.order.queue')}
+              </Button>
+            </div>
+          </SectionCard>
+        </PickupListLayout>
       </div>
     );
   }
 
   if (screenState.kind === 'loadFailed' || viewModel === null) {
     return (
-      <div className="flex flex-col gap-4" data-testid="pickup-order-failed">
+      <div
+        className="flex flex-col gap-[var(--pickup-stack-gap)]"
+        style={CHROME_PAD}
+        data-testid="pickup-order-failed"
+      >
         <PageHeader title={t('pickup.order.title', { id: '…' })} titleIcon={Package} />
-        <ScreenState
-          variant="error"
-          message={t('pickup.order.loadFailed')}
-          onRetry={actions.onRetry}
-        />
-        <Button type="button" intent="secondary" onClick={() => navigate(queuePath)}>
-          {t('pickup.order.queue')}
-        </Button>
+        <PickupListLayout testId="pickup-order-failed-layout">
+          <ScreenState
+            variant="error"
+            message={t('pickup.order.loadFailed')}
+            onRetry={actions.onRetry}
+          />
+          <Button type="button" intent="secondary" onClick={() => navigate(queuePath)}>
+            {t('pickup.order.queue')}
+          </Button>
+        </PickupListLayout>
       </div>
     );
   }
@@ -97,7 +114,11 @@ export function OrderScreenView({
   const monoId = String(viewModel.fulfillmentId);
 
   return (
-    <div className="flex flex-col gap-4" style={CHROME_PAD} data-testid="pickup-order-screen">
+    <div
+      className="flex flex-col gap-[var(--pickup-stack-gap)]"
+      style={CHROME_PAD}
+      data-testid="pickup-order-screen"
+    >
       <PageHeader
         title={t('pickup.order.title', { id: monoId })}
         titleIcon={Package}
@@ -107,68 +128,78 @@ export function OrderScreenView({
         }
       />
 
-      <SectionCard elevated title={t('pickup.order.customerTitle')} data-testid="pickup-order-customer">
-        <MetaRow
-          label={t('pickup.order.versionLabel')}
-          value={<span className="font-mono tabular-nums">{order.version}</span>}
-        />
-        <MetaRow
-          label={t('pickup.order.handoffLabel')}
-          value={order.pickupHandoffMode ?? t('pickup.common.dash')}
-        />
-        {order.pickupPointName ? (
-          <MetaRow label={t('pickup.order.pickupPointLabel')} value={order.pickupPointName} />
-        ) : null}
-        <MetaRow
-          label={t('pickup.order.paymentLabel')}
-          value={order.paymentRequired ? t('pickup.common.yes') : t('pickup.common.no')}
-        />
-        <div className="mt-2">
-          <PromoDiscountLine
-            promotionsEnabled={promotionsEnabled}
-            appliedDiscount={order.promotions?.appliedDiscount}
+      <PickupListLayout testId="pickup-order-list-layout">
+        <SectionCard
+          elevated
+          title={t('pickup.order.customerTitle')}
+          data-testid="pickup-order-customer"
+        >
+          <MetaRow
+            label={t('pickup.order.versionLabel')}
+            value={<span className="font-mono tabular-nums">{order.version}</span>}
           />
-        </div>
-      </SectionCard>
+          <MetaRow
+            label={t('pickup.order.handoffLabel')}
+            value={order.pickupHandoffMode ?? t('pickup.common.dash')}
+          />
+          {order.pickupPointName ? (
+            <MetaRow label={t('pickup.order.pickupPointLabel')} value={order.pickupPointName} />
+          ) : null}
+          <MetaRow
+            label={t('pickup.order.paymentLabel')}
+            value={order.paymentRequired ? t('pickup.common.yes') : t('pickup.common.no')}
+          />
+          <div className="mt-2">
+            <PromoDiscountLine
+              promotionsEnabled={promotionsEnabled}
+              appliedDiscount={order.promotions?.appliedDiscount}
+            />
+          </div>
+        </SectionCard>
 
-      <SectionCard elevated title={t('pickup.order.itemsTitle')} data-testid="pickup-order-items">
-        <PartialConfirmPanel
-          lines={order.lines}
-          partialQty={viewModel.partialQty}
-          partialSelected={viewModel.partialSelected}
-          pickupCode={viewModel.pickupCode}
-          requiresPickupCode={order.requiresPickupCode}
-          canConfirm={viewModel.canConfirm}
-          isOnHold={viewModel.isOnHold}
-          onPickupCodeChange={actions.setPickupCode}
-          onToggleLine={actions.setPartialSelected}
-          onChangeQty={actions.setPartialQty}
-          onConfirmPartial={actions.onConfirmPartial}
-          embedded
-        />
-      </SectionCard>
-
-      <SectionCard elevated title={t('pickup.order.actionsTitle')} data-testid="pickup-order-actions">
-        <div className="flex flex-col gap-4">
-          <RefusePanel
+        <SectionCard elevated title={t('pickup.order.itemsTitle')} data-testid="pickup-order-items">
+          <PartialConfirmPanel
             lines={order.lines}
-            refuseQty={viewModel.refuseQty}
-            refuseSelected={viewModel.refuseSelected}
+            partialQty={viewModel.partialQty}
+            partialSelected={viewModel.partialSelected}
+            pickupCode={viewModel.pickupCode}
+            requiresPickupCode={order.requiresPickupCode}
+            canConfirm={viewModel.canConfirm}
             isOnHold={viewModel.isOnHold}
-            onToggleLine={actions.setRefuseSelected}
-            onChangeQty={actions.setRefuseQty}
+            onPickupCodeChange={actions.setPickupCode}
+            onToggleLine={actions.setPartialSelected}
+            onChangeQty={actions.setPartialQty}
+            onConfirmPartial={actions.onConfirmPartial}
             embedded
           />
-          <HoldReleasePanel
-            holdReason={viewModel.holdReason}
-            isOnHold={viewModel.isOnHold}
-            onHoldReasonChange={actions.setHoldReason}
-            onRelease={actions.onRelease}
-            embedded
-          />
-          <ReprintPanel onReprint={actions.onReprint} embedded />
-        </div>
-      </SectionCard>
+        </SectionCard>
+
+        <SectionCard
+          elevated
+          title={t('pickup.order.actionsTitle')}
+          data-testid="pickup-order-actions"
+        >
+          <div className="flex flex-col gap-[var(--pickup-space-4)]">
+            <RefusePanel
+              lines={order.lines}
+              refuseQty={viewModel.refuseQty}
+              refuseSelected={viewModel.refuseSelected}
+              isOnHold={viewModel.isOnHold}
+              onToggleLine={actions.setRefuseSelected}
+              onChangeQty={actions.setRefuseQty}
+              embedded
+            />
+            <HoldReleasePanel
+              holdReason={viewModel.holdReason}
+              isOnHold={viewModel.isOnHold}
+              onHoldReasonChange={actions.setHoldReason}
+              onRelease={actions.onRelease}
+              embedded
+            />
+            <ReprintPanel onReprint={actions.onReprint} embedded />
+          </div>
+        </SectionCard>
+      </PickupListLayout>
 
       <PickupStickyCta
         primary={

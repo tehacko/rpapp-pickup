@@ -104,6 +104,7 @@ describe('SelectableListRow', () => {
 
     const row = screen.getByTestId('pickup-selectable-list-row');
     expect(row.tagName).toBe('DIV');
+    expect(row.getAttribute('data-trailing-placement')).toBe('end');
     expect(row.querySelector('button[type="button"]')?.tagName).not.toBeUndefined();
 
     const checkbox = screen.getByRole('checkbox', { name: 'Select latte' });
@@ -112,5 +113,25 @@ describe('SelectableListRow', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Add' }));
     expect(onAdd).toHaveBeenCalledTimes(1);
     expect(onSelectedChange).not.toHaveBeenCalled();
+  });
+
+  it('places trailing below the label when trailingPlacement is below', () => {
+    const onSelectedChange = jest.fn();
+    render(
+      <SelectableListRow
+        selected={false}
+        onSelectedChange={onSelectedChange}
+        selectAriaLabel="Select latte"
+        trailingPlacement="below"
+        trailing={<button type="button">Remove</button>}
+      >
+        Latte
+      </SelectableListRow>,
+    );
+
+    const row = screen.getByTestId('pickup-selectable-list-row');
+    expect(row.getAttribute('data-trailing-placement')).toBe('below');
+    expect(row.className).toContain('flex-col');
+    expect(screen.getByTestId('pickup-selectable-list-row-trailing')).toBeTruthy();
   });
 });

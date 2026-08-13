@@ -5,26 +5,28 @@ export interface SectionCardProps {
   readonly title?: string;
   readonly children: ReactNode;
   readonly footer?: ReactNode;
+  /** When true (default), applies widget-shell elevation (`shadow-card`). */
   readonly elevated?: boolean;
   readonly className?: string;
   readonly 'data-testid'?: string;
 }
 
 /**
- * Sailor surface section card — no admin indigo/violet tones.
+ * Sailor surface section card — widget shell radius + elevated shadow by default.
+ * No admin indigo/violet tones.
  */
 export function SectionCard({
   title,
   children,
   footer,
-  elevated = false,
+  elevated = true,
   className,
   'data-testid': dataTestId = 'pickup-section-card',
 }: SectionCardProps): JSX.Element {
   return (
     <article
       className={cn(
-        'rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-on-surface)]',
+        'rounded-[var(--radius-xl)] border border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-on-surface)]',
         elevated ? 'shadow-[var(--shadow-card)]' : null,
         className,
       )}

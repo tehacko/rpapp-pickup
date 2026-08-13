@@ -235,11 +235,39 @@ describe('RestockScreenView', () => {
     );
 
     expect(screen.getByTestId('restock-workspace').className).toContain(
-      'lg:grid-cols-[minmax(0,1fr)_minmax(18rem,22rem)]',
+      'lg:grid-cols-[minmax(0,1fr)_minmax(20rem,26rem)]',
     );
     expect(screen.getByTestId('restock-catalog').className).toContain('sm:grid-cols-2');
     expect(screen.getByTestId('restock-draft-panel')).toBeTruthy();
     expect(screen.queryByTestId('restock-catalog-empty')).toBeNull();
+  });
+
+  it('stacks draft row controls under the label to avoid collisions', () => {
+    render(
+      <MemoryRouter>
+        <RestockScreenView
+          actions={createActions()}
+          viewModel={createViewModel({
+            draftLines: [
+              {
+                key: '1:base',
+                productId: 1,
+                variantId: null,
+                label: 'Leader Biography',
+                deltaQuantity: 6,
+              },
+            ],
+            draftLineCount: 1,
+            totalDelta: 6,
+          })}
+        />
+      </MemoryRouter>,
+    );
+
+    const row = screen.getByTestId('restock-draft-row-1:base');
+    expect(row.getAttribute('data-trailing-placement')).toBe('below');
+    expect(screen.getByTestId('restock-draft-row-1:base-trailing')).toBeTruthy();
+    expect(screen.getByText('Leader Biography')).toBeTruthy();
   });
 
   it('shows empty catalog and draft states', () => {

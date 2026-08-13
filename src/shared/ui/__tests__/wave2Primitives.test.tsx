@@ -18,6 +18,7 @@ import { OfflineBanner, AlertBanner, InlineNotice } from '../AlertBanner.js';
 import { PickupListLayout } from '../PickupListLayout.js';
 import { ActionTile } from '../ActionTile.js';
 import { KpiStat } from '../KpiStat.js';
+import { StatPill } from '../StatPill.js';
 import { IconButton } from '../IconButton.js';
 import { SearchField } from '../SearchField.js';
 import { Input } from '../Input.js';
@@ -97,14 +98,43 @@ describe('pickup wave2 primitives', () => {
       <>
         <PageHeader title="Queue" lead="Live" titleIcon={Package} actions={<span>Act</span>} />
         <PageSectionHeader title="Section" layout="toolbar" actions={<span>More</span>} />
-        <SectionCard title="Device" elevated>
+        <PageSectionHeader lead="Lead only when page title is owned by PageHeader" />
+        <StatPill label="Ready" value={4} />
+        <SectionCard title="Device">
           <MetaRow label="Paired" value="Tablet A" />
         </SectionCard>
       </>,
     );
-    expect(screen.getByTestId('pickup-page-header')).toBeTruthy();
-    expect(screen.getByTestId('pickup-section-card')).toBeTruthy();
+    const pageHeader = screen.getByTestId('pickup-page-header');
+    expect(pageHeader).toBeTruthy();
+    expect(pageHeader.className).toContain('gap-[var(--pickup-space-3)]');
+    expect(pageHeader.className).toContain('pb-[var(--pickup-space-3)]');
+    expect(screen.getByTestId('pickup-page-header-title-icon')).toBeTruthy();
+    expect(screen.getByTestId('pickup-page-header-actions')).toBeTruthy();
+    expect(screen.getAllByTestId('pickup-page-section-header').length).toBe(2);
+    expect(screen.getByText('Lead only when page title is owned by PageHeader')).toBeTruthy();
+    const statPill = screen.getByTestId('pickup-stat-pill');
+    expect(statPill).toBeTruthy();
+    expect(statPill.textContent).toContain('Ready');
+    expect(statPill.textContent).toContain('4');
+    expect(statPill.className).toContain('rounded-full');
+    expect(statPill.className).toContain('bg-[color-mix(in_oklab,var(--color-surface-muted)_55%,transparent)]');
+    const sectionCard = screen.getByTestId('pickup-section-card');
+    expect(sectionCard).toBeTruthy();
+    expect(sectionCard.className).toContain('rounded-[var(--radius-xl)]');
+    expect(sectionCard.className).toContain('shadow-[var(--shadow-card)]');
     expect(screen.getByTestId('pickup-meta-row')).toBeTruthy();
+  });
+
+  it('SectionCard elevated=false omits shadow while keeping radius-xl', () => {
+    render(
+      <SectionCard title="Flat" elevated={false}>
+        Body
+      </SectionCard>,
+    );
+    const sectionCard = screen.getByTestId('pickup-section-card');
+    expect(sectionCard.className).toContain('rounded-[var(--radius-xl)]');
+    expect(sectionCard.className).not.toContain('shadow-[var(--shadow-card)]');
   });
 
   it('supports list / queue / order rows', () => {
@@ -151,8 +181,19 @@ describe('pickup wave2 primitives', () => {
     expect(screen.getByTestId('pickup-alert-banner')).toBeTruthy();
     expect(screen.getByTestId('pickup-inline-notice')).toBeTruthy();
     expect(screen.getByTestId('pickup-list-layout-kpi')).toBeTruthy();
-    expect(screen.getByTestId('pickup-kpi-stat')).toBeTruthy();
-    expect(screen.getByTestId('pickup-empty-state')).toBeTruthy();
+    const kpiStat = screen.getByTestId('pickup-kpi-stat');
+    expect(kpiStat).toBeTruthy();
+    expect(kpiStat.className).toContain('rounded-[var(--radius-xl)]');
+    expect(kpiStat.className).toContain('shadow-[var(--shadow-card)]');
+    expect(kpiStat.className).toContain('min-h-[var(--pickup-kpi-min-height)]');
+    const emptyState = screen.getByTestId('pickup-empty-state');
+    expect(emptyState).toBeTruthy();
+    expect(emptyState.className).toContain('shadow-[var(--shadow-card)]');
+    expect(emptyState.className).toContain('border-dashed');
+    expect(emptyState.className).toContain(
+      'bg-[linear-gradient(180deg,color-mix(in_oklab,var(--color-surface-elevated)_55%,var(--color-surface))_0%,var(--color-surface)_100%)]',
+    );
+    expect(emptyState.className).toContain('px-[var(--pickup-space-6)]');
     expect(screen.getAllByTestId('pickup-skeleton').length).toBeGreaterThan(0);
     expect(screen.getAllByTestId('pickup-skeleton-row').length).toBeGreaterThan(0);
   });
@@ -188,7 +229,11 @@ describe('pickup wave2 primitives', () => {
         />
       </MemoryRouter>,
     );
-    expect(screen.getByTestId('pickup-action-tile')).toBeTruthy();
+    const actionTile = screen.getByTestId('pickup-action-tile');
+    expect(actionTile).toBeTruthy();
+    expect(actionTile.className).toContain('rounded-[var(--radius-xl)]');
+    expect(actionTile.className).toContain('shadow-[var(--shadow-card)]');
+    expect(actionTile.className).toContain('min-h-[var(--pickup-kpi-min-height)]');
     expect(screen.getByLabelText('Open package')).toBeTruthy();
     expect(screen.getByTestId('pickup-input')).toBeTruthy();
     fireEvent.click(screen.getByTestId('pickup-search-field-clear'));

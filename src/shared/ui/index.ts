@@ -49,6 +49,23 @@ export {
 export { OfflineBanner, type OfflineBannerProps } from './OfflineBanner.js';
 export { InlineNotice, type InlineNoticeProps } from './InlineNotice.js';
 export { PickupListLayout, type PickupListLayoutProps } from './PickupListLayout.js';
+export {
+  PickupHubDashboardLayout,
+  type PickupHubDashboardLayoutProps,
+  type PickupHubDashboardKind,
+} from './PickupHubDashboardLayout.js';
+export { PickupKpiCard, type PickupKpiCardProps, type PickupKpiTone } from './PickupKpiCard.js';
+export { PickupKpiGrid, type PickupKpiGridProps } from './PickupKpiGrid.js';
+export { resolvePickupKpiGridClassName } from './resolvePickupKpiGridClassName.js';
+export { PickupWidgetCard, type PickupWidgetCardProps } from './PickupWidgetCard.js';
+export {
+  PickupScreenContentActions,
+  type PickupScreenContentActionsProps,
+} from './PickupScreenContentActions.js';
+export {
+  PickupScreenRefreshButton,
+  type PickupScreenRefreshButtonProps,
+} from './PickupScreenRefreshButton.js';
 export { ActionTile, type ActionTileProps } from './ActionTile.js';
 export { KpiStat, type KpiStatProps } from './KpiStat.js';
 export { StatPill, type StatPillProps } from './StatPill.js';

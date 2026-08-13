@@ -26,22 +26,16 @@ export function QueuePage(): JSX.Element {
   // Wait for entitlement settle (RQ pending / paused / no snapshot yet).
   // Cold entitledFunctions=[] must not hub-bounce before success or error.
   if (entitlementLoading) {
-    return (
-      <div className="mx-auto w-full max-w-[720px] px-4 py-6">
-        <ScreenState variant="loading" message={t('pickup.login.entitlementLoading')} />
-      </div>
-    );
+    return <ScreenState variant="loading" message={t('pickup.login.entitlementLoading')} />;
   }
 
   if (entitlementIsError) {
     return (
-      <div className="mx-auto w-full max-w-[720px] px-4 py-6">
-        <ScreenState
-          variant="error"
-          message={t('pickup.shell.entitlementLoadFailed')}
-          onRetry={retryEntitlement}
-        />
-      </div>
+      <ScreenState
+        variant="error"
+        message={t('pickup.shell.entitlementLoadFailed')}
+        onRetry={retryEntitlement}
+      />
     );
   }
 
