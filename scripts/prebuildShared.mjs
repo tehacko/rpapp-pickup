@@ -11,13 +11,17 @@
  */
 import { execSync } from 'node:child_process';
 import { existsSync, readFileSync, rmSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { basename, resolve } from 'node:path';
 
 const siblingPkg = resolve(process.cwd(), '..', 'shared', 'package.json');
 if (existsSync(siblingPkg)) {
   execSync('node ../shared/scripts/ensureDist.mjs', {
     stdio: 'inherit',
-    env: { ...process.env, ENSURE_DIST_ALLOW_MISSING_CONSUMERS: '1' },
+    env: {
+      ...process.env,
+      ENSURE_DIST_ALLOW_MISSING_CONSUMERS: '1',
+      ENSURE_DIST_ONLY_CONSUMERS: basename(process.cwd()),
+    },
   });
   process.exit(0);
 }

@@ -10,7 +10,7 @@
  */
 import { spawnSync } from 'node:child_process';
 import { existsSync, statSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
+import { basename, dirname, resolve } from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 
@@ -64,6 +64,8 @@ const result = spawnSync(process.execPath, [ensureDistScript], {
     ...process.env,
     // Single-package cold ci: other consumers may lack node_modules yet.
     ENSURE_DIST_ALLOW_MISSING_CONSUMERS: '1',
+    // Only this package — parallel npm run dev must not tear sibling overlays.
+    ENSURE_DIST_ONLY_CONSUMERS: basename(packageRoot),
   },
 });
 
