@@ -3,6 +3,9 @@
  * Reuses GET /api/v1/public/customer-tenants (same ACTIVE tenant catalog as admin).
  */
 
+import { pickLocalizedApiMessage } from 'pi-kiosk-shared';
+import i18n from '../../../i18n.js';
+
 export interface PublicPickupTenantDTO {
   readonly tenantId: number;
   readonly code: string;
@@ -37,12 +40,19 @@ function isHtmlContentType(contentType: string): boolean {
   return contentType.toLowerCase().includes('text/html');
 }
 
+function pickupUiLocale(): string {
+  return i18n.resolvedLanguage ?? i18n.language ?? 'cs';
+}
+
 export async function fetchPublicPickupTenants(
   signal?: AbortSignal,
 ): Promise<PublicPickupTenantDTO[]> {
   const response = await fetch('/api/v1/public/customer-tenants', {
     method: 'GET',
-    headers: { Accept: 'application/json' },
+    headers: {
+      Accept: 'application/json',
+      'Accept-Language': pickupUiLocale(),
+    },
     signal,
   });
 
@@ -66,9 +76,12 @@ export async function fetchPublicPickupTenants(
   }
 
   if (!response.ok || body.success !== true) {
-    const message =
+    const rawMessage =
       body.success === false ? body.error : `Request failed (${String(response.status)})`;
-    throw new PublicPickupTenantsLoadError(message, 'http');
+    throw new PublicPickupTenantsLoadError(
+      pickLocalizedApiMessage(rawMessage, pickupUiLocale()),
+      'http',
+    );
   }
 
   return body.data.tenants;

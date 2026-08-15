@@ -4,6 +4,7 @@ import {
   formatRateLimitMessage,
   getRetryAfterMs,
   isRateLimitError,
+  pickLocalizedApiMessage,
 } from 'pi-kiosk-shared';
 import { useSubmitCooldown } from 'pi-kiosk-shared/ui';
 import { PickupApiError, verifyPickupStaffPin } from '../../api/pickupApi.js';
@@ -21,6 +22,7 @@ export interface PickupStaffRePinModalProps {
 
 /**
  * Dedicated staff re-PIN chrome — dense Sailor dialog (not a generic alert).
+ * Single-field PIN: FormField `errorText` alone (FA-08 carve-out; no FormErrorSummary).
  */
 export function PickupStaffRePinModal({
   open,
@@ -29,7 +31,7 @@ export function PickupStaffRePinModal({
   onCancel,
   onVerified,
 }: PickupStaffRePinModalProps): JSX.Element | null {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const tenantCode = useTenantCode();
   const accessToken = useStaffToken();
   const submitCooldown = useSubmitCooldown();
@@ -78,11 +80,23 @@ export function PickupStaffRePinModal({
         setError(formatRateLimitMessage(t, Math.ceil(retryAfterMs / 1000)));
         return;
       }
+      if (
+        err instanceof PickupApiError &&
+        typeof err.message === 'string' &&
+        err.message.trim().length > 0
+      ) {
+        setError(
+          pickLocalizedApiMessage(err.message, i18n.resolvedLanguage ?? i18n.language),
+        );
+        return;
+      }
       setError(t('pickup.repin.invalid'));
     } finally {
       setIsSubmitting(false);
     }
   }
+
+  const pinErrorText = cooldownMessage ?? error ?? undefined;
 
   return (
     <div
@@ -123,6 +137,7 @@ export function PickupStaffRePinModal({
             value={pin}
             onChange={(event) => setPin(event.target.value)}
             disabled={submitCooldown.isCoolingDown}
+            errorText={pinErrorText}
           />
           <div className="flex flex-wrap items-center justify-end gap-2 pt-1">
             <Button intent="secondary" type="button" onClick={handleCancel}>
@@ -136,22 +151,6 @@ export function PickupStaffRePinModal({
             </Button>
           </div>
         </form>
-        {cooldownMessage ? (
-          <p
-            className="m-0 rounded-[var(--radius-md)] border border-[var(--color-danger)] bg-[var(--color-danger-foreground)] px-3 py-2 text-sm text-[var(--color-danger)]"
-            role="alert"
-          >
-            {cooldownMessage}
-          </p>
-        ) : null}
-        {error && !cooldownMessage ? (
-          <p
-            className="m-0 rounded-[var(--radius-md)] border border-[var(--color-danger)] bg-[var(--color-danger-foreground)] px-3 py-2 text-sm text-[var(--color-danger)]"
-            role="alert"
-          >
-            {error}
-          </p>
-        ) : null}
       </section>
     </div>
   );

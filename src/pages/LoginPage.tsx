@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useState } from 'react';
+import { FormEvent, useMemo, useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, LogIn } from 'lucide-react';
@@ -6,11 +6,16 @@ import {
   formatRateLimitMessage,
   getRetryAfterMs,
   isRateLimitError,
+  pickLocalizedApiMessage,
   resolveLocalizedName,
 } from 'pi-kiosk-shared';
 import { TurnstileExecuteWidget, useSubmitCooldown, useTurnstileExecute } from 'pi-kiosk-shared/ui';
 import { Button, FormField } from '../shared/ui/surfacePrimitives.js';
 import { AlertBanner } from '../shared/ui/AlertBanner.js';
+import {
+  FormErrorSummary,
+  mapFieldErrorsToSummary,
+} from '../shared/ui/FormErrorSummary.js';
 import { SailorMark } from '../shared/ui/SailorMark.js';
 import { SectionCard } from '../shared/ui/SectionCard.js';
 import { fetchSalesPointById, loginPickupStaff, PickupApiError } from '../api/pickupApi';
@@ -26,9 +31,15 @@ import {
   PICKUP_TENANT_INACTIVE_TEST_ID,
 } from '../lib/tenantInactive.js';
 import { usePickupStaffSession } from '../shared/session/PickupStaffSessionProvider.js';
-import { useTenantCode } from '../hooks/useStaffToken';
+import { useTenantCode } from '../hooks/useStaffToken.js';
 import { usePickupErrorHandler } from '../shared/hooks/usePickupErrorHandler.js';
 import { loginLog } from './logging.js';
+
+const LOGIN_FIELD_IDS = {
+  salesPointId: 'pickup-sales-point-id',
+  pin: 'pickup-pin',
+  deviceCode: 'pickup-device-code',
+} as const;
 
 export function LoginPage(): JSX.Element {
   const tenantCode = useTenantCode();
@@ -50,7 +61,13 @@ export function LoginPage(): JSX.Element {
   const [deviceCode, setDeviceCode] = useState('');
   const [pmName, setPmName] = useState<string | null>(null);
   const [pmLoading, setPmLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  /** Field-channel validation (FormErrorSummary + FormField invalid). */
+  const [fieldErrors, setFieldErrors] = useState<{
+    salesPointId?: string;
+    pin?: string;
+  }>({});
+  /** Form-level / API banner only — never dual with FormErrorSummary. */
+  const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const turnstile = useTurnstileExecute('');
 
@@ -65,6 +82,15 @@ export function LoginPage(): JSX.Element {
       : null;
 
   const showDeviceCodeField = !isDevicePaired(tenantCode);
+
+  const summaryErrors = useMemo(
+    () =>
+      mapFieldErrorsToSummary(fieldErrors, {
+        salesPointId: LOGIN_FIELD_IDS.salesPointId,
+        pin: LOGIN_FIELD_IDS.pin,
+      }),
+    [fieldErrors],
+  );
 
   useEffect(() => {
     if (validSalesPointId === null) {
@@ -103,11 +129,12 @@ export function LoginPage(): JSX.Element {
     if (isSubmitting || submitCooldown.isCoolingDown || isTenantInactive) {
       return;
     }
-    setError(null);
+    setFieldErrors({});
+    setFormError(null);
     setIsSubmitting(true);
     try {
       if (!isSuperPickuperLogin && validSalesPointId === null) {
-        setError(t('pickup.login.salesPointIdInvalid'));
+        setFieldErrors({ salesPointId: t('pickup.login.salesPointIdInvalid') });
         return;
       }
       let turnstileToken: string | undefined;
@@ -130,7 +157,7 @@ export function LoginPage(): JSX.Element {
       );
       if (!loginResult) {
         turnstile.resetTurnstile();
-        setError(t('pickup.toast.loginFailed'));
+        setFormError(t('pickup.toast.loginFailed'));
         return;
       }
       turnstile.resetTurnstile();
@@ -159,18 +186,22 @@ export function LoginPage(): JSX.Element {
             ? err.retryAfterMs
             : getRetryAfterMs(err);
         submitCooldown.startCooldown(Math.ceil(retryAfterMs / 1000));
-        setError(formatRateLimitMessage(t, Math.ceil(retryAfterMs / 1000)));
+        setFormError(formatRateLimitMessage(t, Math.ceil(retryAfterMs / 1000)));
         return;
       }
       if (err instanceof PickupApiError && err.code === 'PICKUP_POINT_NOT_ALLOWED') {
-        setError(t('pickup.login.pickupPointNotAllowed'));
+        setFormError(t('pickup.login.pickupPointNotAllowed'));
         return;
       }
       if (isTenantInactiveError(err)) {
-        setError(t('pickup.tenantInactive.body'));
+        setFormError(t('pickup.tenantInactive.body'));
         return;
       }
-      setError(err instanceof Error ? err.message : t('pickup.toast.loginFailed'));
+      const raw =
+        err instanceof Error ? err.message : t('pickup.toast.loginFailed');
+      setFormError(
+        pickLocalizedApiMessage(raw, i18n.resolvedLanguage ?? i18n.language),
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -248,18 +279,21 @@ export function LoginPage(): JSX.Element {
             <form
               className="flex flex-col gap-[var(--pickup-space-3)]"
               onSubmit={(event) => void onSubmit(event)}
+              noValidate
             >
+              <FormErrorSummary errors={summaryErrors} />
               <FormField
-                id="pickup-sales-point-id"
+                id={LOGIN_FIELD_IDS.salesPointId}
                 label={t('pickup.login.salesPointId')}
                 value={salesPointId}
                 onChange={(event) => setSalesPointId(event.target.value)}
                 disabled={submitCooldown.isCoolingDown || isTenantInactive}
                 placeholder={t('pickup.login.salesPointIdPlaceholder')}
                 autoComplete="username"
+                invalid={Boolean(fieldErrors.salesPointId)}
               />
               <FormField
-                id="pickup-pin"
+                id={LOGIN_FIELD_IDS.pin}
                 data-testid="pickup-pin"
                 label={t('pickup.login.pin')}
                 type="password"
@@ -269,10 +303,11 @@ export function LoginPage(): JSX.Element {
                 disabled={submitCooldown.isCoolingDown || isTenantInactive}
                 placeholder={t('pickup.login.pinPlaceholder')}
                 autoComplete="current-password"
+                invalid={Boolean(fieldErrors.pin)}
               />
               {showDeviceCodeField ? (
                 <FormField
-                  id="pickup-device-code"
+                  id={LOGIN_FIELD_IDS.deviceCode}
                   label={t('pickup.login.deviceCode')}
                   value={deviceCode}
                   onChange={(event) => setDeviceCode(event.target.value)}
@@ -305,8 +340,8 @@ export function LoginPage(): JSX.Element {
             {cooldownMessage ? (
               <AlertBanner tone="danger" role="alert" message={cooldownMessage} />
             ) : null}
-            {error && !cooldownMessage ? (
-              <AlertBanner tone="danger" role="alert" message={error} />
+            {formError && !cooldownMessage ? (
+              <AlertBanner tone="danger" role="alert" message={formError} />
             ) : null}
           </div>
         </SectionCard>

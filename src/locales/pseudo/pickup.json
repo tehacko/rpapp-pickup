@@ -61,6 +61,7 @@
   "pickup.login.title": "[!! Pickup staff login !!]",
   "pickup.login.salesPointId": "[!! Sales point ID !!]",
   "pickup.login.salesPointIdPlaceholder": "[!! sales point ID or superpickuper !!]",
+  "pickup.validation.formErrorSummaryTitle": "[!! There is a problem !!]",
   "pickup.login.salesPointIdInvalid": "[!! Enter a valid sales point ID or superpickuper. !!]",
   "pickup.login.pin": "[!! PIN !!]",
   "pickup.login.pinPlaceholder": "[!! PIN !!]",

@@ -1,3 +1,4 @@
+import i18n from '../i18n.js';
 import { readViteMetaEnv } from '../shared/vite/readViteMetaEnv.js';
 
 const defaultTenantCode = readViteMetaEnv('VITE_DEFAULT_TENANT_CODE');
@@ -19,9 +20,15 @@ export function isPickupCookieSession(accessToken: string | null): boolean {
 
 export const PICKUP_FETCH_CREDENTIALS: RequestCredentials = 'include';
 
+/** UI locale for Accept-Language (primary tag; default `cs`). */
+export function pickupAcceptLanguage(): string {
+  return i18n.resolvedLanguage ?? i18n.language ?? 'cs';
+}
+
 export function authHeaders(accessToken: string | null): Record<string, string> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
+    'Accept-Language': pickupAcceptLanguage(),
   };
   if (accessToken !== null && !isPickupCookieSession(accessToken)) {
     headers.Authorization = `Bearer ${accessToken}`;
@@ -30,8 +37,13 @@ export function authHeaders(accessToken: string | null): Record<string, string> 
 }
 
 export function pickupFetchInit(init?: RequestInit): RequestInit {
+  const headers = new Headers(init?.headers);
+  if (!headers.has('Accept-Language')) {
+    headers.set('Accept-Language', pickupAcceptLanguage());
+  }
   return {
-    credentials: PICKUP_FETCH_CREDENTIALS,
     ...init,
+    credentials: init?.credentials ?? PICKUP_FETCH_CREDENTIALS,
+    headers,
   };
 }

@@ -46,6 +46,12 @@ export {
   type AlertBannerProps,
   type AlertBannerAction,
 } from './AlertBanner.js';
+export {
+  FormErrorSummary,
+  mapFieldErrorsToSummary,
+  type FormErrorSummaryItem,
+  type FormErrorSummaryProps,
+} from './FormErrorSummary.js';
 export { OfflineBanner, type OfflineBannerProps } from './OfflineBanner.js';
 export { InlineNotice, type InlineNoticeProps } from './InlineNotice.js';
 export { PickupListLayout, type PickupListLayoutProps } from './PickupListLayout.js';

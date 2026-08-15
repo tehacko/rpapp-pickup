@@ -2,9 +2,14 @@ import { authHeaders, pickupFetchInit } from '../lib/auth.js';
 import { getPairedDeviceCode } from '../lib/deviceStorage.js';
 import type { PickupStaffDeviceFlags } from '../hooks/pickupDeviceFlags.js';
 import { resolvePickupDeviceFlags } from '../hooks/pickupDeviceFlags.js';
-import { getRetryAfterMs, type LocalizedNameMap } from 'pi-kiosk-shared';
+import {
+  getRetryAfterMs,
+  pickLocalizedApiMessage,
+  type LocalizedNameMap,
+} from 'pi-kiosk-shared';
 import { readRequestId, setClientCorrelationId } from 'pi-kiosk-shared/logging';
 import { setSentryCorrelationId } from 'pi-kiosk-shared/sentry';
+import i18n from '../i18n.js';
 import { capturePickupRateLimitBreadcrumb } from '../lib/observability/sentry';
 import { notifyPickupStaffSessionExpired } from '../shared/session/pickupStaffAuthNotify.js';
 import type { QueueItem, ResolveResponse, SalesPointLookupResponse } from '../types';
@@ -80,11 +85,15 @@ async function parseErrorBody(
     };
     const nested =
       typeof json.error === 'object' && json.error !== null ? json.error : null;
-    const message =
+    const rawMessage =
       (nested !== null && typeof nested.message === 'string' ? nested.message : undefined) ??
       (typeof json.error === 'string' ? json.error : undefined) ??
       json.message ??
       res.statusText;
+    const message = pickLocalizedApiMessage(
+      rawMessage,
+      i18n.resolvedLanguage ?? i18n.language,
+    );
     const code =
       (nested !== null && typeof nested.code === 'string' ? nested.code : undefined) ?? json.code;
     const recoverable =
@@ -261,8 +270,8 @@ export async function fetchSalesPointById(
   tenantCode: string,
   salesPointId: number
 ): Promise<SalesPointLookupResponse | null> {
-  const res = await fetch(
-    `/api/${encodeURIComponent(tenantCode)}/v1/customer/sales-points/by-id/${encodeURIComponent(String(salesPointId))}`
+  const res = await pickupFetch(
+    `/api/${encodeURIComponent(tenantCode)}/v1/customer/sales-points/by-id/${encodeURIComponent(String(salesPointId))}`,
   );
   if (!res.ok) {
     return null;

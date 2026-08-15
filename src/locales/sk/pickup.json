@@ -61,6 +61,7 @@
   "pickup.login.title": "Prihlásenie personálu výdaja",
   "pickup.login.salesPointId": "ID predajného miesta",
   "pickup.login.salesPointIdPlaceholder": "ID predajného miesta alebo superpickuper",
+  "pickup.validation.formErrorSummaryTitle": "Vyskytol sa problém",
   "pickup.login.salesPointIdInvalid": "Zadajte platné ID predajného miesta alebo superpickuper.",
   "pickup.login.pin": "PIN",
   "pickup.login.pinPlaceholder": "PIN",
