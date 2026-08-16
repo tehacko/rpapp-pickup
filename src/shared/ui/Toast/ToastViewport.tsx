@@ -18,7 +18,7 @@ export interface ToastViewportProps {
 
 function rootClassName(variant: ToastVariant): string {
   const base =
-    'pointer-events-auto flex items-start gap-3 rounded-[var(--radius-md)] px-4 py-3 text-base font-medium leading-normal shadow-lg motion-reduce:transition-none';
+    'pointer-events-auto flex min-w-0 max-w-full items-start gap-3 overflow-hidden rounded-[var(--radius-md)] px-4 py-3 text-base font-medium leading-normal shadow-lg motion-reduce:transition-none';
   if (variant === 'success') {
     return `${base} bg-[var(--color-success)] text-[var(--color-success-foreground)]`;
   }
@@ -54,7 +54,7 @@ export const ToastViewport = memo<ToastViewportProps>(({ toasts, onDismiss }) =>
           data-toast-variant={toast.variant}
           role={toast.variant === 'error' ? 'alert' : 'status'}
         >
-          <Toast.Title className="m-0 flex-1 text-inherit font-medium leading-inherit">
+          <Toast.Title className="m-0 min-w-0 flex-1 break-words text-inherit font-medium leading-inherit">
             {toast.message}
           </Toast.Title>
           <Toast.Close asChild>
@@ -70,7 +70,7 @@ export const ToastViewport = memo<ToastViewportProps>(({ toasts, onDismiss }) =>
         </Toast.Root>
       ))}
       <Toast.Viewport
-        className="pointer-events-none fixed right-5 top-5 z-[var(--pickup-z-90)] flex w-[min(22.5rem,calc(100vw-2.5rem))] flex-col gap-3 outline-none"
+        className="pointer-events-none fixed right-5 top-5 z-[var(--pickup-z-90)] flex min-w-0 w-[min(22.5rem,calc(100vw-2.5rem))] flex-col gap-3 outline-none"
         data-testid="pickup-toast-viewport"
       />
     </>
