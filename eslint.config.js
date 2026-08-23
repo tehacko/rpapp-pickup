@@ -69,12 +69,26 @@ export default [
       'no-console': 'off',
     },
   },
+  // Node scripts (align admin-app — un-ignore scripts so lint:paths can lint them)
+  {
+    files: ['scripts/**/*.{js,mjs,cjs}'],
+    languageOptions: {
+      ecmaVersion: 'latest',
+      sourceType: 'module',
+      globals: {
+        ...globals.node,
+        ...globals.es2021,
+      },
+    },
+    rules: {
+      'no-console': 'off',
+    },
+  },
   {
     ignores: [
       'dist/**',
       'node_modules/**',
       'coverage/**',
-      'scripts/**',
       'vite.config.ts',
       'playwright.config.ts',
       'e2e/**',

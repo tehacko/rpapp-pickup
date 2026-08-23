@@ -1,0 +1,11 @@
+﻿Timestamp: 2026-08-21T08:09:20.6232324Z
+Working directory: C:\Users\corne\Desktop\rpapp1\rpapp\rpapp-pickup
+Exact command: npm run lint:paths -- eslint.config.js scripts/prebuildShared.mjs
+Exit code: 0
+
+--- raw excerpt ---
+
+> rpapp-pickup@0.1.0 lint:paths
+> eslint --max-warnings 0 eslint.config.js scripts/prebuildShared.mjs
+
+EXIT_CODE=0

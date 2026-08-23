@@ -8,10 +8,19 @@
  * Lockfiles generated in the monorepo may record `"link": true` → `../shared`.
  * On app-only deploys that symlink is broken; npm install can re-assert the
  * lockfile link unless we remove it and install with --no-package-lock.
+ *
+ * App-only builds: file:/link:/workspace: dependency specs are remapped to a
+ * registry pin (DEFAULT_REGISTRY_TARGET / PI_KIOSK_SHARED_REGISTRY_TAG).
+ * Monorepo package.json may keep file:../shared — this script does not rewrite it.
  */
 import { execSync } from 'node:child_process';
 import { existsSync, readFileSync, rmSync } from 'node:fs';
 import { basename, resolve } from 'node:path';
+
+const SHARED_PACKAGE_NAME = 'pi-kiosk-shared';
+/** Registry floor until 2.2.83 is published; after publish set env/target to ^2.2.83. */
+const DEFAULT_REGISTRY_TARGET = '^2.2.84';
+const REGISTRY_TAG_ENV = 'PI_KIOSK_SHARED_REGISTRY_TAG';
 
 const siblingPkg = resolve(process.cwd(), '..', 'shared', 'package.json');
 if (existsSync(siblingPkg)) {
@@ -34,13 +43,107 @@ function sharedInstallOk() {
   return existsSync(sharedDistJs) && existsSync(sharedDistDts);
 }
 
-function readPinnedSharedRange() {
+function readAppPackageJson() {
   try {
-    const pkg = JSON.parse(readFileSync(resolve(process.cwd(), 'package.json'), 'utf8'));
-    return pkg.dependencies?.['pi-kiosk-shared'] ?? '^2.2.61';
+    return JSON.parse(readFileSync(resolve(process.cwd(), 'package.json'), 'utf8'));
   } catch {
-    return '^2.2.61';
+    return null;
   }
+}
+
+function isLocalDependencySpec(spec) {
+  if (typeof spec !== 'string') {
+    return false;
+  }
+  return /^(file:|link:|workspace:)/i.test(spec.trim());
+}
+
+function isRegistryInstallTarget(spec) {
+  if (typeof spec !== 'string') {
+    return false;
+  }
+  const normalized = spec.trim();
+  if (!normalized || isLocalDependencySpec(normalized)) {
+    return false;
+  }
+  if (
+    /^(?:git\+|git:|https?:|ssh:|github:|gitlab:|bitbucket:|npm:)/i.test(normalized) ||
+    normalized.includes('/') ||
+    normalized.includes('\\')
+  ) {
+    return false;
+  }
+  return true;
+}
+
+function failNoSafeRegistryTarget(reason) {
+  console.error(`[prebuildShared] ${reason}`);
+  console.error(
+    `[prebuildShared] Set ${REGISTRY_TAG_ENV} to a registry tag/range/version (examples: "latest", "^2.2.82", "^2.2.83" after publish, "2.2.83"), then redeploy.`,
+  );
+  console.error(
+    '[prebuildShared] Do not use file:/link:/workspace: for app-only builds because ../shared is not available in that environment.',
+  );
+  process.exit(1);
+}
+
+function resolveRegistryInstallTarget(rawSpec, safeDefaultTarget) {
+  const normalizedSpec = typeof rawSpec === 'string' ? rawSpec.trim() : '';
+  const envTarget = (process.env[REGISTRY_TAG_ENV] ?? '').trim();
+
+  if (isLocalDependencySpec(normalizedSpec)) {
+    if (envTarget) {
+      if (!isRegistryInstallTarget(envTarget)) {
+        failNoSafeRegistryTarget(
+          `${REGISTRY_TAG_ENV} is set to "${envTarget}", but this is not a safe registry target.`,
+        );
+      }
+      return {
+        installTarget: envTarget,
+        reason: `detected local dependency spec "${normalizedSpec}"; using ${REGISTRY_TAG_ENV}=${envTarget}`,
+      };
+    }
+    if (!isRegistryInstallTarget(safeDefaultTarget)) {
+      failNoSafeRegistryTarget(
+        `Local dependency spec "${normalizedSpec}" detected and default fallback target "${safeDefaultTarget}" is invalid.`,
+      );
+    }
+    return {
+      installTarget: safeDefaultTarget,
+      reason: `detected local dependency spec "${normalizedSpec}"; using safe default ${safeDefaultTarget} (set ${REGISTRY_TAG_ENV} to override)`,
+    };
+  }
+
+  if (isRegistryInstallTarget(normalizedSpec)) {
+    return {
+      installTarget: normalizedSpec,
+      reason: `detected registry-safe dependency spec "${normalizedSpec}" in package.json`,
+    };
+  }
+
+  if (envTarget) {
+    if (!isRegistryInstallTarget(envTarget)) {
+      failNoSafeRegistryTarget(
+        `package.json dependency spec "${normalizedSpec || '<empty>'}" is not a safe registry target, and ${REGISTRY_TAG_ENV}="${envTarget}" is also invalid.`,
+      );
+    }
+    return {
+      installTarget: envTarget,
+      reason: `package.json dependency spec "${normalizedSpec || '<empty>'}" is not registry-safe; using ${REGISTRY_TAG_ENV}=${envTarget}`,
+    };
+  }
+
+  failNoSafeRegistryTarget(
+    `Cannot derive safe registry target from package.json dependency spec "${normalizedSpec || '<empty>'}".`,
+  );
+}
+
+function resolveDefaultRegistryTargetFromPackage(pkg) {
+  const dependencySpec = pkg?.dependencies?.[SHARED_PACKAGE_NAME];
+  if (isRegistryInstallTarget(dependencySpec)) {
+    return dependencySpec.trim();
+  }
+  return DEFAULT_REGISTRY_TARGET;
 }
 
 function removeBrokenOrLinkedShared() {
@@ -63,9 +166,12 @@ if (sharedInstallOk()) {
   process.exit(0);
 }
 
-const range = readPinnedSharedRange();
+const packageJson = readAppPackageJson();
+const rawSpec = packageJson?.dependencies?.[SHARED_PACKAGE_NAME] ?? DEFAULT_REGISTRY_TARGET;
+const defaultRegistryTarget = resolveDefaultRegistryTargetFromPackage(packageJson);
+const { installTarget, reason } = resolveRegistryInstallTarget(rawSpec, defaultRegistryTarget);
 console.warn(
-  `[prebuildShared] pi-kiosk-shared missing or broken (often monorepo lockfile link → ../shared). Installing from registry: pi-kiosk-shared@${range}`,
+  `[prebuildShared] pi-kiosk-shared missing or broken (often monorepo lockfile link → ../shared). ${reason}. Fallback default target: ${defaultRegistryTarget}. Installing from registry: pi-kiosk-shared@${installTarget}`,
 );
 
 removeBrokenOrLinkedShared();
@@ -73,7 +179,7 @@ removeBrokenOrLinkedShared();
 try {
   // --no-package-lock: do not re-link from lockfile "resolved": "../shared"
   execSync(
-    `npm install pi-kiosk-shared@${range} --no-save --no-package-lock --no-fund --no-audit`,
+    `npm install pi-kiosk-shared@${installTarget} --no-save --no-package-lock --no-fund --no-audit`,
     {
       stdio: 'inherit',
       env: {
