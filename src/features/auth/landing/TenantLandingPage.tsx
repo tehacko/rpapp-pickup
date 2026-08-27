@@ -392,8 +392,9 @@ export const TenantLandingPage = memo((): JSX.Element => {
 
       {loadState.status === 'error' ? (
         <div
-          className="flex flex-col gap-3 rounded-xl border border-[var(--color-danger)] bg-[var(--color-danger-foreground)] px-3 py-3 text-sm text-[var(--color-danger)]"
+          className="mx-auto flex w-full max-w-sm flex-col items-start gap-3 rounded-xl border border-[var(--color-danger)] bg-[var(--color-danger-foreground)] px-3 py-3 text-sm text-[var(--color-danger)]"
           role="alert"
+          data-testid="pickup-tenant-landing-error"
         >
           <div className="flex items-start gap-2">
             <AlertCircle className="mt-0.5 size-4 shrink-0 stroke-[1.75]" aria-hidden />
@@ -403,6 +404,7 @@ export const TenantLandingPage = memo((): JSX.Element => {
             type="button"
             intent="secondary"
             size="sm"
+            className="w-auto shrink-0"
             onClick={handleRetry}
             data-testid="pickup-tenant-landing-retry"
           >

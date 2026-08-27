@@ -104,7 +104,7 @@ async function openPickupLoginTab(page: import('@playwright/test').Page): Promis
 
 async function loginPickupStaff(page: import('@playwright/test').Page): Promise<void> {
   await openPickupLoginTab(page);
-  await page.getByLabel(/Sales point ID|ID platebního místa/i).fill('3');
+  await page.getByLabel(/Sales point ID|ID prodejního místa/i).fill('3');
   await page.getByLabel(/^PIN$/i).fill('1234');
   await page.getByRole('button', { name: /Sign in|Přihlásit se/i }).click();
   await expect(page).toHaveURL(/\/demo\/hub$/, { timeout: 15_000 });

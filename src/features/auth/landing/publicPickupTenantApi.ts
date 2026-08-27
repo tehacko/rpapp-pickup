@@ -3,15 +3,15 @@
  * Reuses GET /api/v1/public/customer-tenants (same ACTIVE tenant catalog as admin).
  */
 
-import { pickLocalizedApiMessage } from 'pi-kiosk-shared';
+import {
+  normalizeConsumerPublicTenantRow,
+  pickLocalizedApiMessage,
+  type ConsumerPublicTenantRow,
+} from 'pi-kiosk-shared';
 import i18n from '../../../i18n.js';
 
-export interface PublicPickupTenantDTO {
-  readonly tenantId: number;
-  readonly code: string;
-  readonly name: string;
-  readonly logoUrl: string | null;
-}
+/** Pickup landing honors `applyToCustomerPwa` via BE-null `logoUrl`; ignores wire `wordmarkUrl`. */
+export type PublicPickupTenantDTO = ConsumerPublicTenantRow;
 
 interface PublicTenantsEnvelope {
   readonly success: true;
@@ -84,5 +84,12 @@ export async function fetchPublicPickupTenants(
     );
   }
 
-  return body.data.tenants;
+  const tenants: PublicPickupTenantDTO[] = [];
+  for (const raw of body.data.tenants) {
+    const row = normalizeConsumerPublicTenantRow(raw);
+    if (row !== null) {
+      tenants.push(row);
+    }
+  }
+  return tenants;
 }

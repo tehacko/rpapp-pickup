@@ -20,6 +20,6 @@ test.describe('Pickup login smoke', () => {
 
     await expect(page.getByTestId('pickup-login-card')).toBeVisible();
     await expect(page.getByLabel(/^PIN$/i)).toBeVisible();
-    await expect(page.getByLabel(/Sales point ID|ID platebního místa/i)).toBeVisible();
+    await expect(page.getByLabel(/Sales point ID|ID prodejního místa/i)).toBeVisible();
   });
 });

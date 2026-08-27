@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
-import { render, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import { PickupPwaLifecycle } from '../PickupPwaLifecycle.js';
 import {
   PICKUP_INSTALL_OFFER_COOLDOWN_MS,
@@ -51,6 +51,12 @@ class MockBeforeInstallPrompt extends Event {
   }
 }
 
+async function dispatchInstallPrompt(outcome: 'accepted' | 'dismissed'): Promise<void> {
+  await act(async () => {
+    window.dispatchEvent(new MockBeforeInstallPrompt(outcome));
+  });
+}
+
 describe('PickupPwaLifecycle install offer', () => {
   const originalMatchMedia = window.matchMedia;
 
@@ -68,16 +74,12 @@ describe('PickupPwaLifecycle install offer', () => {
 
   it('tracks pwa_install_accepted when user accepts prompt', async () => {
     render(<PickupPwaLifecycle />);
-    window.dispatchEvent(new MockBeforeInstallPrompt('accepted'));
+    await dispatchInstallPrompt('accepted');
 
-    await waitFor(() => {
-      expect(document.querySelector('[data-testid="pickup-pwa-install-button"]')).toBeTruthy();
+    const button = await screen.findByTestId('pickup-pwa-install-button');
+    await act(async () => {
+      button.click();
     });
-
-    const button = document.querySelector(
-      '[data-testid="pickup-pwa-install-button"]',
-    ) as HTMLButtonElement;
-    button.click();
 
     await waitFor(() => {
       expect(emitPickupPwaAnalytics).toHaveBeenCalledWith(
@@ -88,16 +90,12 @@ describe('PickupPwaLifecycle install offer', () => {
 
   it('tracks pwa_install_dismissed when user dismisses native prompt', async () => {
     render(<PickupPwaLifecycle />);
-    window.dispatchEvent(new MockBeforeInstallPrompt('dismissed'));
+    await dispatchInstallPrompt('dismissed');
 
-    await waitFor(() => {
-      expect(document.querySelector('[data-testid="pickup-pwa-install-button"]')).toBeTruthy();
+    const button = await screen.findByTestId('pickup-pwa-install-button');
+    await act(async () => {
+      button.click();
     });
-
-    const button = document.querySelector(
-      '[data-testid="pickup-pwa-install-button"]',
-    ) as HTMLButtonElement;
-    button.click();
 
     await waitFor(() => {
       expect(emitPickupPwaAnalytics).toHaveBeenCalledWith(
@@ -108,20 +106,16 @@ describe('PickupPwaLifecycle install offer', () => {
 
   it('hides the banner when the user cancels and keeps the weekly cooldown', async () => {
     render(<PickupPwaLifecycle />);
-    window.dispatchEvent(new MockBeforeInstallPrompt('accepted'));
+    await dispatchInstallPrompt('accepted');
 
-    await waitFor(() => {
-      expect(document.querySelector('[data-testid="pickup-pwa-install-dismiss"]')).toBeTruthy();
+    const dismiss = await screen.findByTestId('pickup-pwa-install-dismiss');
+    await act(async () => {
+      dismiss.click();
     });
 
-    const dismiss = document.querySelector(
-      '[data-testid="pickup-pwa-install-dismiss"]',
-    ) as HTMLButtonElement;
-    dismiss.click();
-
     await waitFor(() => {
-      expect(document.querySelector('[data-testid="pickup-pwa-install-button"]')).toBeNull();
-      expect(document.querySelector('[data-testid="pickup-pwa-install-dismiss"]')).toBeNull();
+      expect(screen.queryByTestId('pickup-pwa-install-button')).toBeNull();
+      expect(screen.queryByTestId('pickup-pwa-install-dismiss')).toBeNull();
     });
     expect(emitPickupPwaAnalytics).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -134,11 +128,9 @@ describe('PickupPwaLifecycle install offer', () => {
 
   it('marks the offer as shown and suppresses repeats within a week', async () => {
     const { unmount } = render(<PickupPwaLifecycle />);
-    window.dispatchEvent(new MockBeforeInstallPrompt('accepted'));
+    await dispatchInstallPrompt('accepted');
 
-    await waitFor(() => {
-      expect(document.querySelector('[data-testid="pickup-pwa-install-button"]')).toBeTruthy();
-    });
+    await screen.findByTestId('pickup-pwa-install-button');
 
     await waitFor(() => {
       expect(window.localStorage.getItem(PICKUP_INSTALL_OFFER_SHOWN_AT_KEY)).not.toBeNull();
@@ -150,21 +142,21 @@ describe('PickupPwaLifecycle install offer', () => {
 
     unmount();
     render(<PickupPwaLifecycle />);
-    window.dispatchEvent(new MockBeforeInstallPrompt('accepted'));
+    await dispatchInstallPrompt('accepted');
 
     await waitFor(() => {
-      expect(document.querySelector('[data-testid="pickup-pwa-install-button"]')).toBeNull();
+      expect(screen.queryByTestId('pickup-pwa-install-button')).toBeNull();
     });
-    expect(document.querySelector('[data-testid="pickup-pwa-install-dismiss"]')).toBeNull();
+    expect(screen.queryByTestId('pickup-pwa-install-dismiss')).toBeNull();
   });
 
   it('does not show the install offer when already installed', async () => {
     stubMatchMedia(true);
     render(<PickupPwaLifecycle />);
-    window.dispatchEvent(new MockBeforeInstallPrompt('accepted'));
+    await dispatchInstallPrompt('accepted');
 
     await waitFor(() => {
-      expect(document.querySelector('[data-testid="pickup-pwa-install-button"]')).toBeNull();
+      expect(screen.queryByTestId('pickup-pwa-install-button')).toBeNull();
     });
   });
 });

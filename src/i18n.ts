@@ -9,6 +9,7 @@ import {
   writeStoredPickupLocale,
   type PickupSupportedLocale,
 } from './shared/pickupLocaleStorage.js';
+import { readViteMetaEnv } from './shared/vite/readViteMetaEnv.js';
 
 function normalizePickupLocale(lng: string): PickupSupportedLocale {
   if (lng.startsWith('en')) {
@@ -30,10 +31,9 @@ function defaultLocaleFromEnv(envLocale: string): PickupSupportedLocale {
   return 'cs';
 }
 
+const rawDefaultLocale = readViteMetaEnv('VITE_DEFAULT_LOCALE');
 const envLocale =
-  typeof import.meta.env.VITE_DEFAULT_LOCALE === 'string'
-    ? import.meta.env.VITE_DEFAULT_LOCALE.trim().toLowerCase()
-    : '';
+  typeof rawDefaultLocale === 'string' ? rawDefaultLocale.trim().toLowerCase() : '';
 
 const storedLocale = readStoredPickupLocale();
 const urlLng =

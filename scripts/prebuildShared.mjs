@@ -11,15 +11,16 @@
  *
  * App-only builds: file:/link:/workspace: dependency specs are remapped to a
  * registry pin (DEFAULT_REGISTRY_TARGET / PI_KIOSK_SHARED_REGISTRY_TAG).
- * Monorepo package.json may keep file:../shared — this script does not rewrite it.
+ * Live consumers pin ^2.2.91 matching shared/package.json. file:../shared is
+ * still supported if present — this script does not rewrite monorepo pins.
  */
 import { execSync } from 'node:child_process';
 import { existsSync, readFileSync, rmSync } from 'node:fs';
 import { basename, resolve } from 'node:path';
 
 const SHARED_PACKAGE_NAME = 'pi-kiosk-shared';
-/** Registry floor until 2.2.83 is published; after publish set env/target to ^2.2.83. */
-const DEFAULT_REGISTRY_TARGET = '^2.2.84';
+/** Fallback registry range when package.json has no pin. Live consumers pin ^2.2.91 matching shared/package.json — do not change this constant in a docs-only pass. */
+const DEFAULT_REGISTRY_TARGET = '^2.2.91';
 const REGISTRY_TAG_ENV = 'PI_KIOSK_SHARED_REGISTRY_TAG';
 
 const siblingPkg = resolve(process.cwd(), '..', 'shared', 'package.json');
@@ -79,7 +80,7 @@ function isRegistryInstallTarget(spec) {
 function failNoSafeRegistryTarget(reason) {
   console.error(`[prebuildShared] ${reason}`);
   console.error(
-    `[prebuildShared] Set ${REGISTRY_TAG_ENV} to a registry tag/range/version (examples: "latest", "^2.2.82", "^2.2.83" after publish, "2.2.83"), then redeploy.`,
+    `[prebuildShared] Set ${REGISTRY_TAG_ENV} to a registry tag/range/version (examples: "latest", "^2.2.91", "2.2.91" matching shared/package.json), then redeploy.`,
   );
   console.error(
     '[prebuildShared] Do not use file:/link:/workspace: for app-only builds because ../shared is not available in that environment.',

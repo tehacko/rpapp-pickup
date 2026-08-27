@@ -85,7 +85,8 @@ export function PickupStaffSessionProvider({
   const [sessionClaims, setSessionClaims] = useState<PickupStaffSessionClaims | null>(null);
   const [sessionHydrated, setSessionHydrated] = useState(false);
   const [activePointEpoch, setActivePointEpoch] = useState(0);
-  const hydrateInFlightRef = useRef(false);
+  /** Monotonic epoch so Strict Mode remount / tenant change supersedes stale hydrates. */
+  const hydrateEpochRef = useRef(0);
 
   const effectiveSessionHydrated = tenantCode === null ? true : sessionHydrated;
 
@@ -139,21 +140,25 @@ export function PickupStaffSessionProvider({
 
   const runHydrate = useCallback(
     async (code: string, options?: { broadcast?: boolean }): Promise<void> => {
-      if (hydrateInFlightRef.current) {
-        return;
-      }
-      hydrateInFlightRef.current = true;
+      const epoch = ++hydrateEpochRef.current;
       try {
         clearLegacyStoredToken(code);
         const claims = await refreshPickupStaffSession(code, options);
+        if (epoch !== hydrateEpochRef.current) {
+          return;
+        }
         applySessionClaims(claims, code);
       } catch {
+        if (epoch !== hydrateEpochRef.current) {
+          return;
+        }
         // refreshPickupStaffSession already staffLog.error + reportPickupError;
         // clear local claims so background hydrate cannot leave a stale UI session.
         clearSessionForTenant(code);
       } finally {
-        hydrateInFlightRef.current = false;
-        setSessionHydrated(true);
+        if (epoch === hydrateEpochRef.current) {
+          setSessionHydrated(true);
+        }
       }
     },
     [applySessionClaims, clearSessionForTenant],
@@ -229,16 +234,12 @@ export function PickupStaffSessionProvider({
     if (tenantCode === null) {
       return;
     }
-    let cancelled = false;
-    void (async () => {
-      setSessionHydrated(false);
-      await runHydrate(tenantCode);
-      if (cancelled) {
-        return;
-      }
-    })();
+    setSessionHydrated(false);
+    void runHydrate(tenantCode);
     return () => {
-      cancelled = true;
+      // Invalidate in-flight mount hydrate so Strict Mode remount is not dropped
+      // by a boolean in-flight gate, and stale results do not overwrite the remount.
+      hydrateEpochRef.current += 1;
     };
   }, [runHydrate, tenantCode]);
 

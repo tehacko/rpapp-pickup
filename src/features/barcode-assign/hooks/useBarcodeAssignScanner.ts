@@ -16,7 +16,10 @@ export function useBarcodeAssignScanner(options: UseBarcodeAssignScannerOptions)
   const messages = useMemo<UseBarcodeScannerMessages>(
     () => ({
       permissionDenied: t('pickup.barcodeAssign.cameraDenied'),
-      noCamera: t('pickup.barcodeAssign.cameraError'),
+      noCamera: t('pickup.barcodeAssign.cameraNoApi'),
+      insecureContext: t('pickup.barcodeAssign.cameraInsecure'),
+      cameraInUse: t('pickup.barcodeAssign.cameraInUse'),
+      policyBlocked: t('pickup.barcodeAssign.cameraPolicyBlocked'),
       starting: t('pickup.barcodeAssign.cameraStarting'),
       runningNative: t('pickup.barcodeAssign.cameraRunning'),
       runningZxing: t('pickup.barcodeAssign.cameraRunning'),

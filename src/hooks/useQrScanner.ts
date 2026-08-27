@@ -21,7 +21,10 @@ export function useQrScanner(options: UseQrScannerOptions): UseBarcodeScannerRet
   const messages = useMemo<UseBarcodeScannerMessages>(
     () => ({
       permissionDenied: t('pickup.scan.cameraDenied'),
-      noCamera: t('pickup.scan.cameraError'),
+      noCamera: t('pickup.scan.cameraNoApi'),
+      insecureContext: t('pickup.scan.cameraInsecure'),
+      cameraInUse: t('pickup.scan.cameraInUse'),
+      policyBlocked: t('pickup.scan.cameraPolicyBlocked'),
       starting: t('pickup.scan.cameraStarting'),
       runningNative: t('pickup.scan.cameraRunning'),
       runningZxing: t('pickup.scan.cameraRunning'),

@@ -1,3 +1,5 @@
+import { resolveConsumerSquareLogoUrl } from 'pi-kiosk-shared';
+
 /**
  * Client-side filter/sort for the public pickup organization landing list.
  * Mirrors admin `filterAdminLandingOrgs` (name/code query + name A–Z / Z–A).
@@ -39,21 +41,7 @@ export function filterPickupLandingOrgs<T extends { readonly name: string; reado
   return sorted;
 }
 
-/** Resolve public logo URL for pickup (Vite `/api` proxy — keep same-origin absolute paths). */
+/** Square `logoUrl` only for pickup landing thumbs (applyToCustomerPwa gated by BE). */
 export function resolvePickupLandingLogoSrc(logoUrl: string | null | undefined): string | null {
-  if (typeof logoUrl !== 'string') {
-    return null;
-  }
-  const trimmed = logoUrl.trim();
-  if (trimmed.length === 0) {
-    return null;
-  }
-  if (
-    trimmed.startsWith('http://') ||
-    trimmed.startsWith('https://') ||
-    trimmed.startsWith('/')
-  ) {
-    return trimmed;
-  }
-  return trimmed;
+  return resolveConsumerSquareLogoUrl(logoUrl);
 }

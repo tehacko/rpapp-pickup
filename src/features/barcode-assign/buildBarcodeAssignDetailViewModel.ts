@@ -20,11 +20,23 @@ export interface BarcodeAssignDetailViewModel {
   readonly variantRows: readonly BarcodeAssignVariantPickerRow[];
   readonly draftCode: string;
   readonly cameraEnabled: boolean;
+  readonly cameraStatus: string;
+  readonly cameraError: string | null;
   readonly isChecking: boolean;
   readonly checkResult: BarcodeAssignCheckResult | null;
+  /** Debounced assign pre-check failure for the current draft (G7). */
+  readonly checkError: string | null;
+  /** True when assign pre-check / seeded 409 says the code is taken (complete or incomplete). */
+  readonly conflictBlocked: boolean;
+  /** available:false but conflict payload missing / unusable — show retry + Move with placeholder. */
+  readonly conflictIncomplete: boolean;
   readonly conflictProductName: string | undefined;
+  readonly conflictProductId: number | undefined;
+  readonly conflictVariantId: number | undefined;
+  readonly canOpenConflictProduct: boolean;
   readonly confirmOverwrite: boolean;
   readonly canSave: boolean;
+  readonly canMove: boolean;
   readonly isSaving: boolean;
   readonly saveError: string | null;
   readonly currentBarcode: string | null;
@@ -54,8 +66,11 @@ export function buildBarcodeAssignDetailViewModel(input: {
   catalogError: string | null;
   draftCode: string;
   cameraEnabled: boolean;
+  cameraStatus: string;
+  cameraError: string | null;
   debouncedChecking: boolean;
   checkResult: BarcodeAssignCheckResult | null;
+  checkError: string | null;
   confirmOverwrite: boolean;
   isSaving: boolean;
   saveError: string | null;
@@ -73,14 +88,28 @@ export function buildBarcodeAssignDetailViewModel(input: {
   const selectedVariantLabel =
     selectedItem === undefined ? null : resolveCatalogLabel(selectedItem, input.localeTag);
 
+  const conflictBlocked = input.checkResult?.available === false;
   const conflict =
-    input.checkResult?.available === false ? input.checkResult.conflict : undefined;
+    conflictBlocked && input.checkResult?.conflict !== undefined
+      ? input.checkResult.conflict
+      : undefined;
+  const conflictIncomplete = conflictBlocked && conflict === undefined;
   const canSave =
     input.draftCode.trim().length > 0 &&
     !input.debouncedChecking &&
     !needsVariantPicker &&
     input.catalogError === null &&
-    (input.checkResult?.available === true || input.confirmOverwrite);
+    input.checkError === null &&
+    input.checkResult?.available === true;
+  const canMove =
+    input.draftCode.trim().length > 0 &&
+    !input.debouncedChecking &&
+    !needsVariantPicker &&
+    input.catalogError === null &&
+    input.checkError === null &&
+    conflictBlocked;
+  const canOpenConflictProduct =
+    conflict !== undefined && Number.isFinite(conflict.productId) && conflict.productId > 0;
 
   return {
     tenantCode: input.tenantCode,
@@ -100,11 +129,20 @@ export function buildBarcodeAssignDetailViewModel(input: {
       })),
     draftCode: input.draftCode,
     cameraEnabled: input.cameraEnabled,
+    cameraStatus: input.cameraStatus,
+    cameraError: input.cameraError,
     isChecking: input.debouncedChecking,
     checkResult: input.checkResult,
+    checkError: input.checkError,
+    conflictBlocked,
+    conflictIncomplete,
     conflictProductName: conflict?.productName,
+    conflictProductId: conflict?.productId,
+    conflictVariantId: conflict?.variantId,
+    canOpenConflictProduct,
     confirmOverwrite: input.confirmOverwrite,
     canSave,
+    canMove,
     isSaving: input.isSaving,
     saveError: input.saveError,
     currentBarcode: input.state?.barcode ?? null,

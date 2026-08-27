@@ -1,6 +1,7 @@
 import { LayoutDashboard, Lock } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import type { ReactNode } from 'react';
 import { canAccessPickupStaffQueue } from '../../shared/entitlements/pickupQueueAccess.js';
 import { Badge } from '../../shared/ui/Badge.js';
 import { EmptyState } from '../../shared/ui/EmptyState.js';
@@ -120,20 +121,25 @@ export function StaffHubScreenView({ viewModel, actions }: StaffHubScreenViewPro
     </SectionCard>
   ) : null;
 
-  const kpiSlot = viewModel.dashboardLoading ? (
-    <div
-      className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4"
-      data-testid="hub-kpi-skeleton"
-      aria-busy="true"
-      aria-label={t('pickup.common.loading')}
-    >
-      {KPI_SKELETON_KEYS.map((key) => (
-        <Skeleton key={key} className="h-16 w-full" />
-      ))}
-    </div>
-  ) : hasReadyKpis(viewModel) ? (
-    <StaffHubKpiStrip viewModel={viewModel} />
-  ) : undefined;
+  let kpiSlot: ReactNode | undefined;
+  if (viewModel.dashboardLoading) {
+    kpiSlot = (
+      <div
+        className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4"
+        data-testid="hub-kpi-skeleton"
+        aria-busy="true"
+        aria-label={t('pickup.common.loading')}
+      >
+        {KPI_SKELETON_KEYS.map((key) => (
+          <Skeleton key={key} className="h-16 w-full" />
+        ))}
+      </div>
+    );
+  } else if (hasReadyKpis(viewModel)) {
+    kpiSlot = <StaffHubKpiStrip viewModel={viewModel} />;
+  } else {
+    kpiSlot = undefined;
+  }
 
   return (
     <div

@@ -28,6 +28,9 @@ jest.mock('pi-kiosk-shared/ui', () => ({
     startCooldown: jest.fn(),
     clearCooldown: jest.fn(),
   }),
+}));
+
+jest.mock('../../shared/ui/surfacePrimitives.js', () => ({
   Button: ({
     children,
     type = 'button',
@@ -49,9 +52,6 @@ jest.mock('pi-kiosk-shared/ui', () => ({
       <label htmlFor={id}>{label}</label>
       <input id={id} aria-label={label} {...rest} />
     </div>
-  ),
-  Card: ({ children, ...props }: HTMLAttributes<HTMLDivElement> & { children?: ReactNode }) => (
-    <div {...props}>{children}</div>
   ),
 }));
 
@@ -160,10 +160,14 @@ describe('DevicePairingPage', () => {
 
     await waitFor(() => {
       expect(pairPickupDevice).toHaveBeenCalledWith('tenant-a', 'staff-token', 'PAIR-001');
+    });
+    await waitFor(() => {
       expect(setPairedDevice).toHaveBeenCalledWith('tenant-a', {
         deviceCode: 'DEV-001',
         deviceLabel: 'Counter tablet',
       });
+    });
+    await waitFor(() => {
       expect(screen.getByText('Hub')).toBeTruthy();
     });
   });

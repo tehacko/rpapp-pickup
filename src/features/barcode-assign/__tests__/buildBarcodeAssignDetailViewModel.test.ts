@@ -29,8 +29,11 @@ function baseInput(overrides: Partial<Parameters<typeof buildBarcodeAssignDetail
     catalogError: null as string | null,
     draftCode: '',
     cameraEnabled: false,
+    cameraStatus: 'idle',
+    cameraError: null as string | null,
     debouncedChecking: false,
     checkResult: null as BarcodeAssignCheckResult | null,
+    checkError: null as string | null,
     confirmOverwrite: false,
     isSaving: false,
     saveError: null as string | null,
@@ -155,7 +158,7 @@ describe('buildBarcodeAssignDetailViewModel', () => {
     expect(vm.conflictProductName).toBeUndefined();
   });
 
-  it('blocks save while checking and unlocks via confirmOverwrite on conflict', () => {
+  it('blocks save on conflict and unlocks move via canMove (not canSave)', () => {
     const checking = buildBarcodeAssignDetailViewModel(
       baseInput({
         draftCode: 'ABC',
@@ -165,6 +168,7 @@ describe('buildBarcodeAssignDetailViewModel', () => {
     );
     expect(checking.isChecking).toBe(true);
     expect(checking.canSave).toBe(false);
+    expect(checking.canMove).toBe(false);
 
     const conflict = buildBarcodeAssignDetailViewModel(
       baseInput({
@@ -182,9 +186,14 @@ describe('buildBarcodeAssignDetailViewModel', () => {
       }),
     );
     expect(conflict.conflictProductName).toBe('Taken');
+    expect(conflict.conflictProductId).toBe(99);
+    expect(conflict.conflictBlocked).toBe(true);
+    expect(conflict.conflictIncomplete).toBe(false);
+    expect(conflict.canOpenConflictProduct).toBe(true);
     expect(conflict.canSave).toBe(false);
+    expect(conflict.canMove).toBe(true);
 
-    const overwrite = buildBarcodeAssignDetailViewModel(
+    const overwriteArmed = buildBarcodeAssignDetailViewModel(
       baseInput({
         draftCode: 'ABC',
         checkResult: {
@@ -199,6 +208,48 @@ describe('buildBarcodeAssignDetailViewModel', () => {
         confirmOverwrite: true,
       }),
     );
-    expect(overwrite.canSave).toBe(true);
+    expect(overwriteArmed.canSave).toBe(false);
+    expect(overwriteArmed.canMove).toBe(true);
+    expect(overwriteArmed.confirmOverwrite).toBe(true);
+  });
+
+  it('shows blocked recovery UI when conflict payload is incomplete (G8)', () => {
+    const incomplete = buildBarcodeAssignDetailViewModel(
+      baseInput({
+        draftCode: 'ABC',
+        checkResult: { available: false },
+      }),
+    );
+    expect(incomplete.conflictBlocked).toBe(true);
+    expect(incomplete.conflictIncomplete).toBe(true);
+    expect(incomplete.canSave).toBe(false);
+    expect(incomplete.canMove).toBe(true);
+    expect(incomplete.canOpenConflictProduct).toBe(false);
+    expect(incomplete.conflictProductName).toBeUndefined();
+  });
+
+  it('surfaces cameraError for denied/error recovery', () => {
+    const vm = buildBarcodeAssignDetailViewModel(
+      baseInput({
+        cameraEnabled: true,
+        cameraStatus: 'error',
+        cameraError: 'High-sensitivity scanner failed to load.',
+      }),
+    );
+    expect(vm.cameraStatus).toBe('error');
+    expect(vm.cameraError).toBe('High-sensitivity scanner failed to load.');
+  });
+
+  it('surfaces check error and blocks save/move until retry (G7)', () => {
+    const vm = buildBarcodeAssignDetailViewModel(
+      baseInput({
+        draftCode: 'FAIL-1',
+        checkError: 'Network down',
+        checkResult: null,
+      }),
+    );
+    expect(vm.checkError).toBe('Network down');
+    expect(vm.canSave).toBe(false);
+    expect(vm.canMove).toBe(false);
   });
 });

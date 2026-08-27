@@ -54,6 +54,33 @@ describe('fetchPublicPickupTenants', () => {
     ]);
   });
 
+  it('ignores wordmarkUrl — pickup honors applyToCustomerPwa via BE-null logoUrl', async () => {
+    globalThis.fetch = jest.fn(async () =>
+      Promise.resolve(
+        jsonResponse({
+          success: true,
+          data: {
+            tenants: [
+              {
+                tenantId: 2,
+                code: 'flag-off',
+                name: 'Flag Off Org',
+                logoUrl: null,
+                wordmarkUrl: 'https://api/wm/2',
+              },
+            ],
+          },
+        }),
+      ),
+    ) as unknown as typeof fetch;
+
+    const tenants = await fetchPublicPickupTenants();
+    expect(tenants).toEqual([
+      { tenantId: 2, code: 'flag-off', name: 'Flag Off Org', logoUrl: null },
+    ]);
+    expect(tenants[0]).not.toHaveProperty('wordmarkUrl');
+  });
+
   it('throws invalid_payload when the host returns HTML (SPA fallback)', async () => {
     globalThis.fetch = jest.fn(async () => Promise.resolve(htmlResponse())) as unknown as typeof fetch;
 

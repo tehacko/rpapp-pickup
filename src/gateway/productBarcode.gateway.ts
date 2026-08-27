@@ -9,11 +9,82 @@ export interface BarcodeConflictDTO {
   readonly barcode: string;
 }
 
+interface BackendBarcodeConflictWire {
+  readonly conflictingProductId?: number;
+  readonly conflictingVariantId?: number | null;
+  readonly conflictingDisplayName?: string;
+  readonly holderType?: 'product' | 'variant';
+  readonly productId?: number;
+  readonly variantId?: number;
+  readonly productName?: string;
+  readonly barcode?: string;
+}
+
 export interface BarcodeAssignCheckResult {
   readonly available: boolean;
   readonly conflict?: BarcodeConflictDTO;
   readonly canonical?: string;
   readonly symbology?: string;
+}
+
+function normalizeConflict(
+  wire: BackendBarcodeConflictWire | undefined,
+  fallbackBarcode: string,
+): BarcodeConflictDTO | undefined {
+  if (wire === undefined) {
+    return undefined;
+  }
+  const productId = wire.productId ?? wire.conflictingProductId;
+  if (productId === undefined || !Number.isFinite(productId)) {
+    return undefined;
+  }
+  const variantIdRaw = wire.variantId ?? wire.conflictingVariantId ?? undefined;
+  const variantId =
+    typeof variantIdRaw === 'number' && Number.isFinite(variantIdRaw) && variantIdRaw > 0
+      ? variantIdRaw
+      : undefined;
+  const productName =
+    (typeof wire.productName === 'string' && wire.productName.trim().length > 0
+      ? wire.productName.trim()
+      : undefined) ??
+    (typeof wire.conflictingDisplayName === 'string' && wire.conflictingDisplayName.trim().length > 0
+      ? wire.conflictingDisplayName.trim()
+      : undefined) ??
+    `Product #${String(productId)}`;
+  return {
+    holderType: wire.holderType ?? (variantId !== undefined ? 'variant' : 'product'),
+    productId,
+    ...(variantId !== undefined ? { variantId } : {}),
+    productName,
+    barcode:
+      typeof wire.barcode === 'string' && wire.barcode.trim().length > 0
+        ? wire.barcode.trim()
+        : fallbackBarcode,
+  };
+}
+
+function normalizeCheckResult(
+  data: {
+    available?: boolean;
+    conflict?: BackendBarcodeConflictWire;
+    canonical?: string;
+    symbology?: string;
+  },
+  code: string,
+): BarcodeAssignCheckResult {
+  if (data.available === false) {
+    return {
+      available: false,
+      conflict: normalizeConflict(data.conflict, code),
+      ...(typeof data.canonical === 'string' ? { canonical: data.canonical } : {}),
+      ...(typeof data.symbology === 'string' ? { symbology: data.symbology } : {}),
+    };
+  }
+  return {
+    available: true,
+    ...(typeof data.canonical === 'string' ? { canonical: data.canonical } : {}),
+    ...(typeof data.symbology === 'string' ? { symbology: data.symbology } : {}),
+  };
 }
 
 export interface BarcodeAssignCatalogItem {
@@ -153,7 +224,13 @@ export async function checkBarcodeAssign(
     `${pickupBarcodeBase(tenantCode)}/barcode-assign/check?${params.toString()}`,
     { headers: authHeaders(accessToken) },
   );
-  return parseJson<BarcodeAssignCheckResult>(res);
+  const data = await parseJson<{
+    available?: boolean;
+    conflict?: BackendBarcodeConflictWire;
+    canonical?: string;
+    symbology?: string;
+  }>(res);
+  return normalizeCheckResult(data, input.code.trim());
 }
 
 export async function getProductBarcode(
@@ -189,8 +266,15 @@ export async function assignPrimaryBarcode(
     },
   );
   if (res.status === 409) {
-    const conflict = (await res.json()) as { data?: BarcodeConflictDTO };
-    throw Object.assign(new Error('BARCODE_CONFLICT'), { conflict: conflict.data });
+    const conflict = (await res.json()) as {
+      details?: { conflict?: BackendBarcodeConflictWire };
+      conflict?: BackendBarcodeConflictWire;
+      data?: BackendBarcodeConflictWire;
+    };
+    const wire = conflict.details?.conflict ?? conflict.conflict ?? conflict.data;
+    throw Object.assign(new Error('BARCODE_CONFLICT'), {
+      conflict: normalizeConflict(wire, input.code.trim()),
+    });
   }
   return parseJson<ProductBarcodeStateDTO>(res);
 }
@@ -238,8 +322,15 @@ export async function addAltBarcode(
     },
   );
   if (res.status === 409) {
-    const conflict = (await res.json()) as { data?: BarcodeConflictDTO };
-    throw Object.assign(new Error('BARCODE_CONFLICT'), { conflict: conflict.data });
+    const conflict = (await res.json()) as {
+      details?: { conflict?: BackendBarcodeConflictWire };
+      conflict?: BackendBarcodeConflictWire;
+      data?: BackendBarcodeConflictWire;
+    };
+    const wire = conflict.details?.conflict ?? conflict.conflict ?? conflict.data;
+    throw Object.assign(new Error('BARCODE_CONFLICT'), {
+      conflict: normalizeConflict(wire, input.code.trim()),
+    });
   }
   return parseJson<ProductBarcodeStateDTO>(res);
 }

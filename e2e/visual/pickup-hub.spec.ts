@@ -183,7 +183,7 @@ async function stabilizeForScreenshot(page: Page): Promise<void> {
 async function loginAndOpenPickupHub(page: Page): Promise<void> {
   await page.goto(`/${TENANT}/login`, { waitUntil: 'domcontentloaded' });
   await expect(page.getByLabel(/^PIN$/i)).toBeVisible({ timeout: 12_000 });
-  await page.getByLabel(/Sales point ID|ID platebního místa/i).fill(String(SALES_POINT_ID));
+  await page.getByLabel(/Sales point ID|ID prodejního místa/i).fill(String(SALES_POINT_ID));
   await page.getByLabel(/^PIN$/i).fill('1234');
   await page.getByRole('button', { name: /Sign in|Přihlásit se/i }).click();
   await expect(page).toHaveURL(new RegExp(`/${TENANT}/hub$`), { timeout: 15_000 });

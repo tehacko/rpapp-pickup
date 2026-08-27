@@ -97,7 +97,14 @@ export function BarcodeAssignDetailScreenView({
                   muted
                   playsInline
                 />
-                {viewModel.cameraEnabled ? null : (
+                {viewModel.cameraError ? (
+                  <ScreenState
+                    variant="error"
+                    message={viewModel.cameraError}
+                    onRetry={actions.startCamera}
+                  />
+                ) : null}
+                {viewModel.cameraStatus === 'running' ? null : (
                   <Button intent="secondary" type="button" onClick={actions.startCamera}>
                     {t('pickup.scan.startCamera')}
                   </Button>
@@ -126,24 +133,92 @@ export function BarcodeAssignDetailScreenView({
                 {viewModel.isChecking ? (
                   <ScreenState variant="loading" message={t('pickup.barcodeAssign.checking')} />
                 ) : null}
+                {viewModel.checkError && !viewModel.isChecking ? (
+                  <div className="flex flex-col gap-2" data-testid="pickup-barcode-check-error">
+                    <AlertBanner tone="danger" role="alert" message={viewModel.checkError} />
+                    <Button
+                      type="button"
+                      intent="secondary"
+                      onClick={actions.retryConflictCheck}
+                      data-testid="pickup-barcode-retry-check-error"
+                    >
+                      {t('pickup.barcodeAssign.retryCheck')}
+                    </Button>
+                  </div>
+                ) : null}
                 {viewModel.checkResult?.canonical ? (
                   <p className="m-0 text-sm text-[var(--color-on-surface)]">
                     {t('pickup.barcodeAssign.canonical', { value: viewModel.checkResult.canonical })}
                   </p>
                 ) : null}
-                {viewModel.conflictProductName ? (
-                  <AlertBanner
-                    tone="warn"
-                    role="alert"
-                    message={t('pickup.barcodeAssign.conflictWarning', {
-                      name: viewModel.conflictProductName,
-                    })}
-                  />
-                ) : null}
-                {viewModel.confirmOverwrite ? (
-                  <p className="m-0 text-sm text-[var(--color-on-surface-muted)]">
-                    {t('pickup.barcodeAssign.confirmOverwrite')}
-                  </p>
+                {viewModel.conflictBlocked ? (
+                  <div className="flex flex-col gap-2" data-testid="pickup-barcode-conflict">
+                    <AlertBanner
+                      tone="warn"
+                      role="alert"
+                      message={t('pickup.barcodeAssign.conflictWarning', {
+                        name:
+                          viewModel.conflictProductName ??
+                          t('pickup.barcodeAssign.conflictUnknownHolder'),
+                      })}
+                    />
+                    <p className="m-0 text-sm text-[var(--color-on-surface-muted)]">
+                      {viewModel.conflictIncomplete
+                        ? t('pickup.barcodeAssign.conflictIncompleteHelp')
+                        : t('pickup.barcodeAssign.conflictResolutionHelp')}
+                    </p>
+                    {viewModel.confirmOverwrite ? (
+                      <p className="m-0 text-sm text-[var(--color-on-surface-muted)]">
+                        {t('pickup.barcodeAssign.confirmOverwrite', {
+                          name:
+                            viewModel.conflictProductName ??
+                            t('pickup.barcodeAssign.conflictUnknownHolder'),
+                        })}
+                      </p>
+                    ) : null}
+                    <div className="flex flex-wrap items-center gap-2">
+                      {viewModel.canOpenConflictProduct ? (
+                        <Button
+                          type="button"
+                          intent="secondary"
+                          onClick={actions.openConflictProduct}
+                          data-testid="pickup-barcode-open-holder"
+                        >
+                          {t('pickup.barcodeAssign.openHolder', {
+                            name:
+                              viewModel.conflictProductName ??
+                              t('pickup.barcodeAssign.conflictUnknownHolder'),
+                          })}
+                        </Button>
+                      ) : null}
+                      {viewModel.conflictIncomplete ? (
+                        <Button
+                          type="button"
+                          intent="secondary"
+                          onClick={actions.retryConflictCheck}
+                          data-testid="pickup-barcode-retry-check"
+                        >
+                          {t('pickup.barcodeAssign.retryCheck')}
+                        </Button>
+                      ) : null}
+                      <Button
+                        type="button"
+                        intent={viewModel.confirmOverwrite ? 'danger' : 'secondary'}
+                        disabled={!viewModel.canMove || viewModel.isSaving}
+                        onClick={actions.armOrConfirmMove}
+                        data-testid="pickup-barcode-move"
+                      >
+                        {viewModel.confirmOverwrite
+                          ? t('pickup.barcodeAssign.confirmMove')
+                          : t('pickup.barcodeAssign.moveHere')}
+                      </Button>
+                      {viewModel.confirmOverwrite ? (
+                        <Button type="button" intent="secondary" onClick={actions.cancelMove}>
+                          {t('pickup.barcodeAssign.cancelMove')}
+                        </Button>
+                      ) : null}
+                    </div>
+                  </div>
                 ) : null}
                 <Button type="submit" disabled={!viewModel.canSave || viewModel.isSaving}>
                   {t('pickup.barcodeAssign.save')}

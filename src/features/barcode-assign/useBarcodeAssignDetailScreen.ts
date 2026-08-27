@@ -7,7 +7,12 @@ import { useStaffToken, useTenantCode } from '../../hooks/useStaffToken.js';
 import { usePickupLocaleTag } from '../../shared/hooks/usePickupLocaleTag.js';
 import { useBarcodeAssignScanner } from './hooks/useBarcodeAssignScanner.js';
 import { useDebouncedBarcodeCheck } from './hooks/useDebouncedBarcodeCheck.js';
-import type { BarcodeAssignCatalogItem, ProductBarcodeStateDTO } from '../../gateway/productBarcode.gateway.js';
+import type {
+  BarcodeAssignCatalogItem,
+  BarcodeAssignCheckResult,
+  BarcodeConflictDTO,
+  ProductBarcodeStateDTO,
+} from '../../gateway/productBarcode.gateway.js';
 import { buildBarcodeAssignDetailPath } from './buildBarcodeAssignViewModel.js';
 import {
   buildBarcodeAssignDetailViewModel,
@@ -27,10 +32,42 @@ function parsePositiveInt(value: string | undefined): number | undefined {
   return parsed;
 }
 
+function readAssignConflict(err: unknown): {
+  readonly isConflict: boolean;
+  readonly conflict: BarcodeConflictDTO | undefined;
+} {
+  if (!(err instanceof Error) || err.message !== 'BARCODE_CONFLICT') {
+    return { isConflict: false, conflict: undefined };
+  }
+  const conflict = (err as Error & { conflict?: BarcodeConflictDTO }).conflict;
+  return {
+    isConflict: true,
+    conflict:
+      conflict !== undefined &&
+      Number.isFinite(conflict.productId) &&
+      conflict.productId > 0
+        ? conflict
+        : undefined,
+  };
+}
+
+function seedConflictCheckResult(
+  conflict: BarcodeConflictDTO | undefined,
+): BarcodeAssignCheckResult {
+  if (conflict === undefined) {
+    return { available: false };
+  }
+  return { available: false, conflict };
+}
+
 export interface BarcodeAssignDetailScreenActions {
   readonly setDraftCode: (value: string) => void;
   readonly startCamera: () => void;
   readonly save: (event: FormEvent) => void;
+  readonly armOrConfirmMove: () => void;
+  readonly cancelMove: () => void;
+  readonly openConflictProduct: () => void;
+  readonly retryConflictCheck: () => void;
   readonly requestClear: () => void;
   readonly cancelClear: () => void;
   readonly confirmClear: () => void;
@@ -65,23 +102,45 @@ export function useBarcodeAssignDetailScreen(
   const { entitledFunctions, isLoading: entitlementLoading, isError: entitlementIsError, refetch: refetchEntitlement } =
     usePickupEntitlement(tenantCode);
   const videoRef = useRef<HTMLVideoElement>(null);
+  /** When true, late getProductBarcode must not wipe an in-progress draft (G14 race). */
+  const draftTouchedRef = useRef(false);
+  const confirmOverwriteRef = useRef(false);
 
   const [catalogVariants, setCatalogVariants] = useState<readonly BarcodeAssignCatalogItem[]>([]);
   const [catalogLoading, setCatalogLoading] = useState(true);
   const [catalogError, setCatalogError] = useState<string | null>(null);
   const [catalogReloadToken, setCatalogReloadToken] = useState(0);
-  const [draftCode, setDraftCode] = useState('');
+  const [draftCode, setDraftCodeState] = useState('');
   const [cameraEnabled, setCameraEnabled] = useState(true);
   const [state, setState] = useState<ProductBarcodeStateDTO | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [confirmOverwrite, setConfirmOverwrite] = useState(false);
   const [confirmClear, setConfirmClear] = useState(false);
+  /** G3/G8 — 409 payload seeds conflict UI even when debounced check still says available:true. */
+  const [checkOverride, setCheckOverride] = useState<BarcodeAssignCheckResult | null>(null);
+
+  const setConfirmOverwriteSynced = useCallback((value: boolean): void => {
+    confirmOverwriteRef.current = value;
+    setConfirmOverwrite(value);
+  }, []);
 
   const canAssign = entitledFunctions.includes(PickupStaffFunction.BARCODE_ASSIGN);
   const variantId = routeVariantId;
   const needsVariantPicker = catalogVariants.length > 1 && variantId === undefined;
   const productIdValid = Number.isFinite(productId) && productId > 0;
+
+  useEffect(() => {
+    draftTouchedRef.current = false;
+  }, [productId, variantId]);
+
+  const setDraftCode = useCallback((value: string): void => {
+    draftTouchedRef.current = true;
+    confirmOverwriteRef.current = false;
+    setDraftCodeState(value);
+    setConfirmOverwriteSynced(false);
+    setCheckOverride(null);
+  }, [setConfirmOverwriteSynced]);
 
   const checkFn = useCallback(
     async (input: { code: string; productId: number; variantId?: number }) => {
@@ -100,13 +159,21 @@ export function useBarcodeAssignDetailScreen(
     enabled: productIdValid && !needsVariantPicker,
     checkFn,
   });
+  const {
+    result: debouncedCheckResult,
+    isChecking: debouncedCheckIsChecking,
+    error: debouncedCheckError,
+    clearTrustedResult,
+  } = debouncedCheck;
+
+  const effectiveCheckResult = checkOverride ?? debouncedCheckResult;
 
   const handleDecode = useCallback((raw: string) => {
     setDraftCode(raw.trim());
     setCameraEnabled(false);
-  }, []);
+  }, [setDraftCode]);
 
-  useBarcodeAssignScanner({
+  const { status: cameraStatus, errorMessage: cameraError } = useBarcodeAssignScanner({
     enabled: cameraEnabled && accessToken !== null && !needsVariantPicker,
     videoRef,
     onDecode: handleDecode,
@@ -167,7 +234,12 @@ export function useBarcodeAssignDetailScreen(
             return;
           }
           setState(next);
-          setDraftCode(next.barcode ?? '');
+          // Do not clobber a draft the user (or scan) already entered while load was in flight.
+          if (!draftTouchedRef.current) {
+            setDraftCodeState(next.barcode ?? '');
+            setCheckOverride(null);
+            setConfirmOverwriteSynced(false);
+          }
         })
         .catch(() => {
           if (cancelled) {
@@ -180,7 +252,7 @@ export function useBarcodeAssignDetailScreen(
       cancelled = true;
       window.clearTimeout(handle);
     };
-  }, [accessToken, gateway, needsVariantPicker, productId, productIdValid, tenantCode, variantId]);
+  }, [accessToken, gateway, needsVariantPicker, productId, productIdValid, setConfirmOverwriteSynced, tenantCode, variantId]);
 
   const artifactLinearUrl = gateway.productBarcodeArtifactUrl(
     tenantCode,
@@ -201,8 +273,11 @@ export function useBarcodeAssignDetailScreen(
         catalogError,
         draftCode,
         cameraEnabled,
-        debouncedChecking: debouncedCheck.isChecking,
-        checkResult: debouncedCheck.result,
+        cameraStatus,
+        cameraError,
+        debouncedChecking: checkOverride === null ? debouncedCheckIsChecking : false,
+        checkResult: effectiveCheckResult,
+        checkError: checkOverride === null ? debouncedCheckError : null,
         confirmOverwrite,
         isSaving,
         saveError,
@@ -216,14 +291,18 @@ export function useBarcodeAssignDetailScreen(
       artifactLinearUrl,
       artifactQrUrl,
       cameraEnabled,
+      cameraError,
+      cameraStatus,
       catalogError,
       catalogLoading,
       catalogVariants,
+      checkOverride,
       confirmClear,
       confirmOverwrite,
-      debouncedCheck.isChecking,
-      debouncedCheck.result,
+      debouncedCheckError,
+      debouncedCheckIsChecking,
       draftCode,
+      effectiveCheckResult,
       isSaving,
       localeTag,
       productId,
@@ -246,16 +325,20 @@ export function useBarcodeAssignDetailScreen(
         .assignPrimaryBarcode(tenantCode, accessToken, productId, {
           code: draftCode.trim(),
           variantId,
-          confirmOverwrite: confirmOverwrite || undefined,
         })
         .then((next) => {
           setState(next);
-          setConfirmOverwrite(false);
+          setConfirmOverwriteSynced(false);
+          setCheckOverride(null);
+          clearTrustedResult();
         })
         .catch((err: unknown) => {
-          if (err instanceof Error && err.message === 'BARCODE_CONFLICT') {
-            setConfirmOverwrite(true);
-            setSaveError(t('pickup.barcodeAssign.conflictWarning'));
+          const { isConflict, conflict } = readAssignConflict(err);
+          if (isConflict) {
+            // G3 / G8 — seed conflict UI from 409 payload; do not leave Save enabled.
+            setConfirmOverwriteSynced(false);
+            setCheckOverride(seedConflictCheckResult(conflict));
+            setSaveError(null);
             return;
           }
           setSaveError(err instanceof Error ? err.message : t('pickup.barcodeAssign.saveFailed'));
@@ -266,10 +349,11 @@ export function useBarcodeAssignDetailScreen(
     },
     [
       accessToken,
-      confirmOverwrite,
+      clearTrustedResult,
       draftCode,
       gateway,
       productId,
+      setConfirmOverwriteSynced,
       t,
       tenantCode,
       variantId,
@@ -277,26 +361,116 @@ export function useBarcodeAssignDetailScreen(
     ],
   );
 
+  const armOrConfirmMove = useCallback((): void => {
+    if (!accessToken || !viewModel.canMove) {
+      return;
+    }
+    if (!confirmOverwriteRef.current) {
+      confirmOverwriteRef.current = true;
+      setConfirmOverwriteSynced(true);
+      setSaveError(null);
+      return;
+    }
+    setIsSaving(true);
+    setSaveError(null);
+    void gateway
+      .assignPrimaryBarcode(tenantCode, accessToken, productId, {
+        code: draftCode.trim(),
+        variantId,
+        confirmOverwrite: true,
+      })
+      .then((next) => {
+        setState(next);
+        confirmOverwriteRef.current = false;
+        setConfirmOverwriteSynced(false);
+        // G6 — drop seeded conflict and re-check so Save reflects new ownership.
+        setCheckOverride(null);
+        clearTrustedResult();
+      })
+      .catch((err: unknown) => {
+        const { isConflict, conflict } = readAssignConflict(err);
+        if (isConflict) {
+          setCheckOverride(seedConflictCheckResult(conflict));
+          setSaveError(null);
+          return;
+        }
+        setSaveError(err instanceof Error ? err.message : t('pickup.barcodeAssign.saveFailed'));
+      })
+      .finally(() => {
+        setIsSaving(false);
+      });
+  }, [
+    accessToken,
+    clearTrustedResult,
+    draftCode,
+    gateway,
+    productId,
+    setConfirmOverwriteSynced,
+    t,
+    tenantCode,
+    variantId,
+    viewModel.canMove,
+  ]);
+
+  const openConflictProduct = useCallback((): void => {
+    if (!viewModel.canOpenConflictProduct || viewModel.conflictProductId === undefined) {
+      return;
+    }
+    navigate(
+      buildBarcodeAssignDetailPath(tenantCode, viewModel.conflictProductId, viewModel.conflictVariantId),
+    );
+  }, [
+    navigate,
+    tenantCode,
+    viewModel.canOpenConflictProduct,
+    viewModel.conflictProductId,
+    viewModel.conflictVariantId,
+  ]);
+
+  const retryConflictCheck = useCallback((): void => {
+    setCheckOverride(null);
+    setConfirmOverwriteSynced(false);
+    setSaveError(null);
+    clearTrustedResult();
+  }, [clearTrustedResult, setConfirmOverwriteSynced]);
+
   const confirmClearAction = useCallback((): void => {
     if (!accessToken || (variantId === undefined && catalogVariants.length > 0)) {
       return;
     }
     void gateway.clearPrimaryBarcode(tenantCode, accessToken, productId, variantId).then((next) => {
       setState(next);
-      setDraftCode('');
-      setConfirmOverwrite(false);
+      setDraftCodeState('');
+      setConfirmOverwriteSynced(false);
       setConfirmClear(false);
+      setCheckOverride(null);
+      clearTrustedResult();
     });
-  }, [accessToken, catalogVariants.length, gateway, productId, tenantCode, variantId]);
+  }, [
+    accessToken,
+    catalogVariants.length,
+    clearTrustedResult,
+    gateway,
+    productId,
+    setConfirmOverwriteSynced,
+    tenantCode,
+    variantId,
+  ]);
 
   const actions = useMemo<BarcodeAssignDetailScreenActions>(
     () => ({
-      setDraftCode: (value: string) => {
-        setDraftCode(value);
-        setConfirmOverwrite(false);
+      setDraftCode,
+      startCamera: () => {
+        setCameraEnabled(false);
+        queueMicrotask(() => {
+          setCameraEnabled(true);
+        });
       },
-      startCamera: () => setCameraEnabled(true),
       save,
+      armOrConfirmMove,
+      cancelMove: () => setConfirmOverwriteSynced(false),
+      openConflictProduct,
+      retryConflictCheck,
       requestClear: () => setConfirmClear(true),
       cancelClear: () => setConfirmClear(false),
       confirmClear: confirmClearAction,
@@ -307,7 +481,18 @@ export function useBarcodeAssignDetailScreen(
         setCatalogReloadToken((token) => token + 1);
       },
     }),
-    [confirmClearAction, navigate, productId, save, tenantCode],
+    [
+      armOrConfirmMove,
+      confirmClearAction,
+      navigate,
+      openConflictProduct,
+      productId,
+      retryConflictCheck,
+      save,
+      setConfirmOverwriteSynced,
+      setDraftCode,
+      tenantCode,
+    ],
   );
 
   return {

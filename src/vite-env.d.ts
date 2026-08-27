@@ -6,6 +6,8 @@ interface Window {
 }
 
 interface ImportMetaEnv {
+  /** Default UI locale when no stored/URL override (`cs` | `en` | `sk`). */
+  readonly VITE_DEFAULT_LOCALE?: string;
   /** Kill-switch: show persistent Force refresh control in PickupPwaLifecycle. */
   readonly VITE_PWA_FORCE_UPDATE?: string;
   /** Optional app version label for More drawer / build chrome. */
