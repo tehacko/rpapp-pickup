@@ -6,6 +6,7 @@ import { usePickupEntitlement } from '../../hooks/usePickupEntitlement.js';
 import { useStaffToken, useTenantCode } from '../../hooks/useStaffToken.js';
 import { usePickupLocaleTag } from '../../shared/hooks/usePickupLocaleTag.js';
 import { useBarcodeAssignScanner } from './hooks/useBarcodeAssignScanner.js';
+import { resolvePickupCameraRunningMessage } from '../../lib/pickupCameraRunningMessage.js';
 import { useDebouncedBarcodeCheck } from './hooks/useDebouncedBarcodeCheck.js';
 import type {
   BarcodeAssignCatalogItem,
@@ -173,7 +174,12 @@ export function useBarcodeAssignDetailScreen(
     setCameraEnabled(false);
   }, [setDraftCode]);
 
-  const { status: cameraStatus, errorMessage: cameraError } = useBarcodeAssignScanner({
+  const {
+    status: cameraStatus,
+    engine: cameraEngine,
+    zxingAssistActive,
+    errorMessage: cameraError,
+  } = useBarcodeAssignScanner({
     enabled: cameraEnabled && accessToken !== null && !needsVariantPicker,
     videoRef,
     onDecode: handleDecode,
@@ -262,6 +268,18 @@ export function useBarcodeAssignDetailScreen(
   );
   const artifactQrUrl = gateway.productBarcodeArtifactUrl(tenantCode, productId, 'qr', variantId);
 
+  const cameraRunningMessage = useMemo(
+    () =>
+      resolvePickupCameraRunningMessage(
+        t,
+        'pickup.barcodeAssign',
+        cameraStatus,
+        cameraEngine,
+        zxingAssistActive,
+      ),
+    [cameraEngine, cameraStatus, t, zxingAssistActive],
+  );
+
   const viewModel = useMemo(
     () =>
       buildBarcodeAssignDetailViewModel({
@@ -275,6 +293,7 @@ export function useBarcodeAssignDetailScreen(
         cameraEnabled,
         cameraStatus,
         cameraError,
+        cameraRunningMessage,
         debouncedChecking: checkOverride === null ? debouncedCheckIsChecking : false,
         checkResult: effectiveCheckResult,
         checkError: checkOverride === null ? debouncedCheckError : null,
@@ -292,6 +311,7 @@ export function useBarcodeAssignDetailScreen(
       artifactQrUrl,
       cameraEnabled,
       cameraError,
+      cameraRunningMessage,
       cameraStatus,
       catalogError,
       catalogLoading,

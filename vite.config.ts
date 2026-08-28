@@ -94,6 +94,7 @@ export default defineConfig(({ mode }) => {
       dedupe: ['react', 'react-dom'],
       alias: monorepoShared.alias,
     },
+    assetsInclude: ['**/*.wasm'],
     server: {
       port: 3005,
       host: true,

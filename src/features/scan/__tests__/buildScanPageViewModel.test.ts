@@ -8,6 +8,7 @@ const baseUi = {
   cameraEnabled: true,
   cameraStatus: 'running',
   cameraError: null,
+  cameraRunningMessage: null,
   errorMessage: null,
   isResolving: false,
   resolved: null,

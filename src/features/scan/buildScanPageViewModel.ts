@@ -8,6 +8,7 @@ export interface ScanPageUiState {
   readonly cameraEnabled: boolean;
   readonly cameraStatus: string;
   readonly cameraError: string | null;
+  readonly cameraRunningMessage: string | null;
   readonly errorMessage: string | null;
   readonly isResolving: boolean;
   readonly resolved: ScanResolvedPreview | null;
@@ -20,6 +21,7 @@ export interface ScanPageViewModel {
   readonly cameraEnabled: boolean;
   readonly cameraStatus: string;
   readonly cameraError: string | null;
+  readonly cameraRunningMessage: string | null;
   readonly errorMessage: string | null;
   readonly isResolving: boolean;
   readonly resolved: ScanResolvedPreview | null;
@@ -34,6 +36,7 @@ export function buildScanPageViewModel(ui: ScanPageUiState): ScanPageViewModel {
     cameraEnabled: ui.cameraEnabled,
     cameraStatus: ui.cameraStatus,
     cameraError: ui.cameraError,
+    cameraRunningMessage: ui.cameraRunningMessage,
     errorMessage: ui.errorMessage,
     isResolving: ui.isResolving,
     resolved: ui.resolved,

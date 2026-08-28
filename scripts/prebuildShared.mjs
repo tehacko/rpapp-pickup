@@ -9,18 +9,17 @@
  * On app-only deploys that symlink is broken; npm install can re-assert the
  * lockfile link unless we remove it and install with --no-package-lock.
  *
- * App-only builds: file:/link:/workspace: dependency specs are remapped to a
- * registry pin (DEFAULT_REGISTRY_TARGET / PI_KIOSK_SHARED_REGISTRY_TAG).
- * Live consumers pin ^2.2.91 matching shared/package.json. file:../shared is
- * still supported if present — this script does not rewrite monorepo pins.
+ * Live monorepo frontends pin file:../shared/pi-kiosk-shared-<version>.tgz; app-only
+ * deploys use registry pin (DEFAULT_REGISTRY_TARGET / PI_KIOSK_SHARED_REGISTRY_TAG).
+ * Registry fallback: ^2.2.96.
  */
 import { execSync } from 'node:child_process';
 import { existsSync, readFileSync, rmSync } from 'node:fs';
 import { basename, resolve } from 'node:path';
 
 const SHARED_PACKAGE_NAME = 'pi-kiosk-shared';
-/** Fallback registry range when package.json has no pin. Live consumers pin ^2.2.91 matching shared/package.json — do not change this constant in a docs-only pass. */
-const DEFAULT_REGISTRY_TARGET = '^2.2.91';
+/** Fallback registry range when package.json has no pin (app-only / Railway). */
+const DEFAULT_REGISTRY_TARGET = '^2.2.97';
 const REGISTRY_TAG_ENV = 'PI_KIOSK_SHARED_REGISTRY_TAG';
 
 const siblingPkg = resolve(process.cwd(), '..', 'shared', 'package.json');
@@ -80,7 +79,7 @@ function isRegistryInstallTarget(spec) {
 function failNoSafeRegistryTarget(reason) {
   console.error(`[prebuildShared] ${reason}`);
   console.error(
-    `[prebuildShared] Set ${REGISTRY_TAG_ENV} to a registry tag/range/version (examples: "latest", "^2.2.91", "2.2.91" matching shared/package.json), then redeploy.`,
+    `[prebuildShared] Set ${REGISTRY_TAG_ENV} to a registry tag/range/version (examples: "latest", "^2.2.96", "2.2.96" matching shared/package.json), then redeploy.`,
   );
   console.error(
     '[prebuildShared] Do not use file:/link:/workspace: for app-only builds because ../shared is not available in that environment.',

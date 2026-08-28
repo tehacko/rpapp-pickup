@@ -27,7 +27,9 @@ export function useQrScanner(options: UseQrScannerOptions): UseBarcodeScannerRet
       policyBlocked: t('pickup.scan.cameraPolicyBlocked'),
       starting: t('pickup.scan.cameraStarting'),
       runningNative: t('pickup.scan.cameraRunning'),
-      runningZxing: t('pickup.scan.cameraRunning'),
+      runningZxing: t('pickup.scan.cameraRunningZxingAssist'),
+      runningZbar: t('pickup.scan.cameraRunningZbar'),
+      zbarBootstrapFailed: t('pickup.scan.cameraZbarBootstrapFailed'),
       error: t('pickup.scan.cameraError'),
       scannerOff: t('pickup.scan.cameraOff'),
     }),
@@ -45,6 +47,7 @@ export function useQrScanner(options: UseQrScannerOptions): UseBarcodeScannerRet
   return {
     status: options.enabled ? result.status : 'idle',
     engine: options.enabled ? result.engine : null,
+    zxingAssistActive: options.enabled ? result.zxingAssistActive : false,
     errorMessage: options.enabled ? result.errorMessage : null,
   };
 }

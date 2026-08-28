@@ -3,6 +3,7 @@ import type { FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useQrScanner } from '../../hooks/useQrScanner.js';
+import { resolvePickupCameraRunningMessage } from '../../lib/pickupCameraRunningMessage.js';
 import { useStaffToken, useTenantCode } from '../../hooks/useStaffToken.js';
 import { normalizeScanToken } from '../../lib/scanToken.js';
 import { usePickupErrorHandler } from '../../shared/hooks/usePickupErrorHandler.js';
@@ -61,7 +62,12 @@ export function useScanScreen(gateway: IScanGateway = scanGateway): UseScanScree
     setCameraEnabled(false);
   }, []);
 
-  const { status: cameraStatus, errorMessage: cameraError } = useQrScanner({
+  const {
+    status: cameraStatus,
+    engine: cameraEngine,
+    zxingAssistActive,
+    errorMessage: cameraError,
+  } = useQrScanner({
     enabled: cameraEnabled && accessToken !== null,
     videoRef,
     onDecode: handleDecode,
@@ -159,6 +165,18 @@ export function useScanScreen(gateway: IScanGateway = scanGateway): UseScanScree
     return null;
   }, [activePickupPointId, isRoamingStaff, resolvedOrder, t]);
 
+  const cameraRunningMessage = useMemo(
+    () =>
+      resolvePickupCameraRunningMessage(
+        t,
+        'pickup.scan',
+        cameraStatus,
+        cameraEngine,
+        zxingAssistActive,
+      ),
+    [cameraEngine, cameraStatus, t, zxingAssistActive],
+  );
+
   const viewModel = useMemo(
     () =>
       buildScanPageViewModel({
@@ -167,6 +185,7 @@ export function useScanScreen(gateway: IScanGateway = scanGateway): UseScanScree
         cameraEnabled,
         cameraStatus,
         cameraError,
+        cameraRunningMessage,
         errorMessage,
         isResolving,
         resolved: resolvedOrder ? toScanResolvedPreview(resolvedOrder) : null,
@@ -175,6 +194,7 @@ export function useScanScreen(gateway: IScanGateway = scanGateway): UseScanScree
     [
       cameraEnabled,
       cameraError,
+      cameraRunningMessage,
       cameraStatus,
       errorMessage,
       isResolving,

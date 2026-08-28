@@ -22,6 +22,7 @@ export interface BarcodeAssignDetailViewModel {
   readonly cameraEnabled: boolean;
   readonly cameraStatus: string;
   readonly cameraError: string | null;
+  readonly cameraRunningMessage: string | null;
   readonly isChecking: boolean;
   readonly checkResult: BarcodeAssignCheckResult | null;
   /** Debounced assign pre-check failure for the current draft (G7). */
@@ -68,6 +69,7 @@ export function buildBarcodeAssignDetailViewModel(input: {
   cameraEnabled: boolean;
   cameraStatus: string;
   cameraError: string | null;
+  cameraRunningMessage: string | null;
   debouncedChecking: boolean;
   checkResult: BarcodeAssignCheckResult | null;
   checkError: string | null;
@@ -131,6 +133,7 @@ export function buildBarcodeAssignDetailViewModel(input: {
     cameraEnabled: input.cameraEnabled,
     cameraStatus: input.cameraStatus,
     cameraError: input.cameraError,
+    cameraRunningMessage: input.cameraRunningMessage,
     isChecking: input.debouncedChecking,
     checkResult: input.checkResult,
     checkError: input.checkError,

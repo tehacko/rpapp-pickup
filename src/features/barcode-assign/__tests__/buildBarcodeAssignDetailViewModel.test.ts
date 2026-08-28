@@ -31,6 +31,7 @@ function baseInput(overrides: Partial<Parameters<typeof buildBarcodeAssignDetail
     cameraEnabled: false,
     cameraStatus: 'idle',
     cameraError: null as string | null,
+    cameraRunningMessage: null as string | null,
     debouncedChecking: false,
     checkResult: null as BarcodeAssignCheckResult | null,
     checkError: null as string | null,

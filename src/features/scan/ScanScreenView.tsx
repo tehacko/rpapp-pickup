@@ -73,6 +73,11 @@ export function ScanScreenView({
                 onRetry={actions.startCamera}
               />
             ) : null}
+            {viewModel.cameraRunningMessage ? (
+              <p className="text-sm text-[var(--color-on-surface-muted)]" role="status">
+                {viewModel.cameraRunningMessage}
+              </p>
+            ) : null}
             {viewModel.cameraStatus === 'running' ? null : (
               <Button
                 intent="secondary"
