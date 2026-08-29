@@ -9,9 +9,13 @@ export function resolvePickupCameraRunningMessage(
   cameraStatus: string,
   cameraEngine: ScannerEngine | null,
   zxingAssistActive: boolean,
+  degradedMode: boolean,
 ): string | null {
   if (cameraStatus !== 'running') {
     return null;
+  }
+  if (degradedMode) {
+    return t(`${prefix}.runningDegraded`);
   }
   if (zxingAssistActive) {
     return t(`${prefix}.cameraRunningZxingAssist`);

@@ -15,6 +15,11 @@ jest.mock('pi-kiosk-shared/ui', () => {
   return { Button, Card };
 });
 
+jest.mock('pi-kiosk-shared/barcode-scanner', () => ({
+  decodeBarcodeFromVideoFrame: jest.fn(async () => ({ payload: 'QR-TOKEN-12345678', engine: 'zbar-wasm' })),
+  resolveScannerPlatformProfile: jest.fn(() => ({ preferPreviewSnap: false })),
+}));
+
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string) => key,
@@ -45,6 +50,7 @@ function createViewModel(overrides: Partial<ScanPageViewModel> = {}): ScanPageVi
     cameraEnabled: false,
     cameraStatus: 'off',
     cameraError: null,
+    cameraRunningMessage: null,
     errorMessage: null,
     isResolving: false,
     resolved: null,
@@ -59,6 +65,8 @@ function createActions(): ScanScreenActions {
     setScanToken: jest.fn(),
     setShortCode: jest.fn(),
     startCamera: jest.fn(),
+    retryCamera: jest.fn(),
+    applyCameraDecode: jest.fn(),
     resolveToken: jest.fn((event: FormEvent) => event.preventDefault()),
     resolveShortCode: jest.fn((event: FormEvent) => event.preventDefault()),
     openOrder: jest.fn(),
@@ -175,5 +183,92 @@ describe('ScanScreenView', () => {
     expect((screen.getByRole('button', { name: 'pickup.scan.openOrder' }) as HTMLButtonElement).disabled).toBe(
       true,
     );
+  });
+
+  it('G16: hides preview on camera deny and shows G13 recovery strip', () => {
+    const actions = renderScanScreen({
+      viewModel: createViewModel({
+        cameraEnabled: true,
+        cameraStatus: 'denied',
+        cameraError: 'pickup.scan.cameraDenied',
+      }),
+    });
+
+    expect(screen.getByTestId('pickup-scan-camera-recovery')).toBeTruthy();
+    expect(screen.queryByTestId('pickup-scan-camera-preview')).toBeNull();
+    expect(screen.queryByTestId('pickup-scan-camera-snap-file')).toBeNull();
+    expect(document.querySelector('[data-testid$="-snap-file"]')).toBeNull();
+
+    fireEvent.click(screen.getByTestId('pickup-scan-camera-recovery-retry'));
+    expect(actions.retryCamera).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByTestId('pickup-scan-camera-recovery-manual'));
+    expect(document.activeElement?.id).toBe('pickup-scan-token');
+  });
+
+  it('G16: error status with enabled true omits preview; retry CTA is primary', () => {
+    const actions = renderScanScreen({
+      viewModel: createViewModel({
+        cameraEnabled: true,
+        cameraStatus: 'error',
+        cameraError: 'pickup.scan.cameraError',
+      }),
+    });
+
+    expect(screen.getByTestId('pickup-scan-camera-recovery')).toBeTruthy();
+    expect(screen.getByTestId('pickup-scan-camera-recovery-retry')).toBeTruthy();
+    expect(screen.queryByTestId('pickup-scan-camera-preview')).toBeNull();
+    expect(screen.queryByTestId('pickup-scan-camera-snap-preview')).toBeNull();
+    expect(screen.queryByTestId('pickup-scan-camera-snap-file')).toBeNull();
+    expect(document.querySelector('[data-testid$="-snap-file"]')).toBeNull();
+
+    fireEvent.click(screen.getByTestId('pickup-scan-camera-recovery-retry'));
+    expect(actions.retryCamera).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows runningDegraded copy when camera is running in degraded mode', () => {
+    renderScanScreen({
+      viewModel: createViewModel({
+        cameraEnabled: true,
+        cameraStatus: 'running',
+        cameraRunningMessage: 'pickup.scan.runningDegraded',
+      }),
+    });
+
+    expect(screen.getByText('pickup.scan.runningDegraded')).toBeTruthy();
+    expect(screen.getByTestId('pickup-scan-camera-preview')).toBeTruthy();
+  });
+
+  it('shows preview snap CTA when camera is running', () => {
+    renderScanScreen({
+      viewModel: createViewModel({
+        cameraEnabled: true,
+        cameraStatus: 'running',
+        cameraRunningMessage: 'pickup.scan.cameraRunningZbar',
+      }),
+    });
+
+    expect(screen.getByTestId('pickup-scan-camera-preview')).toBeTruthy();
+    expect(screen.getByTestId('pickup-scan-camera-snap-preview')).toBeTruthy();
+    expect(screen.queryByTestId('pickup-scan-camera-snap-file')).toBeNull();
+    expect(document.querySelector('[data-testid$="-snap-file"]')).toBeNull();
+    expect(screen.queryByTestId('pickup-scan-camera-recovery')).toBeNull();
+  });
+
+  it('wires preview snap decode to applyCameraDecode', async () => {
+    const actions = renderScanScreen({
+      viewModel: createViewModel({
+        cameraEnabled: true,
+        cameraStatus: 'running',
+      }),
+      videoRef: { current: document.createElement('video') },
+    });
+
+    fireEvent.click(screen.getByTestId('pickup-scan-camera-snap-preview'));
+
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(actions.applyCameraDecode).toHaveBeenCalledWith('QR-TOKEN-12345678');
   });
 });

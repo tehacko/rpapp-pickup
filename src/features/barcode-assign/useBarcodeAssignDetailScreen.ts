@@ -64,6 +64,8 @@ function seedConflictCheckResult(
 export interface BarcodeAssignDetailScreenActions {
   readonly setDraftCode: (value: string) => void;
   readonly startCamera: () => void;
+  readonly retryCamera: () => void;
+  readonly applyCameraDecode: (raw: string) => void;
   readonly save: (event: FormEvent) => void;
   readonly armOrConfirmMove: () => void;
   readonly cancelMove: () => void;
@@ -113,6 +115,7 @@ export function useBarcodeAssignDetailScreen(
   const [catalogReloadToken, setCatalogReloadToken] = useState(0);
   const [draftCode, setDraftCodeState] = useState('');
   const [cameraEnabled, setCameraEnabled] = useState(true);
+  const [cameraSessionKey, setCameraSessionKey] = useState(0);
   const [state, setState] = useState<ProductBarcodeStateDTO | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -174,16 +177,23 @@ export function useBarcodeAssignDetailScreen(
     setCameraEnabled(false);
   }, [setDraftCode]);
 
+  const handleBackgroundStop = useCallback((): void => {
+    setCameraEnabled(false);
+  }, []);
+
   const {
     status: cameraStatus,
     engine: cameraEngine,
     zxingAssistActive,
+    degradedMode: cameraDegradedMode,
     errorMessage: cameraError,
   } = useBarcodeAssignScanner({
     enabled: cameraEnabled && accessToken !== null && !needsVariantPicker,
     videoRef,
     onDecode: handleDecode,
     formatProfile: 'all',
+    onBackgroundStop: handleBackgroundStop,
+    sessionKey: cameraSessionKey,
   });
 
   useEffect(() => {
@@ -276,8 +286,9 @@ export function useBarcodeAssignDetailScreen(
         cameraStatus,
         cameraEngine,
         zxingAssistActive,
+        cameraDegradedMode,
       ),
-    [cameraEngine, cameraStatus, t, zxingAssistActive],
+    [cameraDegradedMode, cameraEngine, cameraStatus, t, zxingAssistActive],
   );
 
   const viewModel = useMemo(
@@ -481,11 +492,14 @@ export function useBarcodeAssignDetailScreen(
     () => ({
       setDraftCode,
       startCamera: () => {
-        setCameraEnabled(false);
-        queueMicrotask(() => {
-          setCameraEnabled(true);
-        });
+        setCameraSessionKey((key) => key + 1);
+        setCameraEnabled(true);
       },
+      retryCamera: () => {
+        setCameraSessionKey((key) => key + 1);
+        setCameraEnabled(true);
+      },
+      applyCameraDecode: handleDecode,
       save,
       armOrConfirmMove,
       cancelMove: () => setConfirmOverwriteSynced(false),
@@ -511,6 +525,7 @@ export function useBarcodeAssignDetailScreen(
       save,
       setConfirmOverwriteSynced,
       setDraftCode,
+      handleDecode,
       tenantCode,
     ],
   );

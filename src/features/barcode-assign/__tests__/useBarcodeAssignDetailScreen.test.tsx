@@ -40,12 +40,23 @@ jest.mock('../../../shared/hooks/usePickupLocaleTag.js', () => ({
 }));
 
 jest.mock('../hooks/useBarcodeAssignScanner.js', () => ({
-  useBarcodeAssignScanner: () => ({
+  useBarcodeAssignScanner: jest.fn(),
+}));
+
+import { useBarcodeAssignScanner } from '../hooks/useBarcodeAssignScanner.js';
+
+const useBarcodeAssignScannerMock = jest.mocked(useBarcodeAssignScanner);
+
+function stubScanner(overrides: Partial<ReturnType<typeof useBarcodeAssignScanner>> = {}): void {
+  useBarcodeAssignScannerMock.mockReturnValue({
     status: 'idle',
     engine: null,
     errorMessage: null,
-  }),
-}));
+    zxingAssistActive: false,
+    degradedMode: false,
+    ...overrides,
+  });
+}
 
 jest.mock('../hooks/useDebouncedBarcodeCheck.js', () => ({
   useDebouncedBarcodeCheck: jest.fn(),
@@ -140,6 +151,10 @@ function mockConflictCheck(conflict: {
 }
 
 describe('useBarcodeAssignDetailScreen (G14)', () => {
+  beforeEach(() => {
+    stubScanner();
+  });
+
   afterEach(() => {
     jest.clearAllMocks();
   });
@@ -262,5 +277,54 @@ describe('useBarcodeAssignDetailScreen (G14)', () => {
         '/demo/barcode-assign/44/variants/7',
       );
     });
+  });
+
+  it('retryCamera bumps scanner sessionKey for hook restart', async () => {
+    const gateway = createGatewayMock();
+    const { result } = await mountDetail(gateway);
+
+    const beforeKey = useBarcodeAssignScannerMock.mock.calls.at(-1)?.[0]?.sessionKey ?? 0;
+
+    act(() => {
+      result.current.actions.retryCamera();
+    });
+
+    await waitFor(() => {
+      const lastCall = useBarcodeAssignScannerMock.mock.calls.at(-1)?.[0];
+      expect(lastCall?.sessionKey).toBe(beforeKey + 1);
+      expect(lastCall?.enabled).toBe(true);
+    });
+  });
+
+  it('onBackgroundStop disables camera via scanner callback', async () => {
+    const gateway = createGatewayMock();
+    await mountDetail(gateway);
+
+    const scannerOptions = useBarcodeAssignScannerMock.mock.calls.at(-1)?.[0];
+    expect(scannerOptions?.onBackgroundStop).toEqual(expect.any(Function));
+
+    act(() => {
+      scannerOptions?.onBackgroundStop?.();
+    });
+
+    await waitFor(() => {
+      const lastCall = useBarcodeAssignScannerMock.mock.calls.at(-1)?.[0];
+      expect(lastCall?.enabled).toBe(false);
+    });
+  });
+
+  it('runningDegraded message when scanner reports degradedMode', async () => {
+    stubScanner({
+      status: 'running',
+      engine: 'zxing',
+      degradedMode: true,
+    });
+    const gateway = createGatewayMock();
+
+    const { result } = await mountDetail(gateway);
+
+    expect(result.current.viewModel.cameraRunningMessage).toBe(
+      'pickup.barcodeAssign.runningDegraded',
+    );
   });
 });

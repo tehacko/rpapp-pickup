@@ -13,6 +13,8 @@ export interface UseQrScannerOptions {
   enabled: boolean;
   videoRef: React.RefObject<HTMLVideoElement | null>;
   onDecode: (rawValue: string) => void;
+  onBackgroundStop?: () => void;
+  sessionKey?: number;
 }
 
 export function useQrScanner(options: UseQrScannerOptions): UseBarcodeScannerReturn {
@@ -29,6 +31,7 @@ export function useQrScanner(options: UseQrScannerOptions): UseBarcodeScannerRet
       runningNative: t('pickup.scan.cameraRunning'),
       runningZxing: t('pickup.scan.cameraRunningZxingAssist'),
       runningZbar: t('pickup.scan.cameraRunningZbar'),
+      runningDegraded: t('pickup.scan.runningDegraded'),
       zbarBootstrapFailed: t('pickup.scan.cameraZbarBootstrapFailed'),
       error: t('pickup.scan.cameraError'),
       scannerOff: t('pickup.scan.cameraOff'),
@@ -42,12 +45,15 @@ export function useQrScanner(options: UseQrScannerOptions): UseBarcodeScannerRet
     onDecode: options.onDecode,
     messages,
     formatProfile: 'qr-only',
+    onBackgroundStop: options.onBackgroundStop,
+    sessionKey: options.sessionKey,
   });
 
   return {
     status: options.enabled ? result.status : 'idle',
     engine: options.enabled ? result.engine : null,
     zxingAssistActive: options.enabled ? result.zxingAssistActive : false,
+    degradedMode: options.enabled ? result.degradedMode : false,
     errorMessage: options.enabled ? result.errorMessage : null,
   };
 }

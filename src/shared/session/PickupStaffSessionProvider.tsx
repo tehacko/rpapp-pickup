@@ -83,12 +83,17 @@ export function PickupStaffSessionProvider({
   }, [location.pathname]);
 
   const [sessionClaims, setSessionClaims] = useState<PickupStaffSessionClaims | null>(null);
-  const [sessionHydrated, setSessionHydrated] = useState(false);
+  const [activeHydrateTicket, setActiveHydrateTicket] = useState(0);
+  const [completedHydrateTicket, setCompletedHydrateTicket] = useState<number | null>(null);
   const [activePointEpoch, setActivePointEpoch] = useState(0);
   /** Monotonic epoch so Strict Mode remount / tenant change supersedes stale hydrates. */
   const hydrateEpochRef = useRef(0);
+  /** Effect-only ticket counter — never read during render (react-hooks/refs). */
+  const hydrateTicketRef = useRef(0);
 
-  const effectiveSessionHydrated = tenantCode === null ? true : sessionHydrated;
+  const effectiveSessionHydrated =
+    tenantCode === null ||
+    (completedHydrateTicket !== null && completedHydrateTicket === activeHydrateTicket);
 
   useEffect(() => {
     sessionClaimsRef.current = sessionClaims;
@@ -139,7 +144,10 @@ export function PickupStaffSessionProvider({
   );
 
   const runHydrate = useCallback(
-    async (code: string, options?: { broadcast?: boolean }): Promise<void> => {
+    async (
+      code: string,
+      options?: { broadcast?: boolean; ticket?: number },
+    ): Promise<void> => {
       const epoch = ++hydrateEpochRef.current;
       try {
         clearLegacyStoredToken(code);
@@ -157,11 +165,11 @@ export function PickupStaffSessionProvider({
         clearSessionForTenant(code);
       } finally {
         if (epoch === hydrateEpochRef.current) {
-          setSessionHydrated(true);
+          setCompletedHydrateTicket(options?.ticket ?? activeHydrateTicket);
         }
       }
     },
-    [applySessionClaims, clearSessionForTenant],
+    [activeHydrateTicket, applySessionClaims, clearSessionForTenant],
   );
 
   const establishSession = useCallback(
@@ -171,17 +179,17 @@ export function PickupStaffSessionProvider({
         const claims = await refreshPickupStaffSession(code);
         if (claims === null) {
           clearSessionForTenant(code);
-          setSessionHydrated(true);
+          setCompletedHydrateTicket(hydrateTicketRef.current);
           throw new Error('Pickup staff session missing after login');
         }
         applySessionClaims(claims, code);
-        setSessionHydrated(true);
+        setCompletedHydrateTicket(hydrateTicketRef.current);
         publishPickupStaffAuth({ type: 'login', tenantCode: code });
         return claims;
       } catch (err) {
         // refreshPickupStaffSession already logged; surface to login UI via throw.
         clearSessionForTenant(code);
-        setSessionHydrated(true);
+        setCompletedHydrateTicket(hydrateTicketRef.current);
         throw err;
       }
     },
@@ -234,9 +242,14 @@ export function PickupStaffSessionProvider({
     if (tenantCode === null) {
       return;
     }
-    setSessionHydrated(false);
-    void runHydrate(tenantCode);
+    const nextTicket = hydrateTicketRef.current + 1;
+    hydrateTicketRef.current = nextTicket;
+    const scheduleHandle = window.setTimeout(() => {
+      setActiveHydrateTicket(nextTicket);
+      void runHydrate(tenantCode, { ticket: nextTicket });
+    }, 0);
     return () => {
+      window.clearTimeout(scheduleHandle);
       // Invalidate in-flight mount hydrate so Strict Mode remount is not dropped
       // by a boolean in-flight gate, and stale results do not overwrite the remount.
       hydrateEpochRef.current += 1;

@@ -1,9 +1,15 @@
-import { memo, useMemo, useState } from 'react';
+import { memo, useMemo, useState, type CSSProperties } from 'react';
 import { ChevronRight } from 'lucide-react';
-import { resolveDirectoryMonogram } from 'pi-kiosk-shared';
+import {
+  resolveDirectoryMonogram,
+  normalizeLogoChipBackgroundSettings,
+  normalizeLogoChipRimSettings,
+  resolveLogoChipBackgroundForTheme,
+  resolveLogoChipRimForTheme,
+} from 'pi-kiosk-shared';
+import { useTheme } from 'pi-kiosk-shared/theme';
 import type { PublicPickupTenantDTO } from './publicPickupTenantApi.js';
-import { resolvePickupLandingLogoSrc } from './filterPickupLandingOrgs.js';
-
+import { resolvePickupLandingLogoSrcForTheme } from './filterPickupLandingOrgs.js';
 export interface TenantLandingOrgRowProps {
   readonly tenant: PublicPickupTenantDTO;
   readonly disabled?: boolean;
@@ -21,9 +27,10 @@ export const TenantLandingOrgRow = memo(
     onSelect,
     tileClassName = 'w-full',
   }: TenantLandingOrgRowProps): JSX.Element => {
+    const { effectiveTheme } = useTheme();
     const logoSrc = useMemo(
-      () => resolvePickupLandingLogoSrc(tenant.logoUrl),
-      [tenant.logoUrl],
+      () => resolvePickupLandingLogoSrcForTheme(tenant.logoUrl, tenant.logoUrlDark, effectiveTheme),
+      [effectiveTheme, tenant.logoUrl, tenant.logoUrlDark],
     );
     const [logoFailed, setLogoFailed] = useState(false);
     const monogram = useMemo(
@@ -35,7 +42,17 @@ export const TenantLandingOrgRow = memo(
         }),
       [tenant.code, tenant.name, tenant.tenantId],
     );
+    const logoChipRim = useMemo(() => {
+      const settings = normalizeLogoChipRimSettings(tenant);
+      return resolveLogoChipRimForTheme(settings, effectiveTheme);
+    }, [tenant, effectiveTheme]);
+    const logoChipBackground = useMemo(() => {
+      const settings = normalizeLogoChipBackgroundSettings(tenant);
+      return resolveLogoChipBackgroundForTheme(settings, effectiveTheme);
+    }, [tenant, effectiveTheme]);
     const showLogo = logoSrc !== null && !logoFailed;
+    const showRim = logoChipRim.show;
+    const showBackground = logoChipBackground.show;
 
     return (
       <li
@@ -63,8 +80,28 @@ export const TenantLandingOrgRow = memo(
           data-testid={`pickup-tenant-landing-row-${tenant.code}`}
         >
           <span
-            className="relative inline-flex h-14 w-14 shrink-0 overflow-hidden rounded-2xl bg-[var(--color-surface-muted)] lg:h-20 lg:w-20"
+            className="relative inline-flex h-14 w-14 shrink-0 overflow-hidden rounded-2xl bg-transparent lg:h-20 lg:w-20"
+            style={
+              showRim || showBackground
+                ? ({
+                    ...(showRim
+                      ? {
+                          ['--logo-chip-rim' as string]: logoChipRim.color,
+                          boxShadow: '0 0 0 1px var(--logo-chip-rim)',
+                        }
+                      : {}),
+                    ...(showBackground
+                      ? {
+                          ['--logo-chip-background' as string]: logoChipBackground.color,
+                          backgroundColor: 'var(--logo-chip-background)',
+                        }
+                      : {}),
+                  } as CSSProperties)
+                : undefined
+            }
             aria-hidden
+            data-logo-chip-rim={showRim ? 'true' : 'false'}
+            data-logo-chip-background={showBackground ? 'true' : 'false'}
           >
             {showLogo ? (
               <img

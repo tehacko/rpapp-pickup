@@ -24,6 +24,8 @@ export interface ScanScreenActions {
   readonly setScanToken: (value: string) => void;
   readonly setShortCode: (value: string) => void;
   readonly startCamera: () => void;
+  readonly retryCamera: () => void;
+  readonly applyCameraDecode: (raw: string) => void;
   readonly resolveToken: (event: FormEvent) => void;
   readonly resolveShortCode: (event: FormEvent) => void;
   readonly openOrder: () => void;
@@ -47,6 +49,7 @@ export function useScanScreen(gateway: IScanGateway = scanGateway): UseScanScree
   const { activePickupPointId, isRoamingStaff } = usePickupStaffSession();
   const videoRef = useRef<HTMLVideoElement>(null);
   const [cameraEnabled, setCameraEnabled] = useState(true);
+  const [cameraSessionKey, setCameraSessionKey] = useState(0);
   const [scanToken, setScanToken] = useState('');
   const [shortCode, setShortCode] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -62,15 +65,22 @@ export function useScanScreen(gateway: IScanGateway = scanGateway): UseScanScree
     setCameraEnabled(false);
   }, []);
 
+  const handleBackgroundStop = useCallback((): void => {
+    setCameraEnabled(false);
+  }, []);
+
   const {
     status: cameraStatus,
     engine: cameraEngine,
     zxingAssistActive,
+    degradedMode: cameraDegradedMode,
     errorMessage: cameraError,
   } = useQrScanner({
     enabled: cameraEnabled && accessToken !== null,
     videoRef,
     onDecode: handleDecode,
+    onBackgroundStop: handleBackgroundStop,
+    sessionKey: cameraSessionKey,
   });
 
   const resolveToken = useCallback(
@@ -173,8 +183,9 @@ export function useScanScreen(gateway: IScanGateway = scanGateway): UseScanScree
         cameraStatus,
         cameraEngine,
         zxingAssistActive,
+        cameraDegradedMode,
       ),
-    [cameraEngine, cameraStatus, t, zxingAssistActive],
+    [cameraDegradedMode, cameraEngine, cameraStatus, t, zxingAssistActive],
   );
 
   const viewModel = useMemo(
@@ -209,12 +220,20 @@ export function useScanScreen(gateway: IScanGateway = scanGateway): UseScanScree
     () => ({
       setScanToken,
       setShortCode,
-      startCamera: () => setCameraEnabled(true),
+      startCamera: () => {
+        setCameraSessionKey((key) => key + 1);
+        setCameraEnabled(true);
+      },
+      retryCamera: () => {
+        setCameraSessionKey((key) => key + 1);
+        setCameraEnabled(true);
+      },
+      applyCameraDecode: handleDecode,
       resolveToken,
       resolveShortCode,
       openOrder,
     }),
-    [openOrder, resolveShortCode, resolveToken],
+    [handleDecode, openOrder, resolveShortCode, resolveToken],
   );
 
   return { accessToken, tenantCode, screenState, viewModel, actions, videoRef };

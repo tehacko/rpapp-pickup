@@ -19,7 +19,7 @@ import { basename, resolve } from 'node:path';
 
 const SHARED_PACKAGE_NAME = 'pi-kiosk-shared';
 /** Fallback registry range when package.json has no pin (app-only / Railway). */
-const DEFAULT_REGISTRY_TARGET = '^2.2.97';
+const DEFAULT_REGISTRY_TARGET = '^2.3.2';
 const REGISTRY_TAG_ENV = 'PI_KIOSK_SHARED_REGISTRY_TAG';
 
 const siblingPkg = resolve(process.cwd(), '..', 'shared', 'package.json');

@@ -1,9 +1,10 @@
-import { FormEvent } from 'react';
+import { FormEvent, useRef } from 'react';
 import { Barcode } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { AlertBanner } from '../../shared/ui/AlertBanner.js';
 import { PageHeader } from '../../shared/ui/PageHeader.js';
+import { PickupCameraScannerCard } from '../../shared/ui/PickupCameraScannerCard.js';
 import { PickupListLayout } from '../../shared/ui/PickupListLayout.js';
 import { ScreenState } from '../../shared/ui/ScreenState.js';
 import { SectionCard } from '../../shared/ui/SectionCard.js';
@@ -24,6 +25,7 @@ export function BarcodeAssignDetailScreenView({
 }: BarcodeAssignDetailScreenViewProps): JSX.Element {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const codeInputRef = useRef<HTMLInputElement>(null);
   const encodedTenant = encodeURIComponent(viewModel.tenantCode);
 
   return (
@@ -90,31 +92,22 @@ export function BarcodeAssignDetailScreenView({
         {viewModel.catalogError === null && !viewModel.needsVariantPicker ? (
           <>
             <SectionCard elevated data-testid="barcode-assign-scanner-card">
-              <div className="flex flex-col gap-3">
-                <video
-                  ref={videoRef}
-                  className="max-h-[280px] w-full rounded-[var(--radius-xl)] bg-[var(--color-on-surface)] object-cover"
-                  muted
-                  playsInline
-                />
-                {viewModel.cameraError ? (
-                  <ScreenState
-                    variant="error"
-                    message={viewModel.cameraError}
-                    onRetry={actions.startCamera}
-                  />
-                ) : null}
-                {viewModel.cameraRunningMessage ? (
-                  <p className="text-sm text-[var(--color-on-surface-muted)]" role="status">
-                    {viewModel.cameraRunningMessage}
-                  </p>
-                ) : null}
-                {viewModel.cameraStatus === 'running' ? null : (
-                  <Button intent="secondary" type="button" onClick={actions.startCamera}>
-                    {t('pickup.scan.startCamera')}
-                  </Button>
-                )}
-              </div>
+              <PickupCameraScannerCard
+                videoRef={videoRef}
+                cameraEnabled={viewModel.cameraEnabled}
+                cameraStatus={viewModel.cameraStatus}
+                cameraError={viewModel.cameraError}
+                cameraRunningMessage={viewModel.cameraRunningMessage}
+                formatProfile="all"
+                i18nPrefix="pickup.barcodeAssign"
+                onSnapDecode={actions.applyCameraDecode}
+                onStartCamera={actions.startCamera}
+                onRetryCamera={actions.retryCamera}
+                onManualRecovery={() => {
+                  codeInputRef.current?.focus();
+                }}
+                testId="barcode-assign-camera"
+              />
             </SectionCard>
 
             <SectionCard
@@ -130,6 +123,7 @@ export function BarcodeAssignDetailScreenView({
                   <span className="sr-only">{t('pickup.barcodeAssign.codeLabel')}</span>
                   <input
                     id="pickup-barcode-code"
+                    ref={codeInputRef}
                     className="min-h-11 w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-[var(--color-on-surface)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus-ring)]"
                     value={viewModel.draftCode}
                     onChange={(event) => actions.setDraftCode(event.target.value)}

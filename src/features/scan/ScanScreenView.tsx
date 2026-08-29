@@ -1,6 +1,8 @@
 import { Link } from 'react-router-dom';
+import { useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PageHeader } from '../../shared/ui/PageHeader.js';
+import { PickupCameraScannerCard } from '../../shared/ui/PickupCameraScannerCard.js';
 import { PickupListLayout } from '../../shared/ui/PickupListLayout.js';
 import { PickupStickyCta } from '../../shared/ui/PickupStickyCta.js';
 import { ScreenState } from '../../shared/ui/ScreenState.js';
@@ -33,6 +35,7 @@ export function ScanScreenView({
   videoRef,
 }: ScanScreenViewProps): JSX.Element {
   const { t } = useTranslation();
+  const tokenInputRef = useRef<HTMLInputElement>(null);
   const encodedTenant = encodeURIComponent(tenantCode);
   const showOpenOrderCta = viewModel.resolved !== null;
 
@@ -59,36 +62,22 @@ export function ScanScreenView({
 
       <PickupListLayout>
         <SectionCard elevated data-testid="pickup-scan-camera">
-          <div className="flex flex-col gap-3">
-            <video
-              ref={videoRef}
-              className="w-full max-h-[280px] rounded-[var(--radius-xl)] bg-[var(--color-on-surface)] object-cover"
-              muted
-              playsInline
-            />
-            {viewModel.cameraError ? (
-              <ScreenState
-                variant="error"
-                message={viewModel.cameraError}
-                onRetry={actions.startCamera}
-              />
-            ) : null}
-            {viewModel.cameraRunningMessage ? (
-              <p className="text-sm text-[var(--color-on-surface-muted)]" role="status">
-                {viewModel.cameraRunningMessage}
-              </p>
-            ) : null}
-            {viewModel.cameraStatus === 'running' ? null : (
-              <Button
-                intent="secondary"
-                type="button"
-                className="min-h-11"
-                onClick={actions.startCamera}
-              >
-                {t('pickup.scan.startCamera')}
-              </Button>
-            )}
-          </div>
+          <PickupCameraScannerCard
+            videoRef={videoRef}
+            cameraEnabled={viewModel.cameraEnabled}
+            cameraStatus={viewModel.cameraStatus}
+            cameraError={viewModel.cameraError}
+            cameraRunningMessage={viewModel.cameraRunningMessage}
+            formatProfile="qr-only"
+            i18nPrefix="pickup.scan"
+            onSnapDecode={actions.applyCameraDecode}
+            onStartCamera={actions.startCamera}
+            onRetryCamera={actions.retryCamera}
+            onManualRecovery={() => {
+              tokenInputRef.current?.focus();
+            }}
+            testId="pickup-scan-camera"
+          />
         </SectionCard>
 
         <SectionCard elevated data-testid="pickup-scan-token-card">
@@ -100,6 +89,7 @@ export function ScanScreenView({
               {t('pickup.scan.tokenLabel')}
               <input
                 id="pickup-scan-token"
+                ref={tokenInputRef}
                 className="min-h-11 w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-[var(--color-on-surface)]"
                 value={viewModel.scanToken}
                 onChange={(event) => actions.setScanToken(event.target.value)}

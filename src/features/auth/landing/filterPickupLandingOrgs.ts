@@ -1,4 +1,8 @@
-import { resolveConsumerSquareLogoUrl } from 'pi-kiosk-shared';
+import {
+  resolveConsumerSquareLogoForTheme,
+  resolveConsumerSquareLogoUrl,
+  type ConsumerSquareLogoTheme,
+} from 'pi-kiosk-shared';
 
 /**
  * Client-side filter/sort for the public pickup organization landing list.
@@ -44,4 +48,16 @@ export function filterPickupLandingOrgs<T extends { readonly name: string; reado
 /** Square `logoUrl` only for pickup landing thumbs (applyToCustomerPwa gated by BE). */
 export function resolvePickupLandingLogoSrc(logoUrl: string | null | undefined): string | null {
   return resolveConsumerSquareLogoUrl(logoUrl);
+}
+
+/** Theme-aware square logo for pickup landing thumbs. */
+export function resolvePickupLandingLogoSrcForTheme(
+  logoUrl: string | null | undefined,
+  logoUrlDark: string | null | undefined,
+  theme: ConsumerSquareLogoTheme,
+): string | null {
+  return resolveConsumerSquareLogoForTheme(
+    { logoUrl: logoUrl ?? null, logoUrlDark: logoUrlDark ?? null },
+    theme,
+  );
 }

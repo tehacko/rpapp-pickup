@@ -8,6 +8,8 @@ export interface UseBarcodeAssignScannerOptions {
   videoRef: React.RefObject<HTMLVideoElement | null>;
   onDecode: (rawValue: string) => void;
   formatProfile?: BarcodeScannerFormatProfile;
+  onBackgroundStop?: () => void;
+  sessionKey?: number;
 }
 
 export function useBarcodeAssignScanner(options: UseBarcodeAssignScannerOptions) {
@@ -24,6 +26,7 @@ export function useBarcodeAssignScanner(options: UseBarcodeAssignScannerOptions)
       runningNative: t('pickup.barcodeAssign.cameraRunning'),
       runningZxing: t('pickup.barcodeAssign.cameraRunningZxingAssist'),
       runningZbar: t('pickup.barcodeAssign.cameraRunningZbar'),
+      runningDegraded: t('pickup.barcodeAssign.runningDegraded'),
       zbarBootstrapFailed: t('pickup.barcodeAssign.cameraZbarBootstrapFailed'),
       error: t('pickup.barcodeAssign.cameraError'),
       scannerOff: t('pickup.barcodeAssign.cameraOff'),
@@ -37,5 +40,7 @@ export function useBarcodeAssignScanner(options: UseBarcodeAssignScannerOptions)
     onDecode: options.onDecode,
     messages,
     formatProfile: options.formatProfile ?? 'retail',
+    onBackgroundStop: options.onBackgroundStop,
+    sessionKey: options.sessionKey,
   });
 }
