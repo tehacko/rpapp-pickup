@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { PickupApiError } from '../../api/pickupApi.js';
 import { useStaffToken, useTenantCode } from '../../hooks/useStaffToken.js';
 import { usePickupErrorHandler } from '../../shared/hooks/usePickupErrorHandler.js';
 import { usePickupLocaleTag } from '../../shared/hooks/usePickupLocaleTag.js';
@@ -234,9 +235,17 @@ export function useSellScreen(
       } catch (err: unknown) {
         catalogLog.error('Sell cash checkout failed', err, { operation: 'checkoutCash' });
         handleError(err, 'sell.catalog.checkoutCash');
-        setCheckoutError(
-          err instanceof Error ? err.message : t('pickup.sell.checkoutFailed'),
-        );
+        if (
+          err instanceof PickupApiError &&
+          err.recoverable === true &&
+          err.nextAction === 'confirm_via_queue'
+        ) {
+          setCheckoutError(t('pickup.sell.checkoutConfirmFailedRecoverable'));
+        } else {
+          setCheckoutError(
+            err instanceof Error ? err.message : t('pickup.sell.checkoutFailed'),
+          );
+        }
       } finally {
         setCheckoutLoading(false);
       }

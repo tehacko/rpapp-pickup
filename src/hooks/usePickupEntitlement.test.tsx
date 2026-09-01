@@ -8,9 +8,18 @@ jest.mock('@tanstack/react-query', () => ({
 }));
 
 jest.mock('../api/pickupApi.js', () => {
-  const actual = jest.requireActual('../api/pickupApi.js') as typeof import('../api/pickupApi.js');
+  class PickupApiError extends Error {
+    readonly status: number;
+    readonly code?: string;
+    constructor(status: number, message: string, opts?: { code?: string }) {
+      super(message);
+      this.name = 'PickupApiError';
+      this.status = status;
+      this.code = opts?.code;
+    }
+  }
   return {
-    ...actual,
+    PickupApiError,
     fetchPickupStaffEntitlement: jest.fn(),
   };
 });
@@ -32,6 +41,7 @@ jest.mock('../shared/session/PickupStaffSessionProvider.js', () => ({
 
 import { usePickupEntitlement } from './usePickupEntitlement.js';
 import { usePickupStaffSession } from '../shared/session/PickupStaffSessionProvider.js';
+import { PickupApiError } from '../api/pickupApi.js';
 
 const mockUsePickupStaffSession = usePickupStaffSession as jest.MockedFunction<
   typeof usePickupStaffSession
@@ -117,6 +127,26 @@ describe('usePickupEntitlement', () => {
     expect(result.current.isLoading).toBe(false);
   });
 
+  it('does not allow labeling-only login when assignBarcode is false (vending without barcode admin)', () => {
+    mockUseQuery.mockReturnValue({
+      data: {
+        revision: 1,
+        staffPickupScan: false,
+        assignBarcode: false,
+        orderPickupInfrastructure: false,
+      },
+      isSuccess: true,
+      isLoading: false,
+      isError: false,
+      refetch: jest.fn(),
+    });
+
+    const { result } = renderHook(() => usePickupEntitlement('demo-tenant'));
+
+    expect(result.current.isLoginAllowed).toBe(false);
+    expect(result.current.entitledFunctions).not.toContain('barcode_assign');
+  });
+
   it('allows labeling-only login when assignBarcode is true and infra is off (align BE)', () => {
     mockUseQuery.mockReturnValue({
       data: {
@@ -159,13 +189,6 @@ describe('usePickupEntitlement', () => {
   });
 
   it('flags isTenantInactive when entitlement query fails with TENANT_INACTIVE', () => {
-    const { PickupApiError } = jest.requireActual('../api/pickupApi.js') as {
-      PickupApiError: new (
-        status: number,
-        message: string,
-        options?: { code?: string },
-      ) => Error;
-    };
     mockUseQuery.mockReturnValue({
       data: undefined,
       isSuccess: false,

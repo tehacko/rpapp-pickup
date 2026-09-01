@@ -8,9 +8,18 @@ jest.mock('@tanstack/react-query', () => ({
 }));
 
 jest.mock('../api/pickupApi.js', () => {
-  const actual = jest.requireActual('../api/pickupApi.js') as typeof import('../api/pickupApi.js');
+  class PickupApiError extends Error {
+    readonly status: number;
+    readonly code?: string;
+    constructor(status: number, message: string, opts?: { code?: string }) {
+      super(message);
+      this.name = 'PickupApiError';
+      this.status = status;
+      this.code = opts?.code;
+    }
+  }
   return {
-    ...actual,
+    PickupApiError,
     fetchPickupStaffEntitlement: jest.fn(),
   };
 });

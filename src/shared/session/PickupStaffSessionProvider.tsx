@@ -90,6 +90,8 @@ export function PickupStaffSessionProvider({
   const hydrateEpochRef = useRef(0);
   /** Effect-only ticket counter — never read during render (react-hooks/refs). */
   const hydrateTicketRef = useRef(0);
+  /** Mirrors activeHydrateTicket for runHydrate finally — avoids effect↔callback dependency loop. */
+  const activeHydrateTicketRef = useRef(0);
 
   const effectiveSessionHydrated =
     tenantCode === null ||
@@ -165,11 +167,11 @@ export function PickupStaffSessionProvider({
         clearSessionForTenant(code);
       } finally {
         if (epoch === hydrateEpochRef.current) {
-          setCompletedHydrateTicket(options?.ticket ?? activeHydrateTicket);
+          setCompletedHydrateTicket(options?.ticket ?? activeHydrateTicketRef.current);
         }
       }
     },
-    [activeHydrateTicket, applySessionClaims, clearSessionForTenant],
+    [applySessionClaims, clearSessionForTenant],
   );
 
   const establishSession = useCallback(
@@ -245,6 +247,7 @@ export function PickupStaffSessionProvider({
     const nextTicket = hydrateTicketRef.current + 1;
     hydrateTicketRef.current = nextTicket;
     const scheduleHandle = window.setTimeout(() => {
+      activeHydrateTicketRef.current = nextTicket;
       setActiveHydrateTicket(nextTicket);
       void runHydrate(tenantCode, { ticket: nextTicket });
     }, 0);

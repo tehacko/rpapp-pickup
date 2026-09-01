@@ -14,6 +14,8 @@ interface ImportMetaEnv {
   readonly VITE_APP_VERSION?: string;
   /** Optional build id when version is unset. */
   readonly VITE_BUILD_ID?: string;
+  /** Hide staff cash-received confirm UI when false (default true when unset). */
+  readonly VITE_PICKUP_CASH_CONFIRM_ENABLED?: string;
 }
 
 interface ImportMeta {

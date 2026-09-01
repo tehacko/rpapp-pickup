@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react';
 import { Route, Routes } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { AppVersionCorner } from 'pi-kiosk-shared/ui';
 import { PickupAppShell } from './app/PickupAppShell.js';
 import { RemountBoundary } from './shared/components/RemountBoundary.js';
 import { PickupRouteErrorFallback } from './shared/components/PickupRouteErrorFallback.js';
@@ -10,6 +11,7 @@ import {
   ErrorIsolationProbe,
   type ErrorIsolationProbeFeature,
 } from './test/e2e/errorIsolationProbe.js';
+import { PICKUP_BUILD_LABEL } from './shared/ui/pickupBuildLabel.js';
 
 const LoginPage = lazy(async () => {
   const mod = await import('./pages/LoginPage');
@@ -106,7 +108,9 @@ function withPickupRouteBoundary(
 
 export function App(): JSX.Element {
   return (
-    <Suspense fallback={<RouteFallback />}>
+    <>
+      <AppVersionCorner label={PICKUP_BUILD_LABEL} bottomChromeVar="--pickup-bottom-chrome" />
+      <Suspense fallback={<RouteFallback />}>
       <Routes>
         <Route path="/" element={<RootPage />} />
         <Route path="/:tenantCode/login" element={<LoginPage />} />
@@ -170,5 +174,6 @@ export function App(): JSX.Element {
         <Route path="*" element={<RootPage />} />
       </Routes>
     </Suspense>
+    </>
   );
 }

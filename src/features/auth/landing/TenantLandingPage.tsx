@@ -1,5 +1,4 @@
 import { memo, useCallback, useEffect, useId, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { AlertCircle, Filter, Loader2, RefreshCw, Search } from 'lucide-react';
 import { Button } from '../../../shared/ui/surfacePrimitives.js';
@@ -69,18 +68,18 @@ function useLgUp(): boolean {
 /**
  * Public entry when the visitor has no tenant in the URL.
  * Mirrors admin TenantLandingPage: search/sort directory → `/{tenant}/login`.
+ * Selecting a row pushes login onto browser history (back returns here).
  * `/` never auto-skips to last-tenant hub (admin cold-start parity).
  */
 export const TenantLandingPage = memo((): JSX.Element => {
   const { t } = useTranslation();
-  const navigate = useNavigate();
   const searchId = useId();
   const sortId = useId();
   const filterSheetTitleId = useId();
   const lgUp = useLgUp();
 
   const [loadState, setLoadState] = useState<LoadState>({ status: 'loading' });
-  const [isNavigating, setIsNavigating] = useState(false);
+  const [navigatingTenantCode, setNavigatingTenantCode] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
   const [query, setQuery] = useState('');
   const [draftQuery, setDraftQuery] = useState('');
@@ -158,18 +157,14 @@ export const TenantLandingPage = memo((): JSX.Element => {
   const filtersActive = query.trim().length > 0 || sort !== 'nameAsc';
   const facetsActive = sort !== 'nameAsc';
 
-  const goToTenantLogin = useCallback(
-    (code: string) => {
-      const normalized = code.trim();
-      if (normalized.length === 0 || isNavigating) {
-        return;
-      }
-      setIsNavigating(true);
-      rememberPickupLastTenant(normalized);
-      navigate(`/${encodeURIComponent(normalized)}/login`, { replace: true });
-    },
-    [isNavigating, navigate],
-  );
+  const rememberLastTenant = useCallback((code: string) => {
+    const normalized = code.trim();
+    if (normalized.length === 0) {
+      return;
+    }
+    setNavigatingTenantCode(normalized);
+    rememberPickupLastTenant(normalized);
+  }, []);
 
   const handleRetry = useCallback(() => {
     setReloadKey((key) => key + 1);
@@ -476,15 +471,18 @@ export const TenantLandingPage = memo((): JSX.Element => {
             <TenantLandingOrgRow
               key={tenant.tenantId}
               tenant={tenant}
-              disabled={isNavigating}
-              onSelect={goToTenantLogin}
+              href={`/${encodeURIComponent(tenant.code)}/login`}
+              disabled={navigatingTenantCode === tenant.code}
+              onBeforeNavigate={() => {
+                rememberLastTenant(tenant.code);
+              }}
               tileClassName={ORG_TILE_WIDTH_CLASS}
             />
           ))}
         </ul>
       ) : null}
 
-      {isNavigating ? (
+      {navigatingTenantCode !== null ? (
         <div
           className="mt-3 flex items-center justify-center gap-2 text-sm text-[var(--color-on-surface-muted)]"
           data-testid="pickup-tenant-landing-navigating"

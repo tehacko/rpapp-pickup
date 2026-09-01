@@ -79,7 +79,7 @@ export function usePickupEntitlement(tenantCode: string): UsePickupEntitlementRe
       ? buildEntitledFunctions(snapshot, sessionClaims?.capabilities)
       : [];
 
-  // Align FE↔BE (G17): labeling login = product_vending (assignBarcode) without infra;
+  // Align FE↔BE (G17): labeling login = product_vending ∧ product_barcode_administration (assignBarcode);
   // scan login = staff_pickup_scan ∧ order_pickup_infrastructure;
   // resupply-only login UI when tenant flag is on (capability verified post-session).
   const isLoginAllowed =

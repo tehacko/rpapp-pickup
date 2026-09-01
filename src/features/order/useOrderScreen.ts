@@ -33,6 +33,11 @@ import { resolveOrderScreenState, type OrderScreenState } from './orderScreenSta
 import { usePickupStaffRePin } from '../../shared/security/usePickupStaffRePin.js';
 import { toastApi } from '../../shared/ui/Toast/toastApi.js';
 import { claimLog, mutationsLog } from './logging.js';
+import { resolvePickupCanConfirmCashPayment } from '../cash-confirm/resolvePickupCanConfirmCashPayment.js';
+import { useConfirmCashReceived } from '../cash-confirm/useConfirmCashReceived.js';
+import { isPickupCashConfirmEnabled } from '../cash-confirm/pickupCashConfirmEnabled.js';
+import { usePickupStaffSession } from '../../shared/session/PickupStaffSessionProvider.js';
+import { PICKUP_SELL_CAPABILITY } from '../../shared/entitlements/pickupStaffFunctions.js';
 
 export interface OrderScreenActions {
   readonly setPickupCode: (value: string) => void;
@@ -47,6 +52,8 @@ export interface OrderScreenActions {
   readonly onHold: () => void;
   readonly onRelease: () => void;
   readonly onReprint: () => void;
+  readonly onConfirmCash: () => void;
+  readonly pendingCashConfirm: boolean;
   readonly onRetry: () => void;
 }
 
@@ -63,7 +70,12 @@ export function useOrderScreen(
   gateway: IOrderFulfillmentGateway = orderFulfillmentGateway,
 ): UseOrderScreenResult {
   const tenantCode = useTenantCode();
-  const { deviceFlags } = usePickupEntitlement(tenantCode);
+  const { deviceFlags, snapshot: entitlementSnapshot } = usePickupEntitlement(tenantCode);
+  const cashConfirmEnabled = isPickupCashConfirmEnabled();
+  const canConfirmCashPayment = resolvePickupCanConfirmCashPayment(entitlementSnapshot);
+  const { sessionClaims } = usePickupStaffSession();
+  const sellCapabilityEnabled =
+    sessionClaims?.capabilities.includes(PICKUP_SELL_CAPABILITY) === true;
   const { fulfillmentId = '' } = useParams();
   const [searchParams] = useSearchParams();
   const scanToken = searchParams.get('scanToken') ?? '';
@@ -264,6 +276,34 @@ export function useOrderScreen(
     }
   }, [accessToken, applyOrder, gateway, handleError, order, scanToken, shortCode, tenantCode]);
 
+  const patchOrderAfterCashConfirm = useCallback((): void => {
+    setOrder((current) => {
+      if (current === null) {
+        return current;
+      }
+      return {
+        ...current,
+        transactionStatus: 'COMPLETED',
+        paymentCompleted: true,
+        paymentRequired: false,
+      };
+    });
+  }, []);
+
+  const { confirmCashReceived, pendingTransactionId: pendingCashConfirmTransactionId } =
+    useConfirmCashReceived({
+      tenantCode,
+      accessToken,
+      canConfirmCashPayment,
+      onSuccess: () => {
+        patchOrderAfterCashConfirm();
+        void refreshOrder().catch(() => {
+          // refreshOrder already logged; local patch keeps UI consistent without scan token
+        });
+      },
+    });
+
+
   const mutationContext = useMemo<OrderMutationContext>(
     () => ({
       tenantCode,
@@ -318,8 +358,11 @@ export function useOrderScreen(
       refuseQty,
       refuseSelected,
       isCoolingDown: submitCooldown.isCoolingDown,
-    });
+    }, cashConfirmEnabled, sellCapabilityEnabled, canConfirmCashPayment);
   }, [
+    canConfirmCashPayment,
+    cashConfirmEnabled,
+    sellCapabilityEnabled,
     fulfillmentId,
     holdReason,
     order,
@@ -353,6 +396,13 @@ export function useOrderScreen(
           descriptionKey: 'pickup.repin.reprintDescription',
           action: () => void reprintOrderCredentials(mutationContext),
         }),
+      onConfirmCash: () => {
+        if (order === null) {
+          return;
+        }
+        confirmCashReceived(order.transactionId);
+      },
+      pendingCashConfirm: pendingCashConfirmTransactionId !== null,
       onRetry: () => {
         void (async () => {
           setLoading(true);
@@ -366,7 +416,14 @@ export function useOrderScreen(
         })();
       },
     }),
-    [mutationContext, refreshOrder, requestRePin],
+    [
+      confirmCashReceived,
+      mutationContext,
+      order,
+      pendingCashConfirmTransactionId,
+      refreshOrder,
+      requestRePin,
+    ],
   );
 
   return { accessToken, tenantCode, screenState, viewModel, actions, rePinModal };

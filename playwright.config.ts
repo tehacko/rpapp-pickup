@@ -3,6 +3,7 @@ import { defineConfig, devices } from '@playwright/test';
 const port = 3005;
 const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? `http://127.0.0.1:${port}`;
 const integrationEnabled = process.env.E2E_INTEGRATION === '1';
+const useExternalWebServer = process.env.E2E_EXTERNAL_WEB_SERVER === '1';
 const adminURL = process.env.PLAYWRIGHT_ADMIN_BASE_URL ?? 'http://127.0.0.1:3001';
 
 export default defineConfig({
@@ -67,37 +68,50 @@ export default defineConfig({
       },
     },
   ],
-  webServer: integrationEnabled
-    ? [
-        {
-          command: 'npx vite --port 3005 --host 127.0.0.1',
-          url: baseURL,
-          reuseExistingServer: !process.env.CI,
-          timeout: 120_000,
-          env: {
-            ...process.env,
-            VITE_DEFAULT_LOCALE: 'en',
-          },
-        },
-        {
-          command: 'npx vite --host 127.0.0.1 --port 3001',
-          cwd: '../admin-app',
-          url: adminURL,
-          reuseExistingServer: !process.env.CI,
-          timeout: 120_000,
-        },
-      ]
+  ...(useExternalWebServer
+    ? {}
     : {
-        command:
-          process.env.E2E_SHARED_PREBUILT === '1'
-            ? 'npx vite --port 3005 --host 127.0.0.1'
-            : 'node ../shared/scripts/ensureDist.mjs && npx vite --port 3005 --host 127.0.0.1',
-        url: baseURL,
-        reuseExistingServer: !process.env.CI,
-        timeout: 120_000,
-        env: {
-          ...process.env,
-          VITE_DEFAULT_LOCALE: 'en',
-        },
-      },
+        webServer: integrationEnabled
+          ? [
+              {
+                command: 'npx vite --port 3005 --host 127.0.0.1',
+                url: baseURL,
+                reuseExistingServer:
+                  process.env.HERMETIC_FORCE_WEBSERVER === '1'
+                    ? false
+                    : process.env.HERMETIC_REUSE_WEBSERVER === '1' || !process.env.CI,
+                timeout: 120_000,
+                env: {
+                  ...process.env,
+                  VITE_DEFAULT_LOCALE: 'en',
+                },
+              },
+              {
+                command: 'npx vite --host 127.0.0.1 --port 3001',
+                cwd: '../admin-app',
+                url: adminURL,
+                reuseExistingServer:
+                  process.env.HERMETIC_FORCE_WEBSERVER === '1'
+                    ? false
+                    : process.env.HERMETIC_REUSE_WEBSERVER === '1' || !process.env.CI,
+                timeout: 120_000,
+              },
+            ]
+          : {
+              command:
+                process.env.E2E_SHARED_PREBUILT === '1'
+                  ? 'npx vite --port 3005 --host 127.0.0.1'
+                  : 'node ../shared/scripts/ensureDist.mjs && npx vite --port 3005 --host 127.0.0.1',
+              url: baseURL,
+              reuseExistingServer:
+                process.env.HERMETIC_FORCE_WEBSERVER === '1'
+                  ? false
+                  : process.env.HERMETIC_REUSE_WEBSERVER === '1' || !process.env.CI,
+              timeout: 120_000,
+              env: {
+                ...process.env,
+                VITE_DEFAULT_LOCALE: 'en',
+              },
+            },
+      }),
 });

@@ -8,6 +8,8 @@ import {
 } from '../buildQueuePageViewModel.js';
 import type { QueueItem } from '../../../types.js';
 
+const formatCashLabel = (): string => '180 Kč PŘIJATO';
+
 function makeQueueItem(overrides: Partial<QueueItem> = {}): QueueItem {
   return {
     fulfillmentId: 1,
@@ -138,6 +140,10 @@ describe('buildQueuePageViewModel', () => {
       { activePickupPointId: 'all', errorMessage: null, showOfflineRetryBanner: false, showPickupPointTabs: true, lastUpdatedAt: now },
       { unassignedPickupPoint: 'No pickup point' },
       null,
+      true,
+      true,
+      true,
+      formatCashLabel,
       now,
     );
     expect(vm.items).toHaveLength(2);
@@ -188,6 +194,10 @@ describe('buildQueuePageViewModel', () => {
       },
       { unassignedPickupPoint: 'No pickup point' },
       null,
+      true,
+      true,
+      true,
+      formatCashLabel,
       now,
     );
     expect(vm.items[0]?.ageTone).toBe('danger');
@@ -219,7 +229,178 @@ describe('buildQueuePageViewModel', () => {
       },
       { unassignedPickupPoint: 'No pickup point' },
       null,
+      true,
+      true,
+      true,
+      formatCashLabel,
     );
     expect(vm.showOfflineRetryBanner).toBe(true);
+  });
+
+  it('flags queue rows awaiting cash confirmation when sell capability is present', () => {
+    const vm = buildQueuePageViewModel(
+      [
+        makeQueueItem({
+          fulfillmentId: 20,
+          transactionStatus: 'AWAITING_CASH_CONFIRMATION',
+          paymentMethod: 'CASH',
+        }),
+        makeQueueItem({ fulfillmentId: 21 }),
+      ],
+      {
+        activePickupPointId: 'all',
+        errorMessage: null,
+        showOfflineRetryBanner: false,
+        showPickupPointTabs: false,
+        lastUpdatedAt: null,
+      },
+      { unassignedPickupPoint: 'No pickup point' },
+      null,
+      true,
+      true,
+      true,
+      formatCashLabel,
+    );
+    expect(vm.items[0]?.showCashConfirm).toBe(true);
+    expect(vm.items[1]?.showCashConfirm).toBe(false);
+  });
+
+  it('hides cash confirm for scan-only staff without sell capability (pickupStaffRoutes sell gate)', () => {
+    const vm = buildQueuePageViewModel(
+      [
+        makeQueueItem({
+          fulfillmentId: 20,
+          transactionStatus: 'AWAITING_CASH_CONFIRMATION',
+          paymentMethod: 'CASH',
+        }),
+      ],
+      {
+        activePickupPointId: 'all',
+        errorMessage: null,
+        showOfflineRetryBanner: false,
+        showPickupPointTabs: false,
+        lastUpdatedAt: null,
+      },
+      { unassignedPickupPoint: 'No pickup point' },
+      null,
+      true,
+      false,
+      true,
+      formatCashLabel,
+    );
+    expect(vm.items[0]?.showCashConfirm).toBe(false);
+  });
+
+  it('hides cash confirm eligibility when env gate is disabled', () => {
+    const vm = buildQueuePageViewModel(
+      [
+        makeQueueItem({
+          fulfillmentId: 20,
+          transactionStatus: 'AWAITING_CASH_CONFIRMATION',
+          paymentMethod: 'CASH',
+        }),
+      ],
+      {
+        activePickupPointId: 'all',
+        errorMessage: null,
+        showOfflineRetryBanner: false,
+        showPickupPointTabs: false,
+        lastUpdatedAt: null,
+      },
+      { unassignedPickupPoint: 'No pickup point' },
+      null,
+      false,
+      true,
+      true,
+      formatCashLabel,
+    );
+    expect(vm.items[0]?.showCashConfirm).toBe(false);
+  });
+
+  it('G7: poll-shaped queue refresh drops cash confirm when tx is COMPLETED (Device B / ZAPLACENO)', () => {
+    const txId = 100;
+    const pollTickBefore = Date.parse('2026-07-06T11:00:00.000Z');
+    const pollTickAfter = Date.parse('2026-07-06T11:00:30.000Z');
+    const awaitingItem = makeQueueItem({
+      fulfillmentId: 20,
+      transactionId: txId,
+      transactionStatus: 'AWAITING_CASH_CONFIRMATION',
+      paymentMethod: 'CASH',
+    });
+    const completedItem = makeQueueItem({
+      fulfillmentId: 20,
+      transactionId: txId,
+      transactionStatus: 'COMPLETED',
+      paymentMethod: 'CASH',
+    });
+
+    const beforeVm = buildQueuePageViewModel(
+      [awaitingItem],
+      {
+        activePickupPointId: 'all',
+        errorMessage: null,
+        showOfflineRetryBanner: false,
+        showPickupPointTabs: false,
+        lastUpdatedAt: pollTickBefore,
+      },
+      { unassignedPickupPoint: 'No pickup point' },
+      null,
+      true,
+      true,
+      true,
+      formatCashLabel,
+      pollTickBefore,
+    );
+    expect(beforeVm.items[0]?.showCashConfirm).toBe(true);
+    expect(beforeVm.items[0]?.isAwaitingCash).toBe(true);
+    expect(beforeVm.lastUpdatedAt).toBe(pollTickBefore);
+
+    const afterVm = buildQueuePageViewModel(
+      [completedItem],
+      {
+        activePickupPointId: 'all',
+        errorMessage: null,
+        showOfflineRetryBanner: false,
+        showPickupPointTabs: false,
+        lastUpdatedAt: pollTickAfter,
+      },
+      { unassignedPickupPoint: 'No pickup point' },
+      null,
+      true,
+      true,
+      true,
+      formatCashLabel,
+      pollTickAfter,
+    );
+    expect(afterVm.items[0]?.showCashConfirm).toBe(false);
+    expect(afterVm.items[0]?.isAwaitingCash).toBe(false);
+    expect(afterVm.items[0]?.transactionId).toBe(txId);
+    expect(afterVm.lastUpdatedAt).toBe(pollTickAfter);
+  });
+
+  it('hides cash confirm when payment_cash write is denied (canConfirmCashPayment false)', () => {
+    const vm = buildQueuePageViewModel(
+      [
+        makeQueueItem({
+          fulfillmentId: 20,
+          transactionStatus: 'AWAITING_CASH_CONFIRMATION',
+          paymentMethod: 'CASH',
+        }),
+      ],
+      {
+        activePickupPointId: 'all',
+        errorMessage: null,
+        showOfflineRetryBanner: false,
+        showPickupPointTabs: false,
+        lastUpdatedAt: null,
+      },
+      { unassignedPickupPoint: 'No pickup point' },
+      null,
+      true,
+      true,
+      false,
+      formatCashLabel,
+    );
+    expect(vm.items[0]?.showCashConfirm).toBe(false);
   });
 });

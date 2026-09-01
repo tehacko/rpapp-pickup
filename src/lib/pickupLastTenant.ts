@@ -6,5 +6,9 @@ export function rememberPickupLastTenant(tenantCode: string): void {
   if (trimmed.length === 0) {
     return;
   }
-  localStorage.setItem(PICKUP_LAST_TENANT_CODE_KEY, trimmed);
+  try {
+    localStorage.setItem(PICKUP_LAST_TENANT_CODE_KEY, trimmed);
+  } catch {
+    // ignore storage failures — navigation still proceeds
+  }
 }

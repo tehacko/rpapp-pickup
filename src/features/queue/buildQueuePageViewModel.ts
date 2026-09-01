@@ -1,4 +1,5 @@
 import type { QueueItem } from '../../types.js';
+import { isAwaitingCashConfirmation } from '../cash-confirm/isAwaitingCashConfirmation.js';
 import {
   computeQueueAge,
   formatQueueAgeLabel,
@@ -29,6 +30,7 @@ export interface QueueItemAgeView {
 
 export interface QueueListItemViewModel {
   readonly fulfillmentId: number;
+  readonly transactionId: number;
   readonly status: string;
   readonly pickupPointName: string | null;
   readonly claimBadge: QueueItemClaimBadge | null;
@@ -38,6 +40,9 @@ export interface QueueListItemViewModel {
   readonly ageTone: QueueAgeTone | null;
   /** Relative age string (`null` when promisedPickupAt missing/invalid). */
   readonly ageLabel: string | null;
+  readonly showCashConfirm: boolean;
+  readonly isAwaitingCash: boolean;
+  readonly cashAmountLabel: string | null;
 }
 
 export interface QueuePageUiState {
@@ -132,12 +137,39 @@ export function filterQueueItems(
   return items.filter((item) => item.pickupPointId === activePickupPointId);
 }
 
+export function sortQueueItemsAwaitingCashFirst(items: readonly QueueItem[]): QueueItem[] {
+  const copy = [...items];
+  copy.sort((a, b) => {
+    const aAwaiting = isAwaitingCashConfirmation({
+      transactionStatus: a.transactionStatus,
+      paymentMethod: a.paymentMethod,
+    });
+    const bAwaiting = isAwaitingCashConfirmation({
+      transactionStatus: b.transactionStatus,
+      paymentMethod: b.paymentMethod,
+    });
+    if (aAwaiting === bAwaiting) {
+      return 0;
+    }
+    return aAwaiting ? -1 : 1;
+  });
+  return copy;
+}
+
 export function buildQueueListItemViewModels(
   items: readonly QueueItem[],
   currentDeviceLabel: string | null,
+  cashConfirmEnabled: boolean,
+  sellCapabilityEnabled: boolean,
+  canConfirmCashPayment: boolean,
+  formatCashButtonLabel: (amountMinor: number | null | undefined, currency: string | null | undefined) => string,
   nowMs: number = Date.now(),
 ): QueueListItemViewModel[] {
   return items.map((item) => {
+    const awaitingCash = isAwaitingCashConfirmation({
+      transactionStatus: item.transactionStatus,
+      paymentMethod: item.paymentMethod,
+    });
     const ageInfo = computeQueueAge(item.promisedPickupAt, nowMs);
     const ageLabel = formatQueueAgeLabel(ageInfo);
     let age: QueueItemAgeView | null = null;
@@ -155,12 +187,22 @@ export function buildQueueListItemViewModels(
     }
     return {
       fulfillmentId: item.fulfillmentId,
+      transactionId: item.transactionId,
       status: item.status,
       pickupPointName: item.pickupPointName,
       claimBadge: buildQueueItemClaimBadge(item, currentDeviceLabel, undefined, nowMs),
       age,
       ageTone,
       ageLabel,
+      showCashConfirm:
+        cashConfirmEnabled &&
+        sellCapabilityEnabled &&
+        canConfirmCashPayment &&
+        awaitingCash,
+      isAwaitingCash: awaitingCash,
+      cashAmountLabel: awaitingCash
+        ? formatCashButtonLabel(item.amountMinor, item.currency)
+        : null,
     };
   });
 }
@@ -170,11 +212,24 @@ export function buildQueuePageViewModel(
   ui: QueuePageUiState,
   labels: { unassignedPickupPoint: string },
   currentDeviceLabel: string | null,
+  cashConfirmEnabled: boolean,
+  sellCapabilityEnabled: boolean,
+  canConfirmCashPayment: boolean,
+  formatCashButtonLabel: (amountMinor: number | null | undefined, currency: string | null | undefined) => string,
   nowMs: number = Date.now(),
 ): QueuePageViewModel {
   const tabs = buildPickupPointTabs(items, labels.unassignedPickupPoint);
   const filtered = filterQueueItems(items, ui.activePickupPointId);
-  const listItems = buildQueueListItemViewModels(filtered, currentDeviceLabel, nowMs);
+  const sorted = sortQueueItemsAwaitingCashFirst(filtered);
+  const listItems = buildQueueListItemViewModels(
+    sorted,
+    currentDeviceLabel,
+    cashConfirmEnabled,
+    sellCapabilityEnabled,
+    canConfirmCashPayment,
+    formatCashButtonLabel,
+    nowMs,
+  );
   return {
     tabs,
     activePickupPointId: ui.activePickupPointId,

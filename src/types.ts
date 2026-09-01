@@ -17,6 +17,12 @@ export interface ResolveResponse {
   salesPointId: number;
   version: number;
   fulfillmentStatus: string;
+  /** Present when backend resolve DTO includes transaction row status. */
+  transactionStatus?: string;
+  /** Present when backend resolve DTO includes payment method. */
+  paymentMethod?: string | null;
+  amountMinor?: number;
+  currency?: string;
   paymentCompleted: boolean;
   paymentRequired: boolean;
   pickupHandoffMode: string | null;
@@ -42,6 +48,12 @@ export interface QueueItem {
   transactionId: number;
   version: number;
   status: string;
+  /** Present when backend queue DTO includes transaction row status. */
+  transactionStatus?: string;
+  /** Present when backend queue DTO includes payment method. */
+  paymentMethod?: string | null;
+  amountMinor?: number | null;
+  currency?: string | null;
   pickupPointId: number | null;
   pickupPointName: string | null;
   promisedPickupAt: string | null;

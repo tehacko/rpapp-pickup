@@ -226,6 +226,8 @@ export interface PickupStaffEntitlementSnapshot {
   readonly assignBarcode: boolean;
   readonly orderPickupInfrastructure: boolean;
   readonly promotionsProgram: boolean;
+  /** Tenant payment_cash write-ALLOW from GET staff/entitlement. */
+  readonly paymentCashWriteAllowed?: boolean;
   /**
    * Tenant flag for field restock/checkup. Combined with session capability
    * `resupply` in `usePickupEntitlement` to grant `stock_resupply`.
@@ -546,6 +548,42 @@ export async function reprintCredentials(
     data?: { pickupScanToken?: string };
   };
   return { ok: true, pickupScanToken: json.data?.pickupScanToken };
+}
+
+export interface ConfirmCashReceivedApiResult {
+  readonly transactionId: number;
+  readonly status: 'COMPLETED';
+  /** True when server already committed before this client received the response (idempotent replay). */
+  readonly idempotent?: boolean;
+}
+
+export async function confirmCashReceived(
+  tenantCode: string,
+  accessToken: string,
+  transactionId: number,
+  idempotencyKey?: string,
+): Promise<ConfirmCashReceivedApiResult> {
+  const path = `/api/${encodeURIComponent(tenantCode)}/v1/pickup/staff/transactions/${encodeURIComponent(String(transactionId))}/cash-received/confirm`;
+  const res = await pickupFetch(path, {
+    method: 'POST',
+    headers: mutationHeaders(accessToken, idempotencyKey),
+    body: JSON.stringify({}),
+  });
+  if (!res.ok) {
+    await handleMutationFailure(res, path, 'POST');
+  }
+  const json = (await res.json()) as {
+    data?: ConfirmCashReceivedApiResult;
+  };
+  const data = json.data;
+  if (data === undefined) {
+    return { transactionId, status: 'COMPLETED' };
+  }
+  return {
+    transactionId: data.transactionId ?? transactionId,
+    status: 'COMPLETED',
+    idempotent: data.idempotent === true,
+  };
 }
 
 export async function acquireFulfillmentClaim(

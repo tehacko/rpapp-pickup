@@ -1,4 +1,6 @@
 import type { FulfillmentLine, ResolveResponse } from '../../types.js';
+import { isAwaitingCashConfirmation } from '../cash-confirm/isAwaitingCashConfirmation.js';
+import { formatPickupCashAmountLabel } from '../cash-confirm/formatPickupCashAmountLabel.js';
 
 export interface OrderLineSelectionState {
   readonly partialQty: Record<number, number>;
@@ -23,6 +25,9 @@ export interface OrderPageViewModel {
   readonly order: ResolveResponse;
   readonly canConfirm: boolean;
   readonly isOnHold: boolean;
+  readonly showCashConfirm: boolean;
+  readonly showCashReceived: boolean;
+  readonly cashAmountLabel: string | null;
   readonly pickupCode: string;
   readonly holdReason: string;
   readonly partialQty: Record<number, number>;
@@ -51,13 +56,41 @@ export function buildOrderPageViewModel(
   fulfillmentId: string,
   tenantCode: string,
   ui: OrderPageUiState,
+  cashConfirmEnabled: boolean,
+  sellCapabilityEnabled: boolean,
+  canConfirmCashPayment: boolean,
 ): OrderPageViewModel {
+  const awaitingCash =
+    cashConfirmEnabled &&
+    sellCapabilityEnabled &&
+    canConfirmCashPayment &&
+    isAwaitingCashConfirmation({
+      transactionStatus: order.transactionStatus,
+      paymentMethod: order.paymentMethod,
+    });
+  const showCashReceived =
+    cashConfirmEnabled &&
+    sellCapabilityEnabled &&
+    !awaitingCash &&
+    order.paymentCompleted === true &&
+    order.paymentMethod === 'CASH';
+  const cashAmountLabel =
+    awaitingCash || showCashReceived
+      ? formatPickupCashAmountLabel(
+          order.amountMinor,
+          order.currency,
+          '',
+        ) || null
+      : null;
   return {
     fulfillmentId,
     tenantCode,
     order,
     canConfirm: !order.paymentRequired && order.allowedForStaff !== false,
     isOnHold: order.heldAt != null,
+    showCashConfirm: awaitingCash,
+    showCashReceived,
+    cashAmountLabel: cashAmountLabel === '' ? null : cashAmountLabel,
     pickupCode: ui.pickupCode,
     holdReason: ui.holdReason,
     partialQty: ui.partialQty,

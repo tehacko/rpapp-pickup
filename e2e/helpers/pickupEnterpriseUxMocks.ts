@@ -146,11 +146,61 @@ export type InstallPickupEnterpriseUxAuthMocksOptions = {
   readonly omitEntitlement?: boolean;
 };
 
+async function fulfillStaffEntitlement(
+  route: Route,
+  snapshot: PickupStaffEntitlementSnapshot,
+): Promise<void> {
+  await route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify({ success: true, data: snapshot }),
+  });
+}
+
 export async function installPickupEnterpriseUxAuthMocks(
   page: Page,
   options: InstallPickupEnterpriseUxAuthMocksOptions = {},
 ): Promise<void> {
   await mockTurnstileDisabled(page);
+
+  // Hermetic: SW can bypass Playwright route stubs and hit the dev API proxy.
+  await page.addInitScript(() => {
+    if (!('serviceWorker' in navigator)) {
+      return;
+    }
+    void navigator.serviceWorker.getRegistrations().then((regs) => {
+      for (const reg of regs) {
+        void reg.unregister();
+      }
+    });
+  });
+
+  await page.route((url) => url.pathname === '/health' || url.pathname.endsWith('/health'), async (route) => {
+    if (route.request().method() !== 'GET') {
+      await route.continue();
+      return;
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ success: true, status: 'healthy' }),
+    });
+  });
+  await page.context().addCookies([
+    {
+      name: 'pickup_staff_session',
+      value: STAFF_TOKEN,
+      domain: '127.0.0.1',
+      path: '/api',
+    },
+    {
+      name: 'pickup_staff_session',
+      value: STAFF_TOKEN,
+      domain: 'localhost',
+      path: '/api',
+    },
+  ]);
+
 
   await page.addInitScript(
     ({ codeKey, labelKey, deviceCode, deviceLabel }) => {
@@ -167,21 +217,22 @@ export async function installPickupEnterpriseUxAuthMocks(
 
   if (options.omitEntitlement !== true) {
     await page.route(`**/api/${PICKUP_EUX_TENANT}/v1/pickup/staff/entitlement`, async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({ success: true, data: staffEntitlement }),
-      });
+      await fulfillStaffEntitlement(route, staffEntitlement);
+    });
+    await page.route('**/pickup/staff/entitlement**', async (route) => {
+      await fulfillStaffEntitlement(route, staffEntitlement);
     });
   }
 
-  await page.route(`**/api/${PICKUP_EUX_TENANT}/v1/pickup/staff/me`, async (route) => {
+  const fulfillStaffMe = async (route: Route): Promise<void> => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({ success: true, data: staffSessionClaims }),
     });
-  });
+  };
+  await page.route(`**/api/${PICKUP_EUX_TENANT}/v1/pickup/staff/me`, fulfillStaffMe);
+  await page.route('**/pickup/staff/me**', fulfillStaffMe);
 
   await page.route(`**/api/${PICKUP_EUX_TENANT}/v1/pickup/auth/login`, async (route) => {
     await route.fulfill({
@@ -230,10 +281,21 @@ export async function installPickupEnterpriseUxAuthMocks(
   });
 }
 
+export function isPickupStaffQueuePollRequest(url: URL): boolean {
+  return (
+    url.pathname.includes('/pickup/staff/queue') &&
+    !url.pathname.includes('/pickup/staff/queue/stream')
+  );
+}
+
+export function isPickupStaffQueueStreamRequest(url: URL): boolean {
+  return url.pathname.includes('/pickup/staff/queue/stream');
+}
+
 async function installPickupQueueDataRoutes(page: Page): Promise<void> {
-  await page.route(`**/api/${PICKUP_EUX_TENANT}/v1/pickup/staff/queue**`, async (route) => {
-    if (route.request().url().includes('/queue/stream')) {
-      await route.fulfill({ status: 204, body: '' });
+  const fulfillStaffQueue = async (route: Route): Promise<void> => {
+    if (route.request().method() !== 'GET') {
+      await route.fallback();
       return;
     }
     await route.fulfill({
@@ -244,7 +306,24 @@ async function installPickupQueueDataRoutes(page: Page): Promise<void> {
         data: { items: MOCK_QUEUE_ITEMS },
       }),
     });
-  });
+  };
+
+  const streamBody = `data: ${JSON.stringify({
+    type: 'queue-snapshot',
+    data: { items: MOCK_QUEUE_ITEMS },
+  })}\n\n`;
+
+  const fulfillStaffStream = async (route: Route): Promise<void> => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'text/event-stream',
+      headers: { 'Cache-Control': 'no-cache', Connection: 'keep-alive' },
+      body: streamBody,
+    });
+  };
+
+  await page.route(isPickupStaffQueuePollRequest, fulfillStaffQueue);
+  await page.route(isPickupStaffQueueStreamRequest, fulfillStaffStream);
 }
 
 export async function installPickupQueueMocks(page: Page): Promise<void> {
@@ -268,20 +347,9 @@ export async function installPickupQueueMocksHeldEntitlement(
 
   await installPickupEnterpriseUxAuthMocks(page, { omitEntitlement: true });
 
-  const fulfillEntitlement = async (
-    route: Route,
-    snapshot: PickupStaffEntitlementSnapshot,
-  ): Promise<void> => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({ success: true, data: snapshot }),
-    });
-  };
-
   await page.route(`**/api/${PICKUP_EUX_TENANT}/v1/pickup/staff/entitlement`, (route) => {
     if (released !== null) {
-      void fulfillEntitlement(route, released);
+      void fulfillStaffEntitlement(route, released);
       return;
     }
     pendingRoutes.push(route);
@@ -293,7 +361,7 @@ export async function installPickupQueueMocksHeldEntitlement(
     async release(snapshot: PickupStaffEntitlementSnapshot): Promise<void> {
       released = snapshot;
       const queued = pendingRoutes.splice(0, pendingRoutes.length);
-      await Promise.all(queued.map((route) => fulfillEntitlement(route, snapshot)));
+      await Promise.all(queued.map((route) => fulfillStaffEntitlement(route, snapshot)));
     },
   };
 }
@@ -337,8 +405,26 @@ export async function installPickupOrderMocks(page: Page): Promise<void> {
 }
 
 export async function openPickupQueue(page: Page): Promise<void> {
+  const entitlementResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/pickup/staff/entitlement') && response.status() === 200,
+    { timeout: 60_000 },
+  );
+  const queueResponse = page.waitForResponse(
+    (response) =>
+      isPickupStaffQueuePollRequest(new URL(response.url())) && response.status() === 200,
+    { timeout: 60_000 },
+  );
+
   await page.goto(`/${PICKUP_EUX_TENANT}/queue`, { waitUntil: 'domcontentloaded' });
-  await expect(page.getByTestId('pickup-segment-tabs')).toBeVisible({ timeout: 15_000 });
+  const hydrate = page.getByTestId('pickup-shell-hydrate');
+  if ((await hydrate.count()) > 0) {
+    await expect(hydrate).toBeHidden({ timeout: 60_000 });
+  }
+  await entitlementResponse;
+  await queueResponse;
+  await expect(page.getByTestId('pickup-screen-state-loading')).toBeHidden({ timeout: 15_000 });
+  await expect(page.getByTestId('queue-screen')).toBeVisible({ timeout: 15_000 });
 }
 
 export async function openPickupOrder(page: Page): Promise<void> {
@@ -351,11 +437,7 @@ export async function openPickupOrder(page: Page): Promise<void> {
 export async function openPickupLogin(page: Page): Promise<void> {
   await mockTurnstileDisabled(page);
   await page.route(`**/api/${PICKUP_EUX_TENANT}/v1/pickup/staff/entitlement`, async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({ success: true, data: staffEntitlement }),
-    });
+    await fulfillStaffEntitlement(route, staffEntitlement);
   });
   await page.goto(`/${PICKUP_EUX_TENANT}/login`, { waitUntil: 'domcontentloaded' });
   await expect(page.getByTestId('pickup-login-card')).toBeVisible({ timeout: 15_000 });

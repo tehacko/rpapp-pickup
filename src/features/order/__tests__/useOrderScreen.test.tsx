@@ -38,6 +38,23 @@ jest.mock('../../../hooks/usePickupEntitlement.js', () => ({
   })),
 }));
 
+jest.mock('../../cash-confirm/useConfirmCashReceived.js', () => ({
+  useConfirmCashReceived: () => ({
+    confirmCashReceived: jest.fn(),
+    pendingTransactionId: null,
+  }),
+}));
+
+jest.mock('../../cash-confirm/pickupCashConfirmEnabled.js', () => ({
+  isPickupCashConfirmEnabled: jest.fn(() => true),
+}));
+
+jest.mock('../../../shared/session/PickupStaffSessionProvider.js', () => ({
+  usePickupStaffSession: () => ({
+    sessionClaims: { capabilities: ['sell'] },
+  }),
+}));
+
 jest.mock('../../../hooks/useDeviceHeartbeat.js', () => ({
   useDeviceHeartbeat: jest.fn(),
 }));
@@ -171,6 +188,47 @@ describe('useOrderScreen', () => {
 
     expect(gateway.resolve).toHaveBeenCalledWith('demo', 'staff-token', '12345678');
     expect(gateway.resolveByCode).not.toHaveBeenCalled();
+  });
+
+  it('G11: hides cash confirm CTA when paymentCashWriteAllowed is false', async () => {
+    mockUsePickupEntitlement.mockReturnValue({
+      deviceFlags: { softClaimEnabled: false },
+      snapshot: {
+        revision: 1,
+        staffPickupScan: true,
+        assignBarcode: false,
+        orderPickupInfrastructure: true,
+        promotionsProgram: false,
+        paymentCashWriteAllowed: false,
+        deviceFlags: { softClaimEnabled: false },
+        queueConfig: {
+          pushStrategy: 'poll',
+          devicesPerPointThreshold: 5,
+          degradedQueuePolling: false,
+        },
+      },
+    } as ReturnType<typeof usePickupEntitlement>);
+
+    const gateway = createGatewayMock();
+    gateway.resolveByCode.mockResolvedValue(
+      makeOrder({
+        transactionStatus: 'AWAITING_CASH_CONFIRMATION',
+        paymentMethod: 'CASH',
+        paymentRequired: true,
+        paymentCompleted: false,
+      }),
+    );
+
+    const { result } = renderHook(() => useOrderScreen(gateway), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.screenState.kind).toBe('ready');
+    });
+
+    expect(result.current.viewModel?.showCashConfirm).toBe(false);
+    expect(result.current.viewModel?.showCashReceived).toBe(false);
   });
 
   it('releases fulfillment claim on unmount when soft claim was held', async () => {

@@ -15,6 +15,7 @@ import { ScreenState } from '../../shared/ui/ScreenState.js';
 import { SectionCard } from '../../shared/ui/SectionCard.js';
 import { SegmentTabs, type SegmentTabItem } from '../../shared/ui/SegmentTabs.js';
 import { StatusBadge } from '../../shared/ui/StatusBadge.js';
+import { Button } from '../../shared/ui/surfacePrimitives.js';
 import type { QueueListItemViewModel, QueuePageViewModel } from './buildQueuePageViewModel.js';
 import type { QueueScreenActions } from './useQueueScreen.js';
 import type { QueueScreenState } from './queueScreenState.js';
@@ -70,6 +71,20 @@ export interface QueueScreenViewProps {
   readonly viewModel: QueuePageViewModel | null;
   readonly actions: QueueScreenActions;
   readonly tenantCode: string;
+}
+
+function resolveQueueCashButtonLabel(
+  item: QueueListItemViewModel,
+  isConfirming: boolean,
+  t: (key: string, opts?: Record<string, unknown>) => string,
+): string {
+  if (isConfirming) {
+    return t('pickup.cashConfirm.confirming');
+  }
+  if (item.cashAmountLabel != null) {
+    return t('pickup.cashConfirm.buttonWithAmount', { amount: item.cashAmountLabel });
+  }
+  return t('pickup.cashConfirm.button');
 }
 
 export function QueueScreenView({
@@ -215,8 +230,15 @@ export function QueueScreenView({
                 const ageLabel = resolveAgeDisplayLabel(item, t);
                 const urgency = item.age?.urgency;
                 const ageTone = item.ageTone;
+                const isConfirming =
+                  actions.pendingCashConfirmTransactionId === item.transactionId;
+                const cashButtonLabel = resolveQueueCashButtonLabel(item, isConfirming, t);
                 return (
-                  <li key={item.fulfillmentId} className="list-none">
+                  <li
+                    key={item.fulfillmentId}
+                    className={`list-none${item.isAwaitingCash ? ' border-l-4 border-[var(--color-warning,#d97706)] bg-[var(--color-surface-muted,#fffbeb)]' : ''}`}
+                    data-awaiting-cash={item.isAwaitingCash ? 'true' : undefined}
+                  >
                     <QueueRow
                       fulfillmentId={String(item.fulfillmentId)}
                       status={item.status}
@@ -247,6 +269,22 @@ export function QueueScreenView({
                         </>
                       }
                     />
+                    {item.showCashConfirm ? (
+                      <div className="border-b border-[var(--color-border)] px-3 pb-3">
+                        <Button
+                          type="button"
+                          intent="primary"
+                          className="w-full font-semibold uppercase tracking-wide"
+                          data-testid="queue-cash-confirm"
+                          disabled={actions.pendingCashConfirmTransactionId !== null}
+                          onClick={() => {
+                            actions.confirmCashReceived(item.transactionId);
+                          }}
+                        >
+                          {cashButtonLabel}
+                        </Button>
+                      </div>
+                    ) : null}
                   </li>
                 );
               })}

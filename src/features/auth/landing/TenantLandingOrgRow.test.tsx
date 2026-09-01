@@ -1,5 +1,7 @@
-import { describe, expect, it, jest } from '@jest/globals';
+import { describe, expect, it } from '@jest/globals';
 import { render, screen } from '@testing-library/react';
+import '@testing-library/jest-dom';
+import { MemoryRouter } from 'react-router-dom';
 import { ThemeProvider } from 'pi-kiosk-shared/theme';
 import { TenantLandingOrgRow } from './TenantLandingOrgRow.js';
 import type { PublicPickupTenantDTO } from './publicPickupTenantApi.js';
@@ -32,11 +34,13 @@ function tenant(overrides: Partial<PublicPickupTenantDTO> = {}): PublicPickupTen
 describe('TenantLandingOrgRow chip styling', () => {
   it('applies rim and background CSS variables for light effective theme', () => {
     render(
-      <ThemeProvider defaultTheme="light">
-        <ul>
-          <TenantLandingOrgRow tenant={tenant()} onSelect={jest.fn()} />
-        </ul>
-      </ThemeProvider>,
+      <MemoryRouter>
+        <ThemeProvider defaultTheme="light">
+          <ul>
+            <TenantLandingOrgRow tenant={tenant()} href="/railway-cafe/login" />
+          </ul>
+        </ThemeProvider>
+      </MemoryRouter>,
     );
 
     const row = screen.getByTestId('pickup-tenant-landing-row-railway-cafe');
@@ -46,5 +50,21 @@ describe('TenantLandingOrgRow chip styling', () => {
     expect((chip as HTMLElement).style.getPropertyValue('--logo-chip-rim')).toBe('#cccccc');
     expect((chip as HTMLElement).style.getPropertyValue('--logo-chip-background')).toBe('#eeeeee');
     expect((chip as HTMLElement).style.backgroundColor).toBe('var(--logo-chip-background)');
+  });
+
+  it('renders org row as link with tenant login href', () => {
+    render(
+      <MemoryRouter>
+        <ThemeProvider defaultTheme="light">
+          <ul>
+            <TenantLandingOrgRow tenant={tenant()} href="/railway-cafe/login" />
+          </ul>
+        </ThemeProvider>
+      </MemoryRouter>,
+    );
+
+    const link = screen.getByRole('link', { name: /Railway Cafe/i });
+    expect(link).toHaveAttribute('href', '/railway-cafe/login');
+    expect(link).toHaveAttribute('data-testid', 'pickup-tenant-landing-row-railway-cafe');
   });
 });

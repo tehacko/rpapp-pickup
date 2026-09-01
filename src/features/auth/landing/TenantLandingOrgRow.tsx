@@ -1,4 +1,5 @@
-import { memo, useMemo, useState, type CSSProperties } from 'react';
+import { memo, useMemo, useState, type CSSProperties, type MouseEvent } from 'react';
+import { Link } from 'react-router-dom';
 import { ChevronRight } from 'lucide-react';
 import {
   resolveDirectoryMonogram,
@@ -6,15 +7,28 @@ import {
   normalizeLogoChipRimSettings,
   resolveLogoChipBackgroundForTheme,
   resolveLogoChipRimForTheme,
+  buildLogoChipMarkStyle,
 } from 'pi-kiosk-shared';
 import { useTheme } from 'pi-kiosk-shared/theme';
 import type { PublicPickupTenantDTO } from './publicPickupTenantApi.js';
 import { resolvePickupLandingLogoSrcForTheme } from './filterPickupLandingOrgs.js';
+
 export interface TenantLandingOrgRowProps {
   readonly tenant: PublicPickupTenantDTO;
+  readonly href: string;
   readonly disabled?: boolean;
-  readonly onSelect: (code: string) => void;
+  readonly onBeforeNavigate?: () => void;
   readonly tileClassName?: string;
+}
+
+function isModifiedNavigationClick(event: MouseEvent<HTMLAnchorElement>): boolean {
+  return (
+    event.metaKey
+    || event.ctrlKey
+    || event.shiftKey
+    || event.altKey
+    || event.button !== 0
+  );
 }
 
 /**
@@ -23,8 +37,9 @@ export interface TenantLandingOrgRowProps {
 export const TenantLandingOrgRow = memo(
   ({
     tenant,
+    href,
     disabled = false,
-    onSelect,
+    onBeforeNavigate,
     tileClassName = 'w-full',
   }: TenantLandingOrgRowProps): JSX.Element => {
     const { effectiveTheme } = useTheme();
@@ -51,8 +66,11 @@ export const TenantLandingOrgRow = memo(
       return resolveLogoChipBackgroundForTheme(settings, effectiveTheme);
     }, [tenant, effectiveTheme]);
     const showLogo = logoSrc !== null && !logoFailed;
-    const showRim = logoChipRim.show;
-    const showBackground = logoChipBackground.show;
+
+    const chipStyle = buildLogoChipMarkStyle({
+      rim: logoChipRim,
+      background: logoChipBackground,
+    }) as CSSProperties | undefined;
 
     return (
       <li
@@ -62,46 +80,35 @@ export const TenantLandingOrgRow = memo(
           'lg:rounded-xl lg:border lg:border-[var(--color-border)] lg:bg-[var(--color-surface)] lg:shadow-sm lg:last:border',
         ].join(' ')}
       >
-        <button
-          type="button"
-          disabled={disabled}
-          onClick={() => {
-            onSelect(tenant.code);
+        <Link
+          to={href}
+          aria-disabled={disabled ? true : undefined}
+          onClick={(event) => {
+            if (disabled && !isModifiedNavigationClick(event)) {
+              event.preventDefault();
+              return;
+            }
+            if (!isModifiedNavigationClick(event)) {
+              onBeforeNavigate?.();
+            }
           }}
           className={[
-            'flex w-full items-center gap-3 px-3.5 py-3 text-start',
+            'flex w-full items-center gap-3 px-3.5 py-3 text-start no-underline text-inherit',
             'transition-colors duration-150',
             'hover:bg-[var(--color-surface-muted)]',
             'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px]',
             'focus-visible:outline-[var(--color-focus-ring)]',
-            'disabled:cursor-not-allowed disabled:opacity-60',
             'lg:gap-4 lg:rounded-xl lg:px-5 lg:py-5',
+            'aria-disabled:cursor-wait aria-disabled:opacity-60 aria-disabled:hover:bg-transparent',
           ].join(' ')}
           data-testid={`pickup-tenant-landing-row-${tenant.code}`}
         >
           <span
             className="relative inline-flex h-14 w-14 shrink-0 overflow-hidden rounded-2xl bg-transparent lg:h-20 lg:w-20"
-            style={
-              showRim || showBackground
-                ? ({
-                    ...(showRim
-                      ? {
-                          ['--logo-chip-rim' as string]: logoChipRim.color,
-                          boxShadow: '0 0 0 1px var(--logo-chip-rim)',
-                        }
-                      : {}),
-                    ...(showBackground
-                      ? {
-                          ['--logo-chip-background' as string]: logoChipBackground.color,
-                          backgroundColor: 'var(--logo-chip-background)',
-                        }
-                      : {}),
-                  } as CSSProperties)
-                : undefined
-            }
+            style={chipStyle}
             aria-hidden
-            data-logo-chip-rim={showRim ? 'true' : 'false'}
-            data-logo-chip-background={showBackground ? 'true' : 'false'}
+            data-logo-chip-rim={logoChipRim.show ? 'true' : 'false'}
+            data-logo-chip-background={logoChipBackground.show ? 'true' : 'false'}
           >
             {showLogo ? (
               <img
@@ -139,7 +146,7 @@ export const TenantLandingOrgRow = memo(
             className="h-5 w-5 shrink-0 text-[var(--color-on-surface-muted)] lg:h-6 lg:w-6"
             aria-hidden
           />
-        </button>
+        </Link>
       </li>
     );
   },

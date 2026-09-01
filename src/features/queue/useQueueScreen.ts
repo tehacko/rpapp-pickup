@@ -5,10 +5,16 @@ import { shouldEmitLogRepeat } from 'pi-kiosk-shared/logging';
 import { usePickupEntitlement } from '../../hooks/usePickupEntitlement.js';
 import { useStaffToken, useTenantCode } from '../../hooks/useStaffToken.js';
 import { getPairedDevice } from '../../lib/deviceStorage.js';
-import { PickupStaffFunction } from '../../shared/entitlements/pickupStaffFunctions.js';
+import {
+  PickupStaffFunction,
+  PICKUP_SELL_CAPABILITY,
+} from '../../shared/entitlements/pickupStaffFunctions.js';
 import { usePickupErrorHandler } from '../../shared/hooks/usePickupErrorHandler.js';
 import { usePickupStaffSession } from '../../shared/session/PickupStaffSessionProvider.js';
 import { useOnlineStatus } from '../../shared/network/useOnlineStatus.js';
+import { resolvePickupCanConfirmCashPayment } from '../cash-confirm/resolvePickupCanConfirmCashPayment.js';
+import { useConfirmCashReceived } from '../cash-confirm/useConfirmCashReceived.js';
+import { formatPickupCashAmountLabel } from '../cash-confirm/formatPickupCashAmountLabel.js';
 import type { QueueItem } from '../../types.js';
 import {
   buildQueuePageViewModel,
@@ -72,6 +78,9 @@ function resolveServerPickupPointId(
 export interface QueueScreenActions {
   readonly setActivePickupPointId: (id: ActivePickupPointFilter) => void;
   readonly refresh: () => void;
+  readonly confirmCashReceived: (transactionId: number) => void;
+  readonly pendingCashConfirmTransactionId: number | null;
+  readonly cashConfirmEnabled: boolean;
 }
 
 export interface UseQueueScreenResult {
@@ -118,7 +127,14 @@ export function useQueueScreen(gateway: IQueueGateway = queueGateway): UseQueueS
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [refreshFailed, setRefreshFailed] = useState(false);
   const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(null);
-  const { isRoamingStaff, activePickupPointId: sessionActivePoint } = usePickupStaffSession();
+  const {
+    isRoamingStaff,
+    activePickupPointId: sessionActivePoint,
+    sessionClaims,
+  } = usePickupStaffSession();
+  const sellCapabilityEnabled =
+    sessionClaims?.capabilities.includes(PICKUP_SELL_CAPABILITY) === true;
+  const canConfirmCashPayment = resolvePickupCanConfirmCashPayment(entitlementSnapshot);
   const [localFilter, setLocalFilter] = useState<ActivePickupPointFilter>('all');
   const effectiveFilter: ActivePickupPointFilter =
     isRoamingStaff && sessionActivePoint !== null ? sessionActivePoint : localFilter;
@@ -176,6 +192,19 @@ export function useQueueScreen(gateway: IQueueGateway = queueGateway): UseQueueS
     applyQueueResult(result, false);
     return result;
   }, [accessToken, effectiveFilter, applyQueueResult, gateway, tenantCode]);
+
+  const {
+    cashConfirmEnabled,
+    pendingTransactionId: pendingCashConfirmTransactionId,
+    confirmCashReceived,
+  } = useConfirmCashReceived({
+    tenantCode,
+    accessToken,
+    canConfirmCashPayment,
+    onSuccess: () => {
+      void refreshQueue();
+    },
+  });
 
   const serverPickupPointId = resolveServerPickupPointId(effectiveFilter);
   const sseEnabled = queuePushStrategy === 'sse' && accessToken !== null;
@@ -272,6 +301,11 @@ export function useQueueScreen(gateway: IQueueGateway = queueGateway): UseQueueS
     }
     const pairedDeviceLabel = getPairedDevice(tenantCode)?.deviceLabel ?? null;
     const showOfflineRetryBanner = !isOnline || refreshFailed;
+    const formatCashButtonLabel = (
+      amountMinor: number | null | undefined,
+      currency: string | null | undefined,
+    ): string =>
+      formatPickupCashAmountLabel(amountMinor, currency, t('pickup.cashConfirm.button'));
     return buildQueuePageViewModel(
       screenState.items,
       {
@@ -285,8 +319,15 @@ export function useQueueScreen(gateway: IQueueGateway = queueGateway): UseQueueS
         unassignedPickupPoint: t('pickup.queue.filterUnassigned'),
       },
       pairedDeviceLabel,
+      cashConfirmEnabled,
+      sellCapabilityEnabled,
+      canConfirmCashPayment,
+      formatCashButtonLabel,
     );
   }, [
+    canConfirmCashPayment,
+    cashConfirmEnabled,
+    sellCapabilityEnabled,
     effectiveFilter,
     errorMessage,
     isOnline,
@@ -302,8 +343,16 @@ export function useQueueScreen(gateway: IQueueGateway = queueGateway): UseQueueS
     () => ({
       setActivePickupPointId: setLocalFilter,
       refresh: () => void refreshQueue(),
+      confirmCashReceived,
+      pendingCashConfirmTransactionId,
+      cashConfirmEnabled,
     }),
-    [refreshQueue],
+    [
+      cashConfirmEnabled,
+      confirmCashReceived,
+      pendingCashConfirmTransactionId,
+      refreshQueue,
+    ],
   );
 
   return {

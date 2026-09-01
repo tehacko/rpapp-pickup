@@ -1,4 +1,4 @@
-import { Ban, Check, Package, Pause } from 'lucide-react';
+import { Ban, Check, Coins, Package, Pause } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Button } from '../../shared/ui/surfacePrimitives.js';
@@ -13,16 +13,69 @@ import { HoldReleasePanel } from '../../components/HoldReleasePanel.js';
 import { PartialConfirmPanel } from '../../components/PartialConfirmPanel.js';
 import { RefusePanel } from '../../components/RefusePanel.js';
 import { ReprintPanel } from '../../components/ReprintPanel.js';
+import type { ResolveResponse } from '../../types.js';
 import type { OrderPageViewModel } from './buildOrderPageViewModel.js';
 import type { OrderScreenActions } from './useOrderScreen.js';
 import type { OrderScreenState } from './orderScreenState.js';
 import { PromoDiscountLine } from './PromoDiscountLine.js';
 import { usePickupEntitlement } from '../../hooks/usePickupEntitlement.js';
+import { formatPickupCashAmountLabel } from '../cash-confirm/formatPickupCashAmountLabel.js';
 
 const CHROME_PAD = {
   paddingBottom:
     'calc(var(--pickup-sticky-cta-clearance, 5.5rem) + var(--pickup-bottom-chrome, 0px) + var(--keyboard-inset, 0px))',
 } as const;
+
+function renderOrderCashConfirmSection(
+  viewModel: OrderPageViewModel,
+  actions: OrderScreenActions,
+  order: ResolveResponse,
+  t: ReturnType<typeof useTranslation>['t'],
+): JSX.Element | null {
+  if (viewModel.showCashConfirm) {
+    return (
+      <div className="mt-[var(--pickup-space-4)] rounded-md border border-[var(--color-warning,#d97706)] bg-[var(--color-surface-muted,#fffbeb)] p-3">
+        <Button
+          type="button"
+          intent="primary"
+          data-testid="pickup-order-cash-confirm"
+          disabled={actions.pendingCashConfirm || viewModel.isCoolingDown}
+          className="inline-flex w-full items-center justify-center gap-2 font-semibold uppercase tracking-wide"
+          onClick={actions.onConfirmCash}
+        >
+          <Coins className="h-4 w-4 stroke-[1.75]" aria-hidden />
+          {actions.pendingCashConfirm
+            ? t('pickup.cashConfirm.confirming')
+            : t('pickup.cashConfirm.buttonWithAmount', {
+                amount: formatPickupCashAmountLabel(
+                  order.amountMinor,
+                  order.currency,
+                  t('pickup.cashConfirm.button'),
+                ),
+              })}
+        </Button>
+      </div>
+    );
+  }
+  if (viewModel.showCashReceived) {
+    return (
+      <div
+        className="mt-[var(--pickup-space-4)] rounded-md border border-[var(--color-success,#16a34a)] bg-[var(--color-surface-muted,#f0fdf4)] p-3"
+        data-testid="pickup-order-cash-received"
+      >
+        <p className="m-0 inline-flex w-full items-center justify-center gap-2 font-semibold uppercase tracking-wide text-[var(--color-success,#16a34a)]">
+          <Check className="h-4 w-4 stroke-[1.75]" aria-hidden />
+          {viewModel.cashAmountLabel != null
+            ? t('pickup.cashConfirm.buttonWithAmount', {
+                amount: viewModel.cashAmountLabel,
+              })
+            : t('pickup.cashConfirm.button')}
+        </p>
+      </div>
+    );
+  }
+  return null;
+}
 
 export interface OrderScreenViewProps {
   readonly screenState: OrderScreenState;
@@ -149,6 +202,7 @@ export function OrderScreenView({
             label={t('pickup.order.paymentLabel')}
             value={order.paymentRequired ? t('pickup.common.yes') : t('pickup.common.no')}
           />
+          {renderOrderCashConfirmSection(viewModel, actions, order, t)}
           <div className="mt-2">
             <PromoDiscountLine
               promotionsEnabled={promotionsEnabled}

@@ -27,12 +27,14 @@ function createViewModel(overrides: Partial<QueuePageViewModel> = {}): QueuePage
     items: [
       {
         fulfillmentId: 42,
+        transactionId: 100,
         status: 'READY',
         pickupPointName: 'Counter A',
         claimBadge: null,
         age: null,
         ageTone: null,
         ageLabel: null,
+        showCashConfirm: false,
       },
     ],
     isEmpty: false,
@@ -48,6 +50,9 @@ function createActions(): QueueScreenActions {
   return {
     setActivePickupPointId: jest.fn(),
     refresh: jest.fn(),
+    confirmCashReceived: jest.fn(),
+    pendingCashConfirmTransactionId: null,
+    cashConfirmEnabled: true,
   };
 }
 
@@ -166,6 +171,134 @@ describe('QueueScreenView', () => {
     expect(scanCta).toBeTruthy();
     fireEvent.click(scanCta as HTMLButtonElement);
     expect(screen.getByTestId('location-path').textContent).toBe('/demo/scan');
+  });
+
+  it('renders cash confirm button for awaiting-cash rows and wires confirm action', () => {
+    const actions = renderQueueScreen({
+      viewModel: createViewModel({
+        items: [
+          {
+            fulfillmentId: 42,
+            transactionId: 100,
+            status: 'READY',
+            pickupPointName: 'Counter A',
+            claimBadge: null,
+            age: null,
+            ageTone: null,
+            ageLabel: null,
+            showCashConfirm: true,
+          },
+          {
+            fulfillmentId: 43,
+            transactionId: 101,
+            status: 'READY',
+            pickupPointName: 'Counter A',
+            claimBadge: null,
+            age: null,
+            ageTone: null,
+            ageLabel: null,
+            showCashConfirm: false,
+          },
+        ],
+      }),
+    });
+
+    const confirmButton = screen.getByTestId('queue-cash-confirm');
+    expect(confirmButton).toBeTruthy();
+    expect(confirmButton.textContent).toContain('pickup.cashConfirm.button');
+    expect(screen.getAllByTestId('pickup-queue-row')).toHaveLength(2);
+
+    fireEvent.click(confirmButton);
+    expect(actions.confirmCashReceived).toHaveBeenCalledWith(100);
+  });
+
+  it('disables all cash confirm buttons while any confirm is in-flight (two-row)', () => {
+    renderQueueScreen({
+      actions: {
+        ...createActions(),
+        pendingCashConfirmTransactionId: 100,
+      },
+      viewModel: createViewModel({
+        items: [
+          {
+            fulfillmentId: 42,
+            transactionId: 100,
+            status: 'READY',
+            pickupPointName: 'Counter A',
+            claimBadge: null,
+            age: null,
+            ageTone: null,
+            ageLabel: null,
+            showCashConfirm: true,
+          },
+          {
+            fulfillmentId: 43,
+            transactionId: 101,
+            status: 'READY',
+            pickupPointName: 'Counter B',
+            claimBadge: null,
+            age: null,
+            ageTone: null,
+            ageLabel: null,
+            showCashConfirm: true,
+          },
+        ],
+      }),
+    });
+
+    const confirmButtons = screen.getAllByTestId('queue-cash-confirm');
+    expect(confirmButtons).toHaveLength(2);
+    for (const button of confirmButtons) {
+      expect(button).toHaveProperty('disabled', true);
+    }
+  });
+
+  it('disables cash confirm button while the same transaction is pending', () => {
+    renderQueueScreen({
+      actions: {
+        ...createActions(),
+        pendingCashConfirmTransactionId: 100,
+      },
+      viewModel: createViewModel({
+        items: [
+          {
+            fulfillmentId: 42,
+            transactionId: 100,
+            status: 'READY',
+            pickupPointName: 'Counter A',
+            claimBadge: null,
+            age: null,
+            ageTone: null,
+            ageLabel: null,
+            showCashConfirm: true,
+          },
+        ],
+      }),
+    });
+
+    expect(screen.getByTestId('queue-cash-confirm')).toHaveProperty('disabled', true);
+  });
+
+  it('hides cash confirm button when row is not awaiting cash', () => {
+    renderQueueScreen({
+      viewModel: createViewModel({
+        items: [
+          {
+            fulfillmentId: 42,
+            transactionId: 100,
+            status: 'READY',
+            pickupPointName: 'Counter A',
+            claimBadge: null,
+            age: null,
+            ageTone: null,
+            ageLabel: null,
+            showCashConfirm: false,
+          },
+        ],
+      }),
+    });
+
+    expect(screen.queryByTestId('queue-cash-confirm')).toBeNull();
   });
 
   it('renders aging StatusBadge tones from viewModel ageTone', () => {

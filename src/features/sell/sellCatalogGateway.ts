@@ -23,10 +23,23 @@ function generateIdempotencyKey(): string {
 }
 
 async function parseJson<T>(res: Response): Promise<T> {
-  const body = (await res.json()) as { data?: T; success?: boolean; error?: string; code?: string };
+  const body = (await res.json()) as {
+    data?: T;
+    success?: boolean;
+    error?: string;
+    code?: string;
+    details?: {
+      recoverable?: boolean;
+      nextAction?: string;
+      transactionId?: number;
+    };
+  };
   if (!res.ok || body.data === undefined) {
+    const details = body.details;
     throw new PickupApiError(res.status, body.error ?? `Sell API failed (${res.status})`, {
       code: body.code,
+      recoverable: details?.recoverable,
+      nextAction: details?.nextAction,
     });
   }
   return body.data;

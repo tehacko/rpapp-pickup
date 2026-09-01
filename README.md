@@ -20,6 +20,17 @@ npm run dev   # http://localhost:3005
 
 Requires `up-backend` on port **3015**. Leave API base empty in local Vite proxy mode when using same-origin `/api/...`.
 
+### Cash confirm feature flags (Stage 1)
+
+Pickup staff **Cash received** UI and the confirm API are gated independently in env — keep them aligned:
+
+| Surface | Variable | Default |
+| --- | --- | --- |
+| Backend API | `PICKUP_CASH_CONFIRM_ENABLED` in `up-backend/.env` | `true` (unset) |
+| Pickup UI | `VITE_PICKUP_CASH_CONFIRM_ENABLED` in `rpapp-pickup/.env` | `true` (unset) |
+
+If the UI shows confirm but the API returns `503 PICKUP_CASH_CONFIRM_DISABLED`, set both flags to the same boolean. In dev, the pickup app logs a one-time console hint when `VITE_PICKUP_CASH_CONFIRM_ENABLED` is explicitly set.
+
 Production (Railway): Caddy same-origin `/api` proxy — set `API_PROXY_UPSTREAM` to the backend origin. See [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md).
 
 ## Content Security Policy (CSP)

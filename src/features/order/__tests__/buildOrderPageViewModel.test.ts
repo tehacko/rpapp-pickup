@@ -77,6 +77,9 @@ describe('buildOrderPageViewModel', () => {
       '42',
       'demo',
       baseUi,
+      true,
+      true,
+      true,
     );
     expect(vm.isOnHold).toBe(true);
     expect(vm.order.holdReason).toBe('Customer late');
@@ -88,20 +91,26 @@ describe('buildOrderPageViewModel', () => {
       '42',
       'demo',
       baseUi,
+      true,
+      true,
+      true,
     );
     const blockedVm = buildOrderPageViewModel(
       makeOrder({ allowedForStaff: false }),
       '42',
       'demo',
       baseUi,
+      true,
+      true,
+      true,
     );
     expect(paymentVm.canConfirm).toBe(false);
     expect(blockedVm.canConfirm).toBe(false);
   });
 
   it('reflects refreshed version after a version conflict refresh', () => {
-    const staleVm = buildOrderPageViewModel(makeOrder({ version: 3 }), '42', 'demo', baseUi);
-    const refreshedVm = buildOrderPageViewModel(makeOrder({ version: 4 }), '42', 'demo', baseUi);
+    const staleVm = buildOrderPageViewModel(makeOrder({ version: 3 }), '42', 'demo', baseUi, true, true, true);
+    const refreshedVm = buildOrderPageViewModel(makeOrder({ version: 4 }), '42', 'demo', baseUi, true, true, true);
     expect(staleVm.order.version).toBe(3);
     expect(refreshedVm.order.version).toBe(4);
   });
@@ -130,8 +139,96 @@ describe('buildOrderPageViewModel canConfirm', () => {
       '42',
       'demo',
       baseUi,
+      true,
+      true,
+      true,
     );
     expect(vm.canConfirm).toBe(true);
     expect(vm.isOnHold).toBe(false);
+  });
+
+  it('shows cash confirm for awaiting cash when feature enabled', () => {
+    const vm = buildOrderPageViewModel(
+      makeOrder({
+        transactionStatus: 'AWAITING_CASH_CONFIRMATION',
+        paymentMethod: 'CASH',
+        paymentRequired: true,
+        paymentCompleted: false,
+      }),
+      '42',
+      'demo',
+      baseUi,
+      true,
+      true,
+      true,
+    );
+    expect(vm.showCashConfirm).toBe(true);
+
+    const disabledVm = buildOrderPageViewModel(
+      makeOrder({ transactionStatus: 'AWAITING_CASH_CONFIRMATION', paymentMethod: 'CASH' }),
+      '42',
+      'demo',
+      baseUi,
+      false,
+      true,
+      true,
+    );
+    expect(disabledVm.showCashConfirm).toBe(false);
+  });
+
+  it('hides cash confirm for scan-only staff without sell capability (pickupStaffRoutes sell gate)', () => {
+    const vm = buildOrderPageViewModel(
+      makeOrder({
+        transactionStatus: 'AWAITING_CASH_CONFIRMATION',
+        paymentMethod: 'CASH',
+        paymentRequired: true,
+        paymentCompleted: false,
+      }),
+      '42',
+      'demo',
+      baseUi,
+      true,
+      false,
+      true,
+    );
+    expect(vm.showCashConfirm).toBe(false);
+  });
+
+  it('G14: shows cash-received state after payment completed for cash orders', () => {
+    const vm = buildOrderPageViewModel(
+      makeOrder({
+        transactionStatus: 'COMPLETED',
+        paymentMethod: 'CASH',
+        paymentRequired: false,
+        paymentCompleted: true,
+        amountMinor: 18_000,
+        currency: 'CZK',
+      }),
+      '42',
+      'demo',
+      baseUi,
+      true,
+      true,
+      true,
+    );
+    expect(vm.showCashConfirm).toBe(false);
+    expect(vm.showCashReceived).toBe(true);
+    expect(vm.cashAmountLabel).toBe('180 Kč');
+  });
+
+  it('hides cash confirm when payment_cash write is denied', () => {
+    const vm = buildOrderPageViewModel(
+      makeOrder({
+        transactionStatus: 'AWAITING_CASH_CONFIRMATION',
+        paymentMethod: 'CASH',
+      }),
+      '42',
+      'demo',
+      baseUi,
+      true,
+      true,
+      false,
+    );
+    expect(vm.showCashConfirm).toBe(false);
   });
 });
