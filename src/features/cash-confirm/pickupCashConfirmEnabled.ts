@@ -1,11 +1,11 @@
-import { readViteMetaEnv } from '../../shared/vite/readViteMetaEnv.js';
+import { isViteDev, readViteMetaEnv } from '../../shared/vite/readViteMetaEnv.js';
 
 let devEnvHintLogged = false;
 
 /** Default true when unset — mirrors backend PICKUP_CASH_CONFIRM_ENABLED default. */
 export function isPickupCashConfirmEnabled(): boolean {
   const raw = readViteMetaEnv('VITE_PICKUP_CASH_CONFIRM_ENABLED');
-  if (import.meta.env.DEV && !devEnvHintLogged && raw !== undefined && raw.trim().length > 0) {
+  if (isViteDev() && !devEnvHintLogged && raw !== undefined && raw.trim().length > 0) {
     devEnvHintLogged = true;
     console.warn(
       '[pickup] VITE_PICKUP_CASH_CONFIRM_ENABLED is set — keep it in sync with up-backend PICKUP_CASH_CONFIRM_ENABLED (see rpapp-pickup/README.md).',
@@ -20,7 +20,7 @@ export function isPickupCashConfirmEnabled(): boolean {
 
 /** Dev-only: log when API returns disabled while UI gate was enabled (flag drift). */
 export function warnPickupCashConfirmBackendDisabled(): void {
-  if (!import.meta.env.DEV) {
+  if (!isViteDev()) {
     return;
   }
   console.warn(

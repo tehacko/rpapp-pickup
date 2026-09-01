@@ -19,6 +19,10 @@ function mockJsonResponse(status: number, body: unknown): Response {
   } as Response;
 }
 
+function readFetchHeader(init: RequestInit | undefined, name: string): string | null {
+  return new Headers(init?.headers).get(name);
+}
+
 describe('restockGateway', () => {
   const originalFetch = global.fetch;
 
@@ -87,14 +91,11 @@ describe('restockGateway', () => {
     expect(fetchMock).toHaveBeenNthCalledWith(
       2,
       '/api/demo/v1/pickup/staff/inventory/restock-batches/batch-1/apply',
-      expect.objectContaining({
-        method: 'POST',
-        headers: expect.objectContaining({
-          'Idempotency-Key': 'idem-restock-1',
-          'X-Pickup-Session-Id': 'pickup-sess-restock-1',
-        }) as Record<string, string>,
-      }),
+      expect.objectContaining({ method: 'POST' }),
     );
+    const applyInit = fetchMock.mock.calls[1]?.[1] as RequestInit;
+    expect(readFetchHeader(applyInit, 'Idempotency-Key')).toBe('idem-restock-1');
+    expect(readFetchHeader(applyInit, 'X-Pickup-Session-Id')).toBe('pickup-sess-restock-1');
   });
 
   it('surfaces 409 apply conflict as PickupApiError', async () => {

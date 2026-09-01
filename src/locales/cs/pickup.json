@@ -60,7 +60,7 @@
   "pickup.shell.sellConfigLoadFailed": "Nepodařilo se načíst nastavení prodeje. Prodej může být do opětovného načtení nedostupný.",
   "pickup.login.title": "Přihlášení obsluhy výdeje",
   "pickup.login.salesPointId": "ID prodejního místa",
-  "pickup.login.salesPointIdPlaceholder": "ID místa nebo superpickuper",
+  "pickup.login.salesPointIdPlaceholder": "ID prodejního místa nebo superpickuper",
   "pickup.validation.formErrorSummaryTitle": "Vyskytl se problém",
   "pickup.login.salesPointIdInvalid": "Zadejte platné ID prodejního místa nebo superpickuper.",
   "pickup.login.pin": "PIN",

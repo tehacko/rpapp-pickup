@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, jest } from '@jest/globals';
+import { normalizeConsumerPublicTenantRow } from 'pi-kiosk-shared';
 import { fetchPublicPickupTenants } from './publicPickupTenantApi.js';
 
 function jsonResponse(body: unknown, status = 200): Response {
@@ -50,7 +51,12 @@ describe('fetchPublicPickupTenants', () => {
 
     const tenants = await fetchPublicPickupTenants();
     expect(tenants).toEqual([
-      { tenantId: 1, code: 'railway-cafe', name: 'Railway Cafe', logoUrl: null },
+      normalizeConsumerPublicTenantRow({
+        tenantId: 1,
+        code: 'railway-cafe',
+        name: 'Railway Cafe',
+        logoUrl: null,
+      }),
     ]);
   });
 
@@ -76,7 +82,13 @@ describe('fetchPublicPickupTenants', () => {
 
     const tenants = await fetchPublicPickupTenants();
     expect(tenants).toEqual([
-      { tenantId: 2, code: 'flag-off', name: 'Flag Off Org', logoUrl: null },
+      normalizeConsumerPublicTenantRow({
+        tenantId: 2,
+        code: 'flag-off',
+        name: 'Flag Off Org',
+        logoUrl: null,
+        wordmarkUrl: 'https://api/wm/2',
+      }),
     ]);
     expect(tenants[0]).not.toHaveProperty('wordmarkUrl');
   });

@@ -18,6 +18,10 @@ function mockJsonResponse(status: number, body: unknown): Response {
   } as Response;
 }
 
+function readFetchHeader(init: RequestInit | undefined, name: string): string | null {
+  return new Headers(init?.headers).get(name);
+}
+
 describe('checkupGateway', () => {
   const originalFetch = global.fetch;
 
@@ -62,16 +66,15 @@ describe('checkupGateway', () => {
       '/api/demo/v1/pickup/staff/inventory/checkups/checkup-1/apply',
       expect.objectContaining({
         method: 'POST',
-        headers: expect.objectContaining({
-          'Idempotency-Key': 'idem-checkup-1',
-          'X-Pickup-Session-Id': 'pickup-sess-checkup-1',
-        }) as Record<string, string>,
         body: JSON.stringify({
           overrideMovedLines: true,
           overrideReason: 'manager approved',
         }),
       }),
     );
+    const applyInit = fetchMock.mock.calls[0]?.[1] as RequestInit;
+    expect(readFetchHeader(applyInit, 'Idempotency-Key')).toBe('idem-checkup-1');
+    expect(readFetchHeader(applyInit, 'X-Pickup-Session-Id')).toBe('pickup-sess-checkup-1');
   });
 
   it('maps 409 STOCK_MOVED to InventoryConflictError with diagnostics', async () => {

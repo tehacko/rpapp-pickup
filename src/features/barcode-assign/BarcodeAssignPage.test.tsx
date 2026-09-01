@@ -20,12 +20,16 @@ jest.mock('../../hooks/useStaffToken.js', () => ({
   useTenantCode: () => 'demo',
   useStaffToken: () => 'staff-token',
 }));
-jest.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-    i18n: { language: 'en', resolvedLanguage: 'en' },
-  }),
-}));
+jest.mock('react-i18next', () => {
+  const actual = jest.requireActual<typeof import('react-i18next')>('react-i18next');
+  return {
+    ...actual,
+    useTranslation: () => ({
+      t: (key: string) => key,
+      i18n: { language: 'en', resolvedLanguage: 'en' },
+    }),
+  };
+});
 
 function LocationProbe(): JSX.Element {
   const location = useLocation();

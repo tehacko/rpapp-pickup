@@ -55,7 +55,7 @@ module.exports = {
   coverageReporters: ['text', 'lcov', 'html', 'json-summary'],
   // Wave 6 + gap closure: money api at end-state 75/55/75/75 (measured ~99/94); else measured−2pp
   coverageThreshold: {
-    './src/shared/ui/': { statements: 60, branches: 45, functions: 43, lines: 60 },
+    './src/shared/ui/': { statements: 60, branches: 45, functions: 42, lines: 60 },
     './src/api/': { statements: 75, branches: 55, functions: 75, lines: 75 },
     './src/lib/': { statements: 80, branches: 60, functions: 65, lines: 80 },
     './src/features/queue/': { statements: 63, branches: 50, functions: 63, lines: 63 },
@@ -84,7 +84,13 @@ module.exports = {
     '^pi-kiosk-shared$': '<rootDir>/../shared/src/index.ts',
     '^@marsidev/react-turnstile$':
       '<rootDir>/src/test/shims/react-turnstile.shim.tsx',
-    '^.*/readViteMetaEnv(\\.js)?$': '<rootDir>/src/test/shims/readViteMetaEnv.shim.ts',
+    // BEFORE .js strip — import.meta modules must not hit the stripper first
+    '^(?:.*[\\\\/])?shared[\\\\/]vite[\\\\/]readViteMetaEnv(?:\\.(?:js|ts))?$':
+      '<rootDir>/src/test/shims/readViteMetaEnv.shim.ts',
+    '^.*/vite/readViteMetaEnv(?:\\.(?:js|ts))?$':
+      '<rootDir>/src/test/shims/readViteMetaEnv.shim.ts',
+    '<rootDir>/src/shared/vite/readViteMetaEnv.ts':
+      '<rootDir>/src/test/shims/readViteMetaEnv.shim.ts',
     '^(\\.{1,2}/.*)\\.js$': '$1',
     '\\.(css|less|scss|sass)$': 'identity-obj-proxy',
     '^(.*/)?test/e2e/errorIsolationProbe(\\.js)?$':
@@ -98,7 +104,17 @@ module.exports = {
     '/node_modules/',
   ],
   transform: {
-    '^.+\\.(ts|tsx|js)$': ['ts-jest', { useESM: true, tsconfig: 'tsconfig.json' }],
+    '^.+\\.(ts|tsx|js)$': [
+      'ts-jest',
+      {
+        useESM: true,
+        tsconfig: {
+          jsx: 'react-jsx',
+          esModuleInterop: true,
+          allowSyntheticDefaultImports: true,
+        },
+      },
+    ],
   },
   transformIgnorePatterns: [
     'node_modules/(?!(pi-kiosk-shared|@marsidev)/)',

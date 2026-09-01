@@ -26,6 +26,19 @@ jest.mock('../api/pickupApi.js', () => {
   };
 });
 
+jest.mock('../hooks/useStaffToken.js', () => ({
+  useTenantCode: (): string => 'demo',
+  useStaffToken: (): string => 'staff-token',
+}));
+
+jest.mock('../shared/session/PickupStaffSessionProvider.js', () => ({
+  usePickupStaffSession: () => ({
+    sessionClaims: { capabilities: [] },
+    isRoamingStaff: false,
+    activePickupPointId: null,
+  }),
+}));
+
 jest.mock('../features/queue/useQueueScreen.js', () => ({
   useQueueScreen: jest.fn(),
 }));
