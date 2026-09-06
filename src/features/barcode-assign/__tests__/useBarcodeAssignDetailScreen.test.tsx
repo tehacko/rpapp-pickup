@@ -22,6 +22,27 @@ jest.mock('../../../hooks/useStaffToken.js', () => ({
   useStaffToken: (): string => 'staff-token',
 }));
 
+jest.mock('../../../shared/session/PickupStaffSessionProvider.js', () => ({
+  usePickupStaffSession: () => ({
+    accessToken: 'staff-token',
+    tenantCode: 'demo',
+    sessionClaims: {
+      tenantId: 1,
+      salesPointId: 3,
+      role: 'pickup_staff',
+      capabilities: [],
+      allowedPickupPointIds: [],
+    },
+    sessionHydrated: true,
+    allowedPickupPointIds: [],
+    isRoamingStaff: false,
+    activePickupPointId: null,
+    establishSession: jest.fn(),
+    setActivePickupPointId: jest.fn(),
+    signOut: jest.fn(),
+  }),
+}));
+
 jest.mock('../../../hooks/usePickupEntitlement.js', () => ({
   usePickupEntitlement: () => ({
     entitledFunctions: ['barcode_assign'],
@@ -77,19 +98,51 @@ function createGatewayMock(): jest.Mocked<IBarcodeAssignGateway> {
     checkBarcode: jest.fn(),
     getProductBarcode: jest.fn().mockResolvedValue({
       productId: 10,
-      barcode: null,
+      barcode: 'slug-primary',
+      slug: 'slug-primary',
       altBarcodes: [],
       hasArtifacts: false,
     }),
     assignPrimaryBarcode: jest.fn().mockResolvedValue({
       productId: 10,
       barcode: 'MOVED',
+      slug: 'slug-primary',
       altBarcodes: [],
       hasArtifacts: false,
     }),
-    clearPrimaryBarcode: jest.fn(),
+    clearPrimaryBarcode: jest.fn().mockResolvedValue({
+      productId: 10,
+      barcode: null,
+      slug: 'slug-primary',
+      altBarcodes: [],
+      hasArtifacts: false,
+    }),
+    addAltBarcode: jest.fn().mockResolvedValue({
+      productId: 10,
+      barcode: 'slug-primary',
+      slug: 'slug-primary',
+      altBarcodes: ['ALT-1'],
+      hasArtifacts: false,
+    }),
+    removeAltBarcode: jest.fn().mockResolvedValue({
+      productId: 10,
+      barcode: 'slug-primary',
+      slug: 'slug-primary',
+      altBarcodes: [],
+      hasArtifacts: false,
+    }),
     productBarcodeArtifactUrl: jest.fn(
-      (_tenant, productId, kind) => `/artifact/${String(productId)}/${kind}`,
+      (_tenant, productId, kind, options?: { variantId?: number; salesPointId?: number | null }) => {
+        const params = new URLSearchParams();
+        if (options?.variantId !== undefined) {
+          params.set('variantId', String(options.variantId));
+        }
+        if (options?.salesPointId != null) {
+          params.set('salesPointId', String(options.salesPointId));
+        }
+        const query = params.toString();
+        return `/artifact/${String(productId)}/${kind}${query.length > 0 ? `?${query}` : ''}`;
+      },
     ),
   };
 }
@@ -150,9 +203,30 @@ function mockConflictCheck(conflict: {
   });
 }
 
-describe('useBarcodeAssignDetailScreen (G14)', () => {
+const VARIANT_CATALOG = [
+  {
+    productId: 10,
+    name: 'Coffee — Small',
+    useVariants: true,
+    variantId: 1,
+    variantName: 'Small',
+    isActive: true,
+    isArchived: false,
+    assignable: true,
+    barcode: null,
+  },
+];
+
+describe('useBarcodeAssignDetailScreen (G14 / Spec Lock G4)', () => {
   beforeEach(() => {
     stubScanner();
+    useDebouncedBarcodeCheckMock.mockReturnValue({
+      result: { available: true, canonical: '' },
+      isChecking: false,
+      error: null,
+      clearTrustedResult: jest.fn(),
+      invalidate: jest.fn(),
+    });
   });
 
   afterEach(() => {
@@ -176,7 +250,180 @@ describe('useBarcodeAssignDetailScreen (G14)', () => {
     return rendered;
   }
 
-  it('disables Save on conflict; first Move arms only; second confirms with confirmOverwrite:true', async () => {
+  it('G16 — requests QR artifact only (never linear)', async () => {
+    const gateway = createGatewayMock();
+    const { result } = await mountDetail(gateway);
+
+    expect(gateway.productBarcodeArtifactUrl).toHaveBeenCalled();
+    for (const call of gateway.productBarcodeArtifactUrl.mock.calls) {
+      expect(call[2]).toBe('qr');
+    }
+    expect(result.current.viewModel.artifactQrUrl).toContain('/qr');
+    expect(result.current.viewModel).not.toHaveProperty('artifactLinearUrl');
+  });
+
+  it('Spec Lock G4 — artifact URL includes staff salesPointId from session', async () => {
+    const gateway = createGatewayMock();
+    const { result } = await mountDetail(gateway);
+
+    expect(gateway.productBarcodeArtifactUrl).toHaveBeenCalledWith(
+      'demo',
+      10,
+      'qr',
+      expect.objectContaining({ salesPointId: 3 }),
+    );
+    expect(result.current.viewModel.artifactQrUrl).toContain('salesPointId=3');
+  });
+
+  it('Spec Lock G4 — non-variant locks primary; Save adds alt and never mutates primary', async () => {
+    const gateway = createGatewayMock();
+    const { result } = await mountDetail(gateway);
+
+    expect(result.current.viewModel.primaryLocked).toBe(true);
+    expect(result.current.viewModel.currentBarcode).toBe('slug-primary');
+    expect(result.current.viewModel.draftCode).toBe('');
+    expect(result.current.viewModel.canClearPrimary).toBe(false);
+
+    act(() => {
+      result.current.actions.setDraftCode('ALT-NEW');
+    });
+    expect(result.current.viewModel.canSave).toBe(true);
+
+    act(() => {
+      result.current.actions.save(fakeSubmitEvent());
+    });
+
+    await waitFor(() => {
+      expect(gateway.addAltBarcode).toHaveBeenCalledWith('demo', 'staff-token', 10, {
+        code: 'ALT-NEW',
+        variantId: undefined,
+      });
+    });
+    expect(gateway.assignPrimaryBarcode).not.toHaveBeenCalled();
+    expect(gateway.clearPrimaryBarcode).not.toHaveBeenCalled();
+  });
+
+  it('Spec Lock G4 — locked primary: Move Alt uses addAlt confirmOverwrite; clear primary is a no-op', async () => {
+    mockConflictCheck({
+      holderType: 'product',
+      productId: 99,
+      productName: 'Taken Coffee',
+      barcode: 'ALT-CONFLICT',
+    });
+    const gateway = createGatewayMock();
+    const { result } = await mountDetail(gateway);
+
+    expect(result.current.viewModel.primaryLocked).toBe(true);
+
+    act(() => {
+      result.current.actions.setDraftCode('ALT-CONFLICT');
+    });
+    expect(result.current.viewModel.canSave).toBe(false);
+    expect(result.current.viewModel.canMove).toBe(true);
+
+    act(() => {
+      result.current.actions.armOrConfirmMove();
+    });
+    expect(gateway.addAltBarcode).not.toHaveBeenCalled();
+    expect(result.current.viewModel.confirmOverwrite).toBe(true);
+
+    act(() => {
+      result.current.actions.armOrConfirmMove();
+    });
+
+    await waitFor(() => {
+      expect(gateway.addAltBarcode).toHaveBeenCalledWith('demo', 'staff-token', 10, {
+        code: 'ALT-CONFLICT',
+        variantId: undefined,
+        confirmOverwrite: true,
+      });
+    });
+    expect(gateway.assignPrimaryBarcode).not.toHaveBeenCalled();
+
+    act(() => {
+      result.current.actions.requestClear();
+      result.current.actions.confirmClear();
+    });
+    expect(gateway.clearPrimaryBarcode).not.toHaveBeenCalled();
+  });
+
+  it('Spec Lock G4 — removeAlt clears alternate only', async () => {
+    const gateway = createGatewayMock();
+    gateway.getProductBarcode.mockResolvedValue({
+      productId: 10,
+      barcode: 'slug-primary',
+      slug: 'slug-primary',
+      altBarcodes: ['ALT-KEEP', 'ALT-DROP'],
+      hasArtifacts: true,
+    });
+    const { result } = await mountDetail(gateway);
+
+    expect(result.current.viewModel.altBarcodes).toEqual(['ALT-KEEP', 'ALT-DROP']);
+
+    act(() => {
+      result.current.actions.removeAlt('ALT-DROP');
+    });
+
+    await waitFor(() => {
+      expect(gateway.removeAltBarcode).toHaveBeenCalledWith(
+        'demo',
+        'staff-token',
+        10,
+        'ALT-DROP',
+        undefined,
+      );
+    });
+    expect(gateway.clearPrimaryBarcode).not.toHaveBeenCalled();
+    expect(gateway.assignPrimaryBarcode).not.toHaveBeenCalled();
+  });
+
+  it('Spec Lock G5 P2 — variant barcode===slug locks primary; Save adds alt only', async () => {
+    const gateway = createGatewayMock();
+    gateway.listCatalog.mockResolvedValue(VARIANT_CATALOG);
+    gateway.getProductBarcode.mockResolvedValue({
+      productId: 10,
+      variantId: 1,
+      barcode: 'coffee-small',
+      slug: 'coffee-small',
+      altBarcodes: [],
+      hasArtifacts: true,
+    });
+    gateway.addAltBarcode.mockResolvedValue({
+      productId: 10,
+      variantId: 1,
+      barcode: 'coffee-small',
+      slug: 'coffee-small',
+      altBarcodes: ['ALT-V'],
+      hasArtifacts: true,
+    });
+
+    const { result } = await mountDetail(gateway, '/demo/barcode-assign/10/variants/1');
+
+    expect(result.current.viewModel.primaryLocked).toBe(true);
+    expect(result.current.viewModel.currentBarcode).toBe('coffee-small');
+    expect(result.current.viewModel.draftCode).toBe('');
+    expect(result.current.viewModel.canClearPrimary).toBe(false);
+
+    act(() => {
+      result.current.actions.setDraftCode('ALT-V');
+    });
+    expect(result.current.viewModel.canSave).toBe(true);
+
+    act(() => {
+      result.current.actions.save(fakeSubmitEvent());
+    });
+
+    await waitFor(() => {
+      expect(gateway.addAltBarcode).toHaveBeenCalledWith('demo', 'staff-token', 10, {
+        code: 'ALT-V',
+        variantId: 1,
+      });
+    });
+    expect(gateway.assignPrimaryBarcode).not.toHaveBeenCalled();
+    expect(gateway.clearPrimaryBarcode).not.toHaveBeenCalled();
+  });
+
+  it('variant path keeps primary assign Move with confirmOverwrite:true', async () => {
     mockConflictCheck({
       holderType: 'product',
       productId: 99,
@@ -184,8 +431,19 @@ describe('useBarcodeAssignDetailScreen (G14)', () => {
       barcode: 'CONFLICT-1',
     });
     const gateway = createGatewayMock();
+    gateway.listCatalog.mockResolvedValue(VARIANT_CATALOG);
+    gateway.getProductBarcode.mockResolvedValue({
+      productId: 10,
+      variantId: 1,
+      barcode: null,
+      slug: 'coffee-small',
+      altBarcodes: [],
+      hasArtifacts: false,
+    });
 
-    const { result } = await mountDetail(gateway);
+    const { result } = await mountDetail(gateway, '/demo/barcode-assign/10/variants/1');
+
+    expect(result.current.viewModel.primaryLocked).toBe(false);
 
     act(() => {
       result.current.actions.setDraftCode('CONFLICT-1');
@@ -193,33 +451,33 @@ describe('useBarcodeAssignDetailScreen (G14)', () => {
 
     expect(result.current.viewModel.canSave).toBe(false);
     expect(result.current.viewModel.canMove).toBe(true);
-    expect(result.current.viewModel.conflictProductName).toBe('Taken Coffee');
 
     act(() => {
       result.current.actions.save(fakeSubmitEvent());
     });
     expect(gateway.assignPrimaryBarcode).not.toHaveBeenCalled();
 
-    // Two-step Move: arm then confirm (same tick is OK — confirmOverwriteRef is synchronous).
     act(() => {
       result.current.actions.armOrConfirmMove();
     });
     expect(gateway.assignPrimaryBarcode).not.toHaveBeenCalled();
     expect(result.current.viewModel.confirmOverwrite).toBe(true);
-    expect(result.current.viewModel.canSave).toBe(false);
 
     act(() => {
       result.current.actions.armOrConfirmMove();
     });
 
-    expect(gateway.assignPrimaryBarcode).toHaveBeenCalledWith('demo', 'staff-token', 10, {
-      code: 'CONFLICT-1',
-      variantId: undefined,
-      confirmOverwrite: true,
+    await waitFor(() => {
+      expect(gateway.assignPrimaryBarcode).toHaveBeenCalledWith('demo', 'staff-token', 10, {
+        code: 'CONFLICT-1',
+        variantId: 1,
+        confirmOverwrite: true,
+      });
     });
+    expect(gateway.addAltBarcode).not.toHaveBeenCalled();
   });
 
-  it('Cancel after arming Move keeps Save blocked and does not assign', async () => {
+  it('Cancel after arming Move keeps Save blocked and does not assign (variant)', async () => {
     mockConflictCheck({
       holderType: 'product',
       productId: 99,
@@ -227,8 +485,16 @@ describe('useBarcodeAssignDetailScreen (G14)', () => {
       barcode: 'CONFLICT-2',
     });
     const gateway = createGatewayMock();
+    gateway.listCatalog.mockResolvedValue(VARIANT_CATALOG);
+    gateway.getProductBarcode.mockResolvedValue({
+      productId: 10,
+      variantId: 1,
+      barcode: null,
+      altBarcodes: [],
+      hasArtifacts: false,
+    });
 
-    const { result } = await mountDetail(gateway);
+    const { result } = await mountDetail(gateway, '/demo/barcode-assign/10/variants/1');
 
     act(() => {
       result.current.actions.setDraftCode('CONFLICT-2');
@@ -247,6 +513,7 @@ describe('useBarcodeAssignDetailScreen (G14)', () => {
     expect(result.current.viewModel.confirmOverwrite).toBe(false);
     expect(result.current.viewModel.canSave).toBe(false);
     expect(gateway.assignPrimaryBarcode).not.toHaveBeenCalled();
+    expect(gateway.addAltBarcode).not.toHaveBeenCalled();
   });
 
   it('Open navigates to conflict product path (with variant when present)', async () => {

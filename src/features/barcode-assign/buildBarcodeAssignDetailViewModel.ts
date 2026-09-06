@@ -41,8 +41,16 @@ export interface BarcodeAssignDetailViewModel {
   readonly isSaving: boolean;
   readonly saveError: string | null;
   readonly currentBarcode: string | null;
+  readonly altBarcodes: readonly string[];
+  /**
+   * Spec Lock — when auto URL-QR entitled: non-variant primary is always
+   * read-only; variant primary is read-only when barcode === slug. Drafts
+   * mutate alts only while locked.
+   */
+  readonly primaryLocked: boolean;
+  /** Primary clear is only for mutable (variant) holders — never when primaryLocked. */
+  readonly canClearPrimary: boolean;
   readonly confirmClear: boolean;
-  readonly artifactLinearUrl: string;
   readonly artifactQrUrl: string;
 }
 
@@ -56,6 +64,33 @@ function resolveVariantPickerLabel(item: BarcodeAssignCatalogItem, localeTag?: s
     return resolveLocalizedName(item.variantName, null, localeTag ?? '');
   }
   return resolveCatalogLabel(item, localeTag);
+}
+
+/**
+ * Spec Lock — same entitlement gate as admin auto URL-QR / primary lock:
+ * pickup `assignBarcode` ⇔ product_vending ∧ product_barcode_administration.
+ *
+ * Aligns with ManageProductBarcodeUseCase.assertPrimaryMutableUnderAutoUrlQrPolicy:
+ * - Non-variant holders: locked when entitled.
+ * - Variant holders: locked when entitled AND barcode === slug (auto URL-QR identity).
+ * Alts stay mutable either way.
+ */
+export function resolveBarcodeAssignPrimaryLocked(input: {
+  autoUrlQrPolicyEntitled: boolean;
+  variantId: number | undefined;
+  catalogVariants: readonly BarcodeAssignCatalogItem[];
+  barcode?: string | null;
+  slug?: string | null;
+}): boolean {
+  if (!input.autoUrlQrPolicyEntitled) {
+    return false;
+  }
+  if (input.variantId !== undefined) {
+    const slug = input.slug?.trim() ?? '';
+    const barcode = input.barcode?.trim() ?? '';
+    return slug.length > 0 && barcode === slug;
+  }
+  return input.catalogVariants.length === 0;
 }
 
 export function buildBarcodeAssignDetailViewModel(input: {
@@ -78,11 +113,19 @@ export function buildBarcodeAssignDetailViewModel(input: {
   saveError: string | null;
   state: ProductBarcodeStateDTO | null;
   confirmClear: boolean;
-  artifactLinearUrl: string;
   artifactQrUrl: string;
   localeTag?: string;
+  /** When true, Spec Lock primary (= slug) is read-only; draft targets alts. */
+  autoUrlQrPolicyEntitled?: boolean;
 }): BarcodeAssignDetailViewModel {
   const needsVariantPicker = input.catalogVariants.length > 1 && input.variantId === undefined;
+  const primaryLocked = resolveBarcodeAssignPrimaryLocked({
+    autoUrlQrPolicyEntitled: input.autoUrlQrPolicyEntitled === true,
+    variantId: input.variantId,
+    catalogVariants: input.catalogVariants,
+    barcode: input.state?.barcode,
+    slug: input.state?.slug,
+  });
   const selectedItem =
     input.variantId === undefined
       ? undefined
@@ -96,22 +139,22 @@ export function buildBarcodeAssignDetailViewModel(input: {
       ? input.checkResult.conflict
       : undefined;
   const conflictIncomplete = conflictBlocked && conflict === undefined;
-  const canSave =
+  const draftReady =
     input.draftCode.trim().length > 0 &&
     !input.debouncedChecking &&
     !needsVariantPicker &&
     input.catalogError === null &&
-    input.checkError === null &&
-    input.checkResult?.available === true;
-  const canMove =
-    input.draftCode.trim().length > 0 &&
-    !input.debouncedChecking &&
-    !needsVariantPicker &&
-    input.catalogError === null &&
-    input.checkError === null &&
-    conflictBlocked;
+    input.checkError === null;
+  const canSave = draftReady && input.checkResult?.available === true;
+  const canMove = draftReady && conflictBlocked;
   const canOpenConflictProduct =
     conflict !== undefined && Number.isFinite(conflict.productId) && conflict.productId > 0;
+  const currentBarcode = input.state?.barcode ?? null;
+  const canClearPrimary =
+    !primaryLocked &&
+    currentBarcode !== null &&
+    currentBarcode.trim().length > 0 &&
+    !(input.variantId === undefined && input.catalogVariants.length > 0);
 
   return {
     tenantCode: input.tenantCode,
@@ -148,9 +191,11 @@ export function buildBarcodeAssignDetailViewModel(input: {
     canMove,
     isSaving: input.isSaving,
     saveError: input.saveError,
-    currentBarcode: input.state?.barcode ?? null,
+    currentBarcode,
+    altBarcodes: input.state?.altBarcodes ?? [],
+    primaryLocked,
+    canClearPrimary,
     confirmClear: input.confirmClear,
-    artifactLinearUrl: input.artifactLinearUrl,
     artifactQrUrl: input.artifactQrUrl,
   };
 }

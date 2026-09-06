@@ -106,6 +106,8 @@ export interface ProductBarcodeStateDTO {
   readonly variantId?: number;
   readonly barcode: string | null;
   readonly altBarcodes: readonly string[];
+  /** Holder identity slug — Spec Lock locks primary when barcode === slug. */
+  readonly slug?: string | null;
   readonly canonical?: string;
   readonly symbology?: string;
   readonly hasArtifacts: boolean;
@@ -378,29 +380,28 @@ export async function promoteAltBarcode(
   return parseJson<ProductBarcodeStateDTO>(res);
 }
 
-export async function regenerateBarcodeArtifacts(
-  tenantCode: string,
-  accessToken: string,
-  productId: number,
-  variantId?: number,
-): Promise<ProductBarcodeStateDTO> {
-  const res = await pickupBarcodeFetch(
-    `${pickupBarcodeBase(tenantCode)}/${encodeURIComponent(String(productId))}/barcode/artifacts/regenerate`,
-    {
-      method: 'POST',
-      headers: authHeaders(accessToken),
-      body: JSON.stringify(variantId !== undefined ? { variantId } : {}),
-    },
-  );
-  return parseJson<ProductBarcodeStateDTO>(res);
-}
-
 export function productBarcodeArtifactUrl(
   tenantCode: string,
   productId: number,
-  kind: 'linear' | 'qr',
-  variantId?: number,
+  kind: 'qr',
+  options?: {
+    variantId?: number;
+    /** Spec Lock G4 — staff store for URL QR GET (`?salesPointId=`). */
+    salesPointId?: number | null;
+  },
 ): string {
-  const params = variantId !== undefined ? `?variantId=${encodeURIComponent(String(variantId))}` : '';
-  return `${pickupBarcodeBase(tenantCode)}/${encodeURIComponent(String(productId))}/barcode/artifacts/${kind}${params}`;
+  const params = new URLSearchParams();
+  if (options?.variantId !== undefined) {
+    params.set('variantId', String(options.variantId));
+  }
+  if (
+    options?.salesPointId != null &&
+    Number.isFinite(options.salesPointId) &&
+    options.salesPointId > 0
+  ) {
+    params.set('salesPointId', String(Math.trunc(options.salesPointId)));
+  }
+  const query = params.toString();
+  const suffix = query.length > 0 ? `?${query}` : '';
+  return `${pickupBarcodeBase(tenantCode)}/${encodeURIComponent(String(productId))}/barcode/artifacts/${kind}${suffix}`;
 }

@@ -74,8 +74,10 @@ function createViewModel(
     isSaving: false,
     saveError: null,
     currentBarcode: null,
+    altBarcodes: [],
+    primaryLocked: false,
+    canClearPrimary: false,
     confirmClear: false,
-    artifactLinearUrl: '/linear.png',
     artifactQrUrl: '/qr.png',
     ...overrides,
   };
@@ -95,6 +97,7 @@ function createActions(): BarcodeAssignDetailScreenActions {
     requestClear: jest.fn(),
     cancelClear: jest.fn(),
     confirmClear: jest.fn(),
+    removeAlt: jest.fn(),
     openVariant: jest.fn(),
     retryCatalog: jest.fn(),
   };
@@ -207,5 +210,36 @@ describe('BarcodeAssignDetailScreenView camera (G13/G16)', () => {
     await Promise.resolve();
 
     expect(actions.applyCameraDecode).toHaveBeenCalledWith('8593807360153');
+  });
+
+  it('Spec Lock G4 — primary read-only; alt draft + removeAlt; no primary clear', () => {
+    const actions = createActions();
+    render(
+      <BarcodeAssignDetailScreenView
+        viewModel={createViewModel({
+          variantId: undefined,
+          selectedVariantLabel: null,
+          primaryLocked: true,
+          currentBarcode: 'slug-primary',
+          altBarcodes: ['ALT-1'],
+          canClearPrimary: false,
+          canSave: true,
+          draftCode: '',
+        })}
+        actions={actions}
+        videoRef={{ current: null }}
+      />,
+    );
+
+    const primary = screen.getByTestId('barcode-assign-primary-readonly');
+    expect(primary).toHaveAttribute('readonly');
+    expect(primary).toBeDisabled();
+    expect(primary).toHaveValue('slug-primary');
+    expect(screen.getByTestId('barcode-assign-alt-draft')).toBeTruthy();
+    expect(screen.getByTestId('barcode-assign-add-alt')).toBeTruthy();
+    expect(screen.queryByTestId('barcode-assign-current-card')).toBeNull();
+
+    fireEvent.click(screen.getByTestId('barcode-assign-remove-alt-ALT-1'));
+    expect(actions.removeAlt).toHaveBeenCalledWith('ALT-1');
   });
 });

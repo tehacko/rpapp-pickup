@@ -1,10 +1,12 @@
 import {
+  addAltBarcode,
   assignPrimaryBarcode,
   checkBarcodeAssign,
   clearPrimaryBarcode,
   getProductBarcode,
   listProductsForBarcodeAssign,
   productBarcodeArtifactUrl,
+  removeAltBarcode,
 } from '../../gateway/productBarcode.gateway.js';
 import { reportPickupError } from '../../shared/hooks/usePickupErrorHandler.js';
 import type { IBarcodeAssignGateway } from './IBarcodeAssignGateway.js';
@@ -40,6 +42,14 @@ export const barcodeAssignGateway: IBarcodeAssignGateway = {
   clearPrimaryBarcode: (tenantCode, accessToken, productId, variantId) =>
     withAssignLog('clearPrimaryBarcode', () =>
       clearPrimaryBarcode(tenantCode, accessToken, productId, variantId),
+    ),
+
+  addAltBarcode: (tenantCode, accessToken, productId, input) =>
+    withAssignLog('addAltBarcode', () => addAltBarcode(tenantCode, accessToken, productId, input)),
+
+  removeAltBarcode: (tenantCode, accessToken, productId, code, variantId) =>
+    withAssignLog('removeAltBarcode', () =>
+      removeAltBarcode(tenantCode, accessToken, productId, code, variantId),
     ),
 
   productBarcodeArtifactUrl,

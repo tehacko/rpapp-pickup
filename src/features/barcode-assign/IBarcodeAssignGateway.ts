@@ -1,4 +1,5 @@
 import type {
+  AddAltBarcodeInput,
   AssignPrimaryBarcodeInput,
   BarcodeAssignCatalogItem,
   BarcodeAssignCheckResult,
@@ -34,10 +35,26 @@ export interface IBarcodeAssignGateway {
     productId: number,
     variantId?: number,
   ): Promise<ProductBarcodeStateDTO>;
+  addAltBarcode(
+    tenantCode: string,
+    accessToken: string,
+    productId: number,
+    input: AddAltBarcodeInput,
+  ): Promise<ProductBarcodeStateDTO>;
+  removeAltBarcode(
+    tenantCode: string,
+    accessToken: string,
+    productId: number,
+    code: string,
+    variantId?: number,
+  ): Promise<ProductBarcodeStateDTO>;
   productBarcodeArtifactUrl(
     tenantCode: string,
     productId: number,
-    kind: 'linear' | 'qr',
-    variantId?: number,
+    kind: 'qr',
+    options?: {
+      variantId?: number;
+      salesPointId?: number | null;
+    },
   ): string;
 }

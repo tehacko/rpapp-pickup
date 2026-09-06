@@ -27,6 +27,8 @@ export function BarcodeAssignDetailScreenView({
   const navigate = useNavigate();
   const codeInputRef = useRef<HTMLInputElement>(null);
   const encodedTenant = encodeURIComponent(viewModel.tenantCode);
+  const primaryLocked = viewModel.primaryLocked;
+  const primaryBarcode = viewModel.currentBarcode?.trim() ?? '';
 
   return (
     <div className="flex w-full flex-col gap-4" data-testid="barcode-assign-detail-screen">
@@ -110,23 +112,122 @@ export function BarcodeAssignDetailScreenView({
               />
             </SectionCard>
 
+            {primaryLocked ? (
+              <SectionCard
+                elevated
+                title={t('pickup.barcodeAssign.primaryLabel')}
+                data-testid="barcode-assign-primary-readonly-card"
+              >
+                <div className="flex flex-col gap-2">
+                  <input
+                    id="pickup-barcode-primary-readonly"
+                    className="min-h-11 w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-muted,var(--color-surface))] px-3 font-mono text-[var(--color-on-surface)] opacity-80"
+                    value={primaryBarcode}
+                    readOnly
+                    disabled
+                    autoComplete="off"
+                    spellCheck={false}
+                    data-testid="barcode-assign-primary-readonly"
+                    aria-label={t('pickup.barcodeAssign.primaryLabel')}
+                  />
+                  <p className="m-0 text-sm text-[var(--color-on-surface-muted)]">
+                    {t('pickup.barcodeAssign.primaryAutoHelp')}
+                  </p>
+                  {primaryBarcode.length > 0 ? (
+                    <p
+                      className="m-0 text-sm font-medium text-[var(--color-success,var(--color-on-surface))]"
+                      role="status"
+                      data-testid="barcode-assign-primary-assigned"
+                    >
+                      {t('pickup.barcodeAssign.primaryAssignedStatus')}
+                    </p>
+                  ) : (
+                    <p
+                      className="m-0 text-sm text-[var(--color-on-surface-muted)]"
+                      role="status"
+                      data-testid="barcode-assign-primary-pending"
+                    >
+                      {t('pickup.barcodeAssign.primaryPendingHelp')}
+                    </p>
+                  )}
+                  {primaryBarcode.length > 0 ? (
+                    <img
+                      src={viewModel.artifactQrUrl}
+                      alt={t('pickup.barcodeAssign.artifactQr')}
+                      className="max-w-[10rem] rounded border border-[var(--color-border)] bg-white object-contain p-2"
+                    />
+                  ) : null}
+                </div>
+              </SectionCard>
+            ) : null}
+
             <SectionCard
               elevated
-              title={t('pickup.barcodeAssign.codeLabel')}
+              title={
+                primaryLocked
+                  ? t('pickup.barcodeAssign.altCodeLabel')
+                  : t('pickup.barcodeAssign.codeLabel')
+              }
               data-testid="barcode-assign-save-card"
             >
               <form className="flex flex-col gap-3" onSubmit={(event: FormEvent) => actions.save(event)}>
+                {primaryLocked ? (
+                  <div className="flex flex-col gap-2" data-testid="barcode-assign-alt-list">
+                    <span className="text-sm font-medium text-[var(--color-on-surface)]">
+                      {t('pickup.barcodeAssign.altBarcodesLabel')}
+                    </span>
+                    {viewModel.altBarcodes.length === 0 ? (
+                      <p className="m-0 text-sm text-[var(--color-on-surface-muted)]">
+                        {t('pickup.barcodeAssign.altEmpty')}
+                      </p>
+                    ) : (
+                      <ul className="m-0 flex list-none flex-col gap-2 p-0">
+                        {viewModel.altBarcodes.map((code) => (
+                          <li
+                            key={code}
+                            className="flex flex-wrap items-center gap-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2 text-sm"
+                            data-testid={`barcode-assign-alt-row-${code}`}
+                          >
+                            <span className="font-mono text-[var(--color-on-surface)]">{code}</span>
+                            <Button
+                              type="button"
+                              intent="secondary"
+                              className="ml-auto"
+                              onClick={() => actions.removeAlt(code)}
+                              data-testid={`barcode-assign-remove-alt-${code}`}
+                            >
+                              {t('pickup.barcodeAssign.removeAlt')}
+                            </Button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                ) : null}
+
                 <label
                   className="flex flex-col gap-1 text-sm font-medium text-[var(--color-on-surface)]"
                   htmlFor="pickup-barcode-code"
                 >
-                  <span className="sr-only">{t('pickup.barcodeAssign.codeLabel')}</span>
+                  <span className="sr-only">
+                    {primaryLocked
+                      ? t('pickup.barcodeAssign.altCodeLabel')
+                      : t('pickup.barcodeAssign.codeLabel')}
+                  </span>
                   <input
                     id="pickup-barcode-code"
                     ref={codeInputRef}
-                    className="min-h-11 w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-[var(--color-on-surface)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus-ring)]"
+                    className="min-h-11 w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 font-mono text-[var(--color-on-surface)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus-ring)]"
                     value={viewModel.draftCode}
                     onChange={(event) => actions.setDraftCode(event.target.value)}
+                    placeholder={
+                      primaryLocked ? t('pickup.barcodeAssign.altPlaceholder') : undefined
+                    }
+                    data-testid={
+                      primaryLocked ? 'barcode-assign-alt-draft' : 'barcode-assign-primary-draft'
+                    }
+                    autoComplete="off"
+                    spellCheck={false}
                   />
                 </label>
                 {viewModel.isChecking ? (
@@ -168,11 +269,16 @@ export function BarcodeAssignDetailScreenView({
                     </p>
                     {viewModel.confirmOverwrite ? (
                       <p className="m-0 text-sm text-[var(--color-on-surface-muted)]">
-                        {t('pickup.barcodeAssign.confirmOverwrite', {
-                          name:
-                            viewModel.conflictProductName ??
-                            t('pickup.barcodeAssign.conflictUnknownHolder'),
-                        })}
+                        {t(
+                          primaryLocked
+                            ? 'pickup.barcodeAssign.confirmOverwriteAlt'
+                            : 'pickup.barcodeAssign.confirmOverwrite',
+                          {
+                            name:
+                              viewModel.conflictProductName ??
+                              t('pickup.barcodeAssign.conflictUnknownHolder'),
+                          },
+                        )}
                       </p>
                     ) : null}
                     <div className="flex flex-wrap items-center gap-2">
@@ -208,8 +314,16 @@ export function BarcodeAssignDetailScreenView({
                         data-testid="pickup-barcode-move"
                       >
                         {viewModel.confirmOverwrite
-                          ? t('pickup.barcodeAssign.confirmMove')
-                          : t('pickup.barcodeAssign.moveHere')}
+                          ? t(
+                              primaryLocked
+                                ? 'pickup.barcodeAssign.confirmMoveAlt'
+                                : 'pickup.barcodeAssign.confirmMove',
+                            )
+                          : t(
+                              primaryLocked
+                                ? 'pickup.barcodeAssign.moveAlt'
+                                : 'pickup.barcodeAssign.moveHere',
+                            )}
                       </Button>
                       {viewModel.confirmOverwrite ? (
                         <Button type="button" intent="secondary" onClick={actions.cancelMove}>
@@ -219,8 +333,14 @@ export function BarcodeAssignDetailScreenView({
                     </div>
                   </div>
                 ) : null}
-                <Button type="submit" disabled={!viewModel.canSave || viewModel.isSaving}>
-                  {t('pickup.barcodeAssign.save')}
+                <Button
+                  type="submit"
+                  disabled={!viewModel.canSave || viewModel.isSaving}
+                  data-testid={primaryLocked ? 'barcode-assign-add-alt' : 'barcode-assign-save-primary'}
+                >
+                  {primaryLocked
+                    ? t('pickup.barcodeAssign.addAlt')
+                    : t('pickup.barcodeAssign.save')}
                 </Button>
               </form>
             </SectionCard>
@@ -229,7 +349,7 @@ export function BarcodeAssignDetailScreenView({
               <AlertBanner tone="danger" role="alert" message={viewModel.saveError} />
             ) : null}
 
-            {viewModel.currentBarcode ? (
+            {!primaryLocked && viewModel.currentBarcode ? (
               <SectionCard
                 elevated
                 title={t('pickup.barcodeAssign.current', { value: viewModel.currentBarcode })}
@@ -237,17 +357,12 @@ export function BarcodeAssignDetailScreenView({
               >
                 <div className="flex flex-col gap-3">
                   <img
-                    src={viewModel.artifactLinearUrl}
-                    alt={t('pickup.barcodeAssign.artifactLinear')}
-                    className="max-w-full rounded border border-[var(--color-border)] bg-white object-contain p-2"
-                  />
-                  <img
                     src={viewModel.artifactQrUrl}
                     alt={t('pickup.barcodeAssign.artifactQr')}
                     className="max-w-[10rem] rounded border border-[var(--color-border)] bg-white object-contain p-2"
                   />
 
-                  {viewModel.confirmClear ? (
+                  {viewModel.canClearPrimary && viewModel.confirmClear ? (
                     <div className="flex flex-col gap-3">
                       <p className="m-0 text-sm text-[var(--color-on-surface)]">
                         {t('pickup.barcodeAssign.clearConfirm')}
@@ -261,11 +376,12 @@ export function BarcodeAssignDetailScreenView({
                         </Button>
                       </div>
                     </div>
-                  ) : (
+                  ) : null}
+                  {viewModel.canClearPrimary && !viewModel.confirmClear ? (
                     <Button intent="secondary" type="button" onClick={actions.requestClear}>
                       {t('pickup.barcodeAssign.clear')}
                     </Button>
-                  )}
+                  ) : null}
                 </div>
               </SectionCard>
             ) : null}

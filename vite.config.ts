@@ -5,7 +5,7 @@ import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { VitePWA } from 'vite-plugin-pwa';
 import { buildMonorepoPiKioskSharedAlias } from './src/shared/vite/monorepoPiKioskSharedAlias.js';
-import { buildAppVersionDefine } from '../scripts/vite/buildAppVersionDefine.mjs';
+import { buildAppVersionDefine } from './scripts/vite/buildAppVersionDefine.mjs';
 
 const appRoot = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(appRoot, '..');

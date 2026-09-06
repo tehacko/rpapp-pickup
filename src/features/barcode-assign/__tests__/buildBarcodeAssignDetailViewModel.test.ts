@@ -40,8 +40,8 @@ function baseInput(overrides: Partial<Parameters<typeof buildBarcodeAssignDetail
     saveError: null as string | null,
     state: null as ProductBarcodeStateDTO | null,
     confirmClear: false,
-    artifactLinearUrl: '/linear.png',
     artifactQrUrl: '/qr.png',
+    autoUrlQrPolicyEntitled: false,
     ...overrides,
   };
 }
@@ -252,5 +252,104 @@ describe('buildBarcodeAssignDetailViewModel', () => {
     expect(vm.checkError).toBe('Network down');
     expect(vm.canSave).toBe(false);
     expect(vm.canMove).toBe(false);
+  });
+
+  it('Spec Lock G4 — locks primary for non-variant under auto URL-QR entitlement', () => {
+    const locked = buildBarcodeAssignDetailViewModel(
+      baseInput({
+        autoUrlQrPolicyEntitled: true,
+        draftCode: 'ALT-1',
+        checkResult: { available: true },
+        state: {
+          productId: 10,
+          barcode: 'slug-primary',
+          slug: 'slug-primary',
+          altBarcodes: ['ALT-EXISTING'],
+          hasArtifacts: true,
+        },
+      }),
+    );
+    expect(locked.primaryLocked).toBe(true);
+    expect(locked.canClearPrimary).toBe(false);
+    expect(locked.canSave).toBe(true);
+    expect(locked.currentBarcode).toBe('slug-primary');
+    expect(locked.altBarcodes).toEqual(['ALT-EXISTING']);
+
+    const variantCustomUnlocked = buildBarcodeAssignDetailViewModel(
+      baseInput({
+        autoUrlQrPolicyEntitled: true,
+        variantId: 1,
+        catalogVariants: [catalogItem({ productId: 10, name: 'Coffee', variantId: 1 })],
+        draftCode: 'VAR-1',
+        checkResult: { available: true },
+        state: {
+          productId: 10,
+          variantId: 1,
+          barcode: 'VAR-1',
+          slug: 'coffee-small',
+          altBarcodes: [],
+          hasArtifacts: false,
+        },
+      }),
+    );
+    expect(variantCustomUnlocked.primaryLocked).toBe(false);
+    expect(variantCustomUnlocked.canClearPrimary).toBe(true);
+  });
+
+  it('Spec Lock G5 P2 — locks variant primary when barcode === slug under entitlement', () => {
+    const locked = buildBarcodeAssignDetailViewModel(
+      baseInput({
+        autoUrlQrPolicyEntitled: true,
+        variantId: 1,
+        catalogVariants: [catalogItem({ productId: 10, name: 'Coffee', variantId: 1 })],
+        draftCode: 'ALT-V',
+        checkResult: { available: true },
+        state: {
+          productId: 10,
+          variantId: 1,
+          barcode: 'coffee-large',
+          slug: 'coffee-large',
+          altBarcodes: ['ALT-EXISTING'],
+          hasArtifacts: true,
+        },
+      }),
+    );
+    expect(locked.primaryLocked).toBe(true);
+    expect(locked.canClearPrimary).toBe(false);
+    expect(locked.canSave).toBe(true);
+
+    const notEntitled = buildBarcodeAssignDetailViewModel(
+      baseInput({
+        autoUrlQrPolicyEntitled: false,
+        variantId: 1,
+        catalogVariants: [catalogItem({ productId: 10, name: 'Coffee', variantId: 1 })],
+        state: {
+          productId: 10,
+          variantId: 1,
+          barcode: 'coffee-large',
+          slug: 'coffee-large',
+          altBarcodes: [],
+          hasArtifacts: false,
+        },
+      }),
+    );
+    expect(notEntitled.primaryLocked).toBe(false);
+
+    const emptySlug = buildBarcodeAssignDetailViewModel(
+      baseInput({
+        autoUrlQrPolicyEntitled: true,
+        variantId: 1,
+        catalogVariants: [catalogItem({ productId: 10, name: 'Coffee', variantId: 1 })],
+        state: {
+          productId: 10,
+          variantId: 1,
+          barcode: 'coffee-large',
+          slug: '',
+          altBarcodes: [],
+          hasArtifacts: false,
+        },
+      }),
+    );
+    expect(emptySlug.primaryLocked).toBe(false);
   });
 });

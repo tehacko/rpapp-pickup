@@ -3,6 +3,7 @@ import {
   assignPrimaryBarcode,
   checkBarcodeAssign,
   listProductsForBarcodeAssign,
+  productBarcodeArtifactUrl,
   promoteAltBarcode,
   removeAltBarcode,
 } from './productBarcode.gateway.js';
@@ -230,5 +231,16 @@ describe('productBarcode.gateway', () => {
         barcode: 'ALT-DUP',
       });
     }
+  });
+
+  it('Spec Lock G4 — productBarcodeArtifactUrl appends staff salesPointId', () => {
+    expect(
+      productBarcodeArtifactUrl('demo', 10, 'qr', { salesPointId: 3 }),
+    ).toBe('/api/demo/v1/pickup/products/10/barcode/artifacts/qr?salesPointId=3');
+    expect(
+      productBarcodeArtifactUrl('demo', 10, 'qr', { variantId: 2, salesPointId: 3 }),
+    ).toBe(
+      '/api/demo/v1/pickup/products/10/barcode/artifacts/qr?variantId=2&salesPointId=3',
+    );
   });
 });
