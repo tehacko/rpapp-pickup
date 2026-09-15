@@ -1,4 +1,9 @@
-/** Format minor units as whole Kč for staff one-tap cash confirm labels (Stage 2 §7). */
+import { isCurrencyCode, type CurrencyCode } from 'pi-kiosk-shared';
+
+/**
+ * Format minor units for staff one-tap cash confirm labels (Stage 2 §7).
+ * Displays the API/session currency — never force CZK when another code is provided.
+ */
 export function formatPickupCashAmountLabel(
   amountMinor: number | null | undefined,
   currency: string | null | undefined,
@@ -8,7 +13,8 @@ export function formatPickupCashAmountLabel(
     return fallbackLabel;
   }
   const major = Math.round(amountMinor / 100);
-  const code = currency?.trim() || 'CZK';
+  const trimmed = currency?.trim() ?? '';
+  const code: CurrencyCode | string = isCurrencyCode(trimmed) ? trimmed : trimmed || 'CZK';
   if (code === 'CZK') {
     return `${major} Kč`;
   }

@@ -1,4 +1,4 @@
-import type { LocalizedNameMap } from 'pi-kiosk-shared';
+import type { CurrencyCode, LocalizedNameMap } from 'pi-kiosk-shared';
 
 export interface FulfillmentLine {
   lineId: number;
@@ -37,7 +37,7 @@ export interface ResolveResponse {
   promotions?: {
     readonly appliedDiscount: {
       readonly cartDiscountAmount: number;
-      readonly currency: 'CZK';
+      readonly currency: CurrencyCode;
       readonly source: 'PROMO';
     } | null;
   };

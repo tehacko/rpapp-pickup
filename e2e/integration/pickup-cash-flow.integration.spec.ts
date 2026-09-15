@@ -24,6 +24,7 @@ test.describe('pickup cash flow (integration)', () => {
         salesPointId,
         checkoutSubMode: 'PREPAY_COLLECT_LATER',
         items: [{ productId: state.productId, quantity: 1 }],
+        currency: 'CZK',
       },
     });
     expect(prepareRes.ok()).toBeTruthy();

@@ -1,8 +1,9 @@
+import type { CurrencyCode } from 'pi-kiosk-shared';
 import { useTranslation } from 'react-i18next';
 
 export interface PromoAppliedDiscountView {
   readonly cartDiscountAmount: number;
-  readonly currency: 'CZK';
+  readonly currency: CurrencyCode;
   readonly source: 'PROMO';
 }
 

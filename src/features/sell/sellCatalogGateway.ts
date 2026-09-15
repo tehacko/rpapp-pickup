@@ -1,3 +1,4 @@
+import type { CurrencyCode } from 'pi-kiosk-shared';
 import { authHeaders } from '../../lib/auth.js';
 import { PickupApiError } from '../../api/pickupApi.js';
 import { reportPickupError } from '../../shared/hooks/usePickupErrorHandler.js';
@@ -93,6 +94,7 @@ export const sellCatalogGateway: ISellCatalogGateway = {
     accessToken: string,
     input: {
       items: readonly SellCashPrepareLine[];
+      currency: CurrencyCode;
       pickupPointId?: number;
       collectTiming?: 'NOW' | 'LATER';
     },

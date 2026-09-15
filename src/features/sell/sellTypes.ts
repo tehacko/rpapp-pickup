@@ -1,4 +1,4 @@
-import type { LocalizedNameMap } from 'pi-kiosk-shared';
+import type { CurrencyCode, LocalizedNameMap } from 'pi-kiosk-shared';
 
 export interface SellCatalogItem {
   readonly productId: number;
@@ -33,7 +33,7 @@ export interface SellConfig {
   readonly salesPointId: number;
   readonly cashEnabled: boolean;
   readonly checkoutSubMode: 'PAY_NOW_STAFF_HANDOFF';
-  readonly currency: string;
+  readonly currency: CurrencyCode;
   readonly interactionMode: 'CUSTOMER_FACING' | 'STAFF_OPERATED';
 }
 
@@ -46,7 +46,7 @@ export interface SellCashPrepareLine {
 export interface SellCashPrepareResult {
   readonly checkoutSessionId: string;
   readonly amountMinor: number;
-  readonly currency: string;
+  readonly currency: CurrencyCode;
 }
 
 export interface SellCashCompleteResult {

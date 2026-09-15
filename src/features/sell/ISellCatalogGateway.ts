@@ -1,3 +1,4 @@
+import type { CurrencyCode } from 'pi-kiosk-shared';
 import type {
   SellCartLineInput,
   SellCatalogItem,
@@ -19,6 +20,7 @@ export interface ISellCatalogGateway {
     accessToken: string,
     input: {
       items: readonly SellCashPrepareLine[];
+      currency: CurrencyCode;
       pickupPointId?: number;
       collectTiming?: 'NOW' | 'LATER';
     },

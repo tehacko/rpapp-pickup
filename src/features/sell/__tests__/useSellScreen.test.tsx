@@ -134,6 +134,11 @@ describe('useSellScreen (G11 cash confirm recovery)', () => {
 
     await waitFor(() => {
       expect(gateway.prepareCashCheckout).toHaveBeenCalledTimes(1);
+      expect(gateway.prepareCashCheckout).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.any(String),
+        expect.objectContaining({ currency: 'CZK' }),
+      );
       expect(gateway.completeCashCheckout).toHaveBeenCalledTimes(1);
       expect(result.current.checkoutError).toBe('pickup.sell.checkoutConfirmFailedRecoverable');
       expect(result.current.checkoutLoading).toBe(false);

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { isCurrencyCode, type CurrencyCode } from 'pi-kiosk-shared';
 import { PickupApiError } from '../../api/pickupApi.js';
 import { useStaffToken, useTenantCode } from '../../hooks/useStaffToken.js';
 import { usePickupErrorHandler } from '../../shared/hooks/usePickupErrorHandler.js';
@@ -18,6 +19,15 @@ import {
   toSellCashPrepareLines,
 } from './sellCartLogic.js';
 import type { SellCartLine, SellCatalogItem, SellConfig } from './sellTypes.js';
+
+const DEFAULT_SELL_CURRENCY: CurrencyCode = 'CZK';
+
+function normalizeSellConfig(next: SellConfig): SellConfig {
+  return {
+    ...next,
+    currency: isCurrencyCode(next.currency) ? next.currency : DEFAULT_SELL_CURRENCY,
+  };
+}
 
 export interface SellScreenActions {
   readonly setQuery: (value: string) => void;
@@ -50,7 +60,7 @@ const DEFAULT_CONFIG: SellConfig = {
   salesPointId: 0,
   cashEnabled: false,
   checkoutSubMode: 'PAY_NOW_STAFF_HANDOFF',
-  currency: 'CZK',
+  currency: DEFAULT_SELL_CURRENCY,
   interactionMode: 'STAFF_OPERATED',
 };
 
@@ -88,7 +98,7 @@ export function useSellScreen(
       .fetchConfig(tenantCode, accessToken)
       .then((next) => {
         if (!cancelled) {
-          setConfig(next);
+          setConfig(normalizeSellConfig(next));
           setConfigError(null);
           setConfigLoaded(true);
         }
@@ -220,6 +230,7 @@ export function useSellScreen(
             : `sell-${Date.now()}`;
         const prepared = await gateway.prepareCashCheckout(tenantCode, accessToken, {
           items: toSellCashPrepareLines(cartLines),
+          currency: config.currency,
           pickupPointId: activePickupPointId ?? undefined,
           collectTiming: 'NOW',
         });
@@ -255,6 +266,7 @@ export function useSellScreen(
     activePickupPointId,
     cartLines,
     checkoutLoading,
+    config.currency,
     gateway,
     handleError,
     t,
