@@ -62,6 +62,20 @@ export interface IOrderFulfillmentGateway {
     body: HoldOrderInput,
   ): Promise<void>;
 
+  startPreparation(
+    tenantCode: string,
+    accessToken: string,
+    fulfillmentId: number,
+    version: number,
+  ): Promise<void>;
+
+  markReady(
+    tenantCode: string,
+    accessToken: string,
+    fulfillmentId: number,
+    version: number,
+  ): Promise<void>;
+
   releaseHold(
     tenantCode: string,
     accessToken: string,
@@ -75,4 +89,22 @@ export interface IOrderFulfillmentGateway {
     fulfillmentId: number,
     version: number,
   ): Promise<ReprintResult>;
+
+  markUnavailable(
+    tenantCode: string,
+    accessToken: string,
+    fulfillmentId: number,
+    body: {
+      readonly version: number;
+      readonly scope: 'ITEM' | 'ORDER';
+      readonly lineIds?: readonly number[];
+    },
+  ): Promise<void>;
+
+  updatePromisedEta(
+    tenantCode: string,
+    accessToken: string,
+    fulfillmentId: number,
+    body: { readonly version: number; readonly promisedPickupAt: string },
+  ): Promise<void>;
 }

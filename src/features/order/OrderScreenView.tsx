@@ -1,4 +1,4 @@
-import { Ban, Check, Coins, Package, Pause } from 'lucide-react';
+import { Ban, Check, ChefHat, Coins, Mail, Package, Pause, PackageCheck, Phone } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Button } from '../../shared/ui/surfacePrimitives.js';
@@ -18,6 +18,7 @@ import type { OrderPageViewModel } from './buildOrderPageViewModel.js';
 import type { OrderScreenActions } from './useOrderScreen.js';
 import type { OrderScreenState } from './orderScreenState.js';
 import { PromoDiscountLine } from './PromoDiscountLine.js';
+import { StaffUnavailableEtaPanel } from './StaffUnavailableEtaPanel.js';
 import { usePickupEntitlement } from '../../hooks/usePickupEntitlement.js';
 import { formatPickupCashAmountLabel } from '../cash-confirm/formatPickupCashAmountLabel.js';
 
@@ -166,6 +167,48 @@ export function OrderScreenView({
   const { order } = viewModel;
   const monoId = String(viewModel.fulfillmentId);
 
+  let stickyPrimary: JSX.Element;
+  if (viewModel.showStartPreparation) {
+    stickyPrimary = (
+      <Button
+        type="button"
+        data-testid="pickup-start-preparation"
+        onClick={actions.onStartPreparation}
+        disabled={viewModel.isCoolingDown}
+        className="inline-flex items-center gap-2"
+      >
+        <ChefHat className="h-4 w-4 stroke-[1.75]" aria-hidden />
+        {t('pickup.order.startPrep')}
+      </Button>
+    );
+  } else if (viewModel.showMarkReady) {
+    stickyPrimary = (
+      <Button
+        type="button"
+        data-testid="pickup-mark-ready"
+        onClick={actions.onMarkReady}
+        disabled={viewModel.isCoolingDown}
+        className="inline-flex items-center gap-2"
+      >
+        <PackageCheck className="h-4 w-4 stroke-[1.75]" aria-hidden />
+        {t('pickup.order.markReady')}
+      </Button>
+    );
+  } else {
+    stickyPrimary = (
+      <Button
+        type="button"
+        data-testid="pickup-confirm-full"
+        onClick={actions.onConfirmFull}
+        disabled={!viewModel.canConfirm || viewModel.isOnHold || viewModel.isCoolingDown}
+        className="inline-flex items-center gap-2"
+      >
+        <Check className="h-4 w-4 stroke-[1.75]" aria-hidden />
+        {t('pickup.partial.confirmFull')}
+      </Button>
+    );
+  }
+
   return (
     <div
       className="flex flex-col gap-[var(--pickup-stack-gap)]"
@@ -202,6 +245,36 @@ export function OrderScreenView({
             label={t('pickup.order.paymentLabel')}
             value={order.paymentRequired ? t('pickup.common.yes') : t('pickup.common.no')}
           />
+          {order.customerPhone != null && order.customerPhone.trim().length > 0 ? (
+            <MetaRow
+              label={t('pickup.order.phoneLabel', { defaultValue: 'Phone' })}
+              value={
+                <a
+                  className="inline-flex items-center gap-1.5 font-medium text-[var(--color-on-surface)] hover:underline"
+                  href={`tel:${order.customerPhone.trim()}`}
+                  data-testid="pickup-order-easy-contact-phone"
+                >
+                  <Phone className="h-4 w-4 stroke-[1.75]" aria-hidden />
+                  {order.customerPhone.trim()}
+                </a>
+              }
+            />
+          ) : null}
+          {order.customerEmail != null && order.customerEmail.trim().length > 0 ? (
+            <MetaRow
+              label={t('pickup.order.emailLabel', { defaultValue: 'Email' })}
+              value={
+                <a
+                  className="inline-flex items-center gap-1.5 font-medium text-[var(--color-on-surface)] hover:underline"
+                  href={`mailto:${order.customerEmail.trim()}`}
+                  data-testid="pickup-order-easy-contact-email"
+                >
+                  <Mail className="h-4 w-4 stroke-[1.75]" aria-hidden />
+                  {order.customerEmail.trim()}
+                </a>
+              }
+            />
+          ) : null}
           {renderOrderCashConfirmSection(viewModel, actions, order, t)}
           <div className="mt-2">
             <PromoDiscountLine
@@ -251,23 +324,20 @@ export function OrderScreenView({
               embedded
             />
             <ReprintPanel onReprint={actions.onReprint} embedded />
+            <StaffUnavailableEtaPanel
+              lines={order.lines}
+              promisedPickupAt={order.promisedPickupAt}
+              isOnHold={viewModel.isOnHold}
+              isCoolingDown={viewModel.isCoolingDown}
+              onMarkUnavailable={actions.onMarkUnavailable}
+              onUpdatePromisedEta={actions.onUpdatePromisedEta}
+            />
           </div>
         </SectionCard>
       </PickupListLayout>
 
       <PickupStickyCta
-        primary={
-          <Button
-            type="button"
-            data-testid="pickup-confirm-full"
-            onClick={actions.onConfirmFull}
-            disabled={!viewModel.canConfirm || viewModel.isOnHold || viewModel.isCoolingDown}
-            className="inline-flex items-center gap-2"
-          >
-            <Check className="h-4 w-4 stroke-[1.75]" aria-hidden />
-            {t('pickup.partial.confirmFull')}
-          </Button>
-        }
+        primary={stickyPrimary}
         secondary={
           <Button
             type="button"

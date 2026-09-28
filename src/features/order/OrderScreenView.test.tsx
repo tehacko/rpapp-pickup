@@ -13,13 +13,15 @@ import type { OrderScreenActions } from './useOrderScreen.js';
 import { OrderScreenView } from './OrderScreenView.js';
 
 jest.mock('pi-kiosk-shared/ui', () => {
-  const React = require('react');
+  const ReactActual = jest.requireActual<typeof import('react')>('react');
   const { Button } = jest.requireActual<{ Button: unknown }>(
     '../../../../shared/src/ui/Button/Button.tsx',
   );
-  const FormField = React.forwardRef<HTMLInputElement, Record<string, unknown>>((props, ref) => (
-    <input ref={ref} aria-label={String(props.label ?? props['aria-label'] ?? 'field')} />
-  ));
+  const FormField = ReactActual.forwardRef<HTMLInputElement, Record<string, unknown>>(
+    (props, ref) => (
+      <input ref={ref} aria-label={String(props.label ?? props['aria-label'] ?? 'field')} />
+    ),
+  );
   FormField.displayName = 'FormField';
   return { Button, FormField };
 });
@@ -103,6 +105,10 @@ function createActions(): OrderScreenActions {
     onHold: jest.fn(),
     onRelease: jest.fn(),
     onReprint: jest.fn(),
+    onStartPreparation: jest.fn(),
+    onMarkReady: jest.fn(),
+    onMarkUnavailable: jest.fn(),
+    onUpdatePromisedEta: jest.fn(),
     onConfirmCash: jest.fn(),
     pendingCashConfirm: false,
     onRetry: jest.fn(),
@@ -148,5 +154,69 @@ describe('OrderScreenView', () => {
     expect(banner).toBeTruthy();
     expect(banner.textContent).toContain('180 Kč RECEIVED');
     expect(screen.queryByTestId('pickup-order-cash-confirm')).toBeNull();
+  });
+
+  it('P1: sticky CTA is Start prep when ACCEPTED + cap', () => {
+    const viewModel = buildOrderPageViewModel(
+      makeOrder({ fulfillmentStatus: 'ACCEPTED' }),
+      '7',
+      'demo',
+      baseUi,
+      true,
+      true,
+      true,
+      true,
+      false,
+    );
+    renderOrderScreen(viewModel);
+    expect(screen.getByTestId('pickup-start-preparation')).toBeTruthy();
+    expect(screen.queryByTestId('pickup-confirm-full')).toBeNull();
+    expect(screen.queryByTestId('pickup-mark-ready')).toBeNull();
+  });
+
+  it('P1: sticky CTA is Mark ready when PREPARING + cap', () => {
+    const viewModel = buildOrderPageViewModel(
+      makeOrder({ fulfillmentStatus: 'PREPARING' }),
+      '7',
+      'demo',
+      baseUi,
+      true,
+      true,
+      true,
+      false,
+      true,
+    );
+    renderOrderScreen(viewModel);
+    expect(screen.getByTestId('pickup-mark-ready')).toBeTruthy();
+    expect(screen.queryByTestId('pickup-start-preparation')).toBeNull();
+  });
+
+  it('G18: shows customer phone/email when API provides them', () => {
+    const viewModel = buildOrderPageViewModel(
+      makeOrder({
+        customerPhone: '+420777111222',
+        customerEmail: 'guest@example.com',
+      }),
+      '7',
+      'demo',
+      baseUi,
+      true,
+      true,
+      true,
+    );
+    renderOrderScreen(viewModel);
+    const phone = screen.getByTestId('pickup-order-easy-contact-phone');
+    expect(phone.getAttribute('href')).toBe('tel:+420777111222');
+    expect(phone.textContent).toContain('+420777111222');
+    const email = screen.getByTestId('pickup-order-easy-contact-email');
+    expect(email.getAttribute('href')).toBe('mailto:guest@example.com');
+    expect(email.textContent).toContain('guest@example.com');
+  });
+
+  it('G18: omits contact rows when phone/email absent', () => {
+    const viewModel = buildOrderPageViewModel(makeOrder(), '7', 'demo', baseUi, true, true, true);
+    renderOrderScreen(viewModel);
+    expect(screen.queryByTestId('pickup-order-easy-contact-phone')).toBeNull();
+    expect(screen.queryByTestId('pickup-order-easy-contact-email')).toBeNull();
   });
 });

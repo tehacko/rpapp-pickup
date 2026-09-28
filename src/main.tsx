@@ -8,6 +8,7 @@ import { captureException, initSentry } from 'pi-kiosk-shared/sentry';
 import { App } from './App';
 import { applyInitialPickupTheme, ThemeProvider } from './app/ThemeProvider.js';
 import { PickupPwaLifecycle } from './app/pwa/PickupPwaLifecycle.js';
+import { PickupEmployeeWebPushOptInBridge } from './features/push/PickupEmployeeWebPushOptInBridge.js';
 import { PickupErrorBoundary } from './shared/components/PickupErrorBoundary.js';
 import { pickupLogger } from './shared/logging/pickupLogger.js';
 import { PickupStaffSessionProvider } from './shared/session/PickupStaffSessionProvider.js';
@@ -100,6 +101,7 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
                 <AlertApiProvider>
                   <PickupErrorBoundary>
                     <PickupStaffSessionProvider>
+                      <PickupEmployeeWebPushOptInBridge />
                       <PickupPwaLifecycle />
                       <App />
                     </PickupStaffSessionProvider>

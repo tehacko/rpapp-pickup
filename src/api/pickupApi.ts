@@ -176,7 +176,8 @@ function mutationHeaders(
 export interface PickupStaffSessionClaims {
   readonly tenantId: number;
   readonly salesPointId: number;
-  readonly role: 'pickup_staff';
+  /** PIN shared staff vs invited registered employee (P8). */
+  readonly role: 'pickup_staff' | 'pickup_employee';
   readonly capabilities: readonly string[];
   readonly allowedPickupPointIds: readonly number[];
 }
@@ -184,6 +185,17 @@ export interface PickupStaffSessionClaims {
 export interface PickupStaffLoginResult {
   readonly expiresInSeconds: number;
   readonly salesPointId: number;
+}
+
+/** Dual delivery: HttpOnly cookie + accessToken in body (register-complete). */
+export interface PickupEmployeeRegistrationResult {
+  readonly accessToken: string;
+  readonly expiresInSeconds: number;
+  readonly pickupEmployeeId: number;
+  readonly tenantId: number;
+  readonly salesPointId: number;
+  readonly role: 'pickup_employee';
+  readonly capabilities: readonly string[];
 }
 
 export async function fetchPickupStaffMe(
@@ -239,6 +251,8 @@ export interface PickupStaffEntitlementSnapshot {
     readonly pushStrategy: 'poll' | 'sse';
     readonly devicesPerPointThreshold: number;
     readonly degradedQueuePolling?: boolean;
+    /** TENANT ops mode — existing orders stay visible under PAUSE (P3). */
+    readonly opsMode?: 'NORMAL' | 'DELAY' | 'PAUSE';
   };
 }
 
@@ -313,6 +327,79 @@ export async function loginPickupStaff(
   }
   const body = (await res.json()) as { data?: PickupStaffLoginResult };
   return body.data ?? null;
+}
+
+/**
+ * Complete pickup_employee invite (`/{tenant}/register?token=…`).
+ * Platform path (not tenant-prefixed): `/api/v1/pickup/employees/register-complete`.
+ * Sets HttpOnly session cookie; body also returns accessToken for Web Push Bearer.
+ */
+export async function completePickupEmployeeRegistration(input: {
+  readonly token: string;
+  readonly password: string;
+  readonly name?: string;
+  readonly idempotencyKey?: string;
+}): Promise<PickupEmployeeRegistrationResult> {
+  const path = '/api/v1/pickup/employees/register-complete';
+  const trimmedName = input.name?.trim();
+  const res = await pickupFetch(path, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Idempotency-Key': input.idempotencyKey ?? generateIdempotencyKey(),
+    },
+    body: JSON.stringify({
+      token: input.token,
+      password: input.password,
+      ...(trimmedName !== undefined && trimmedName.length > 0 ? { name: trimmedName } : {}),
+    }),
+  });
+  if (!res.ok) {
+    noteRateLimit(res, path, 'POST');
+    const retryAfterMs = res.status === 429 ? getRetryAfterMs({ response: res }) : undefined;
+    const { message, code } = await parseErrorBody(res);
+    throw new PickupApiError(res.status, message, { retryAfterMs, code });
+  }
+  const body = (await res.json()) as { data?: PickupEmployeeRegistrationResult };
+  if (body.data === undefined) {
+    throw new PickupApiError(res.status, 'Registration response missing data');
+  }
+  return body.data;
+}
+
+/** Ongoing pickup_employee password login (Q1 dual identity; PIN retained). */
+export async function loginPickupEmployee(input: {
+  readonly tenantCode: string;
+  readonly email: string;
+  readonly password: string;
+  readonly idempotencyKey?: string;
+}): Promise<{ expiresInSeconds: number; salesPointId: number }> {
+  const path = '/api/v1/pickup/employees/login';
+  const res = await pickupFetch(path, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Idempotency-Key': input.idempotencyKey ?? generateIdempotencyKey(),
+    },
+    body: JSON.stringify({
+      tenantCode: input.tenantCode,
+      email: input.email.trim(),
+      password: input.password,
+    }),
+  });
+  if (!res.ok) {
+    noteRateLimit(res, path, 'POST');
+    const retryAfterMs = res.status === 429 ? getRetryAfterMs({ response: res }) : undefined;
+    const { message, code } = await parseErrorBody(res);
+    throw new PickupApiError(res.status, message, { retryAfterMs, code });
+  }
+  const body = (await res.json()) as {
+    data?: { expiresInSeconds: number; salesPointId: number };
+  };
+  if (body.data === undefined) {
+    throw new PickupApiError(res.status, 'Employee login response missing data');
+  }
+  return body.data;
 }
 
 export async function verifyPickupStaffPin(
@@ -505,6 +592,91 @@ export async function holdOrder(
     return;
   }
   await handleMutationFailure(res, path, 'POST');
+}
+
+/** P1 / Q2 — ACCEPTED → PREPARING (staff Start prep). */
+export async function startPreparation(
+  tenantCode: string,
+  accessToken: string,
+  fulfillmentId: number,
+  body: { version: number; deviceCode?: string },
+  idempotencyKey?: string
+): Promise<void> {
+  const path = `/api/${encodeURIComponent(tenantCode)}/v1/pickup/fulfillments/${encodeURIComponent(String(fulfillmentId))}/start-preparation`;
+  const res = await pickupFetch(path, {
+    method: 'POST',
+    headers: mutationHeaders(accessToken, idempotencyKey),
+    body: JSON.stringify(withPairedDeviceCode(tenantCode, body)),
+  });
+  if (res.ok) {
+    return;
+  }
+  await handleMutationFailure(res, path, 'POST');
+}
+
+/** P1 / Q2 — PREPARING → READY_FOR_PICKUP (staff Mark ready). */
+export async function markReady(
+  tenantCode: string,
+  accessToken: string,
+  fulfillmentId: number,
+  body: { version: number; deviceCode?: string },
+  idempotencyKey?: string
+): Promise<void> {
+  const path = `/api/${encodeURIComponent(tenantCode)}/v1/pickup/fulfillments/${encodeURIComponent(String(fulfillmentId))}/mark-ready`;
+  const res = await pickupFetch(path, {
+    method: 'POST',
+    headers: mutationHeaders(accessToken, idempotencyKey),
+    body: JSON.stringify(withPairedDeviceCode(tenantCode, body)),
+  });
+  if (res.ok) {
+    return;
+  }
+  await handleMutationFailure(res, path, 'POST');
+}
+
+/** P7 A11 — staff marks item|ORDER unavailable (pending customer decision). */
+export async function markUnavailable(
+  tenantCode: string,
+  accessToken: string,
+  fulfillmentId: number,
+  body: {
+    version: number;
+    scope: 'ITEM' | 'ORDER';
+    lineIds?: number[];
+    deviceCode?: string;
+  },
+  idempotencyKey?: string
+): Promise<void> {
+  const path = `/api/${encodeURIComponent(tenantCode)}/v1/pickup/fulfillments/${encodeURIComponent(String(fulfillmentId))}/mark-unavailable`;
+  const res = await pickupFetch(path, {
+    method: 'POST',
+    headers: mutationHeaders(accessToken, idempotencyKey),
+    body: JSON.stringify(withPairedDeviceCode(tenantCode, body)),
+  });
+  if (res.ok) {
+    return;
+  }
+  await handleMutationFailure(res, path, 'POST');
+}
+
+/** P1a A6 — staff updates promised ETA (status unchanged). */
+export async function updatePromisedEta(
+  tenantCode: string,
+  accessToken: string,
+  fulfillmentId: number,
+  body: { version: number; promisedPickupAt: string; deviceCode?: string },
+  idempotencyKey?: string
+): Promise<void> {
+  const path = `/api/${encodeURIComponent(tenantCode)}/v1/pickup/fulfillments/${encodeURIComponent(String(fulfillmentId))}/promised-eta`;
+  const res = await pickupFetch(path, {
+    method: 'PATCH',
+    headers: mutationHeaders(accessToken, idempotencyKey),
+    body: JSON.stringify(withPairedDeviceCode(tenantCode, body)),
+  });
+  if (res.ok) {
+    return;
+  }
+  await handleMutationFailure(res, path, 'PATCH');
 }
 
 export async function releaseHold(

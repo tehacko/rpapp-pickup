@@ -115,6 +115,8 @@ export function useQueueScreen(gateway: IQueueGateway = queueGateway): UseQueueS
   const queuePushStrategy = entitlementSnapshot?.queueConfig.pushStrategy ?? 'poll';
   const degradedQueuePolling =
     entitlementSnapshot?.queueConfig.degradedQueuePolling ?? false;
+  const opsMode = entitlementSnapshot?.queueConfig.opsMode ?? 'NORMAL';
+  const newOrdersPaused = opsMode === 'PAUSE';
   const pollIntervalMs = useMemo(
     () => resolveQueuePollIntervalMs(degradedQueuePolling),
     [degradedQueuePolling],
@@ -314,6 +316,7 @@ export function useQueueScreen(gateway: IQueueGateway = queueGateway): UseQueueS
         showOfflineRetryBanner,
         showPickupPointTabs: !isRoamingStaff,
         lastUpdatedAt,
+        showNewOrdersPausedBanner: newOrdersPaused,
       },
       {
         unassignedPickupPoint: t('pickup.queue.filterUnassigned'),
@@ -333,6 +336,7 @@ export function useQueueScreen(gateway: IQueueGateway = queueGateway): UseQueueS
     isOnline,
     isRoamingStaff,
     lastUpdatedAt,
+    newOrdersPaused,
     refreshFailed,
     screenState,
     t,

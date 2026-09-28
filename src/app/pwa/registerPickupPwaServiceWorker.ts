@@ -23,7 +23,7 @@ function broadcastReload(): void {
 }
 
 /**
- * Registers the production service worker.
+ * Registers the production service worker at `/sw.js` (VitePWA injectManifest from `src/sw.ts`).
  * Skipped in Vite dev — `devOptions.enabled` is false.
  */
 export function registerPickupPwaServiceWorker(handlers: PickupPwaUpdateHandlers): void {

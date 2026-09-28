@@ -46,6 +46,9 @@ describe('pickup wave2 primitives', () => {
     expect(mapStatusToTone('aging')).toBe('warn');
     expect(mapStatusToTone('offline')).toBe('neutral');
     expect(mapStatusToTone('claim')).toBe('neutral');
+    expect(mapStatusToTone('ACCEPTED')).toBe('warn');
+    expect(mapStatusToTone('PREPARING')).toBe('warn');
+    expect(mapStatusToTone('READY_FOR_PICKUP')).toBe('success');
   });
 
   it('renders Badge / StatusBadge / ClaimBadge', () => {
@@ -55,6 +58,9 @@ describe('pickup wave2 primitives', () => {
     rerender(<StatusBadge label="Ready" status="ready" urgency="high" />);
     expect(screen.getByTestId('pickup-status-badge').getAttribute('data-urgency')).toBe('high');
 
+    rerender(<StatusBadge label="ACCEPTED" status="ACCEPTED" />);
+    expect(screen.getByTestId('pickup-status-badge').textContent).toBe('ACCEPTED');
+    expect(mapStatusToTone('ACCEPTED')).toBe('warn');
     rerender(
       <ClaimBadge
         claim={{

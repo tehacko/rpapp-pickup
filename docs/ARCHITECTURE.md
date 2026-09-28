@@ -12,7 +12,7 @@ Pickup staff PWA for order fulfillment (scan, queue, confirm, hold, refuse).
 | **PageHeader** | `src/shared/ui/PageHeader.tsx` | Screen toolbar (title / lead / actions) — **not** pickup-point strip |
 | **App routes** | `src/App.tsx` | Authenticated routes nested under shell; `login` + `device-pairing` **outside** shell |
 | **RootPage** | `src/pages/RootPage.tsx` | Public org directory (`TenantLandingPage`) — select tenant → `/{code}/login` (admin `/` parity; no auto-skip) |
-| **PWA** | VitePWA + `src/app/pwa/*` | Online-first installable shell; `runtimeCaching: []`; BroadcastChannel `rpapp-pickup-pwa-reload`; shortcuts hub/scan/queue |
+| **PWA** | VitePWA injectManifest (`src/sw.ts`) + `src/app/pwa/*` | Online-first installable shell; `/sw.js` via `registerPickupPwaServiceWorker`; `runtimeCaching: []`; push + `notificationclick` → `data.url` `/{tenant}/order/{id}` (pickup_employee opt-in only); BroadcastChannel `rpapp-pickup-pwa-reload`; shortcuts hub/scan/queue |
 
 **Nav rule:** Screens must not invent a second nav — chrome is shell-owned only. Sell tab IFF `sellingEnabled === true` (never a `staff_sell` entitlement myth). Sign-out is chrome-only (no page-level hub sign-out).
 

@@ -114,8 +114,60 @@ describe('buildOrderPageViewModel', () => {
     expect(staleVm.order.version).toBe(3);
     expect(refreshedVm.order.version).toBe(4);
   });
-});
 
+  it('P1: shows Start prep only for ACCEPTED with cap and not on hold', () => {
+    const accepted = buildOrderPageViewModel(
+      makeOrder({ fulfillmentStatus: 'ACCEPTED' }),
+      '42',
+      'demo',
+      baseUi,
+      true,
+      true,
+      true,
+      true,
+      true,
+    );
+    const preparing = buildOrderPageViewModel(
+      makeOrder({ fulfillmentStatus: 'PREPARING' }),
+      '42',
+      'demo',
+      baseUi,
+      true,
+      true,
+      true,
+      true,
+      true,
+    );
+    const noCap = buildOrderPageViewModel(
+      makeOrder({ fulfillmentStatus: 'ACCEPTED' }),
+      '42',
+      'demo',
+      baseUi,
+      true,
+      true,
+      true,
+      false,
+      true,
+    );
+    const held = buildOrderPageViewModel(
+      makeOrder({ fulfillmentStatus: 'ACCEPTED', heldAt: '2026-07-06T08:00:00.000Z' }),
+      '42',
+      'demo',
+      baseUi,
+      true,
+      true,
+      true,
+      true,
+      true,
+    );
+    expect(accepted.showStartPreparation).toBe(true);
+    expect(accepted.showMarkReady).toBe(false);
+    expect(preparing.showStartPreparation).toBe(false);
+    expect(preparing.showMarkReady).toBe(true);
+    expect(noCap.showStartPreparation).toBe(false);
+    expect(held.showStartPreparation).toBe(false);
+  });
+});
 describe('collectPartialConfirmLines', () => {
   it('returns only selected lines with positive quantity', () => {
     const order = makeOrder();

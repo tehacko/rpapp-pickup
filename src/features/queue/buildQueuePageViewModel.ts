@@ -51,6 +51,8 @@ export interface QueuePageUiState {
   readonly showOfflineRetryBanner: boolean;
   readonly showPickupPointTabs: boolean;
   readonly lastUpdatedAt: number | null;
+  /** P3 / Spec A8 — PAUSE blocks new orders only; existing queue items stay visible. */
+  readonly showNewOrdersPausedBanner: boolean;
 }
 
 export interface QueuePageViewModel {
@@ -62,6 +64,7 @@ export interface QueuePageViewModel {
   readonly showOfflineRetryBanner: boolean;
   readonly showPickupPointTabs: boolean;
   readonly lastUpdatedAt: number | null;
+  readonly showNewOrdersPausedBanner: boolean;
 }
 
 export function isQueueClaimActive(
@@ -239,5 +242,6 @@ export function buildQueuePageViewModel(
     showOfflineRetryBanner: ui.showOfflineRetryBanner,
     showPickupPointTabs: ui.showPickupPointTabs,
     lastUpdatedAt: ui.lastUpdatedAt,
+    showNewOrdersPausedBanner: ui.showNewOrdersPausedBanner,
   };
 }

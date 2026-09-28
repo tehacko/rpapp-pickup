@@ -4,9 +4,13 @@ import {
   fetchResolve,
   fetchResolveByCode,
   holdOrder,
+  markReady,
+  markUnavailable,
   refuseLines,
   releaseHold,
   reprintCredentials,
+  startPreparation,
+  updatePromisedEta,
 } from '../../api/pickupApi.js';
 import { reportPickupError } from '../../shared/hooks/usePickupErrorHandler.js';
 import type { IOrderFulfillmentGateway } from './IOrderFulfillmentGateway.js';
@@ -54,11 +58,36 @@ export const orderFulfillmentGateway: IOrderFulfillmentGateway = {
   holdOrder: (tenantCode, accessToken, fulfillmentId, body) =>
     withClaimLog('holdOrder', () => holdOrder(tenantCode, accessToken, fulfillmentId, body)),
 
+  startPreparation: (tenantCode, accessToken, fulfillmentId, version) =>
+    withClaimLog('startPreparation', () =>
+      startPreparation(tenantCode, accessToken, fulfillmentId, { version }),
+    ),
+
+  markReady: (tenantCode, accessToken, fulfillmentId, version) =>
+    withClaimLog('markReady', () => markReady(tenantCode, accessToken, fulfillmentId, { version })),
+
   releaseHold: (tenantCode, accessToken, fulfillmentId, version) =>
     withClaimLog('releaseHold', () => releaseHold(tenantCode, accessToken, fulfillmentId, version)),
 
   reprintCredentials: (tenantCode, accessToken, fulfillmentId, version) =>
     withClaimLog('reprintCredentials', () =>
       reprintCredentials(tenantCode, accessToken, fulfillmentId, version),
+    ),
+
+  markUnavailable: (tenantCode, accessToken, fulfillmentId, body) =>
+    withClaimLog('markUnavailable', () =>
+      markUnavailable(tenantCode, accessToken, fulfillmentId, {
+        version: body.version,
+        scope: body.scope,
+        ...(body.lineIds != null ? { lineIds: [...body.lineIds] } : {}),
+      }),
+    ),
+
+  updatePromisedEta: (tenantCode, accessToken, fulfillmentId, body) =>
+    withClaimLog('updatePromisedEta', () =>
+      updatePromisedEta(tenantCode, accessToken, fulfillmentId, {
+        version: body.version,
+        promisedPickupAt: body.promisedPickupAt,
+      }),
     ),
 };

@@ -23,6 +23,7 @@
     "**/*.test.tsx",
     "**/*.test.ts",
     "**/__tests__/**",
-    "src/setupTests.ts"
+    "src/setupTests.ts",
+    "src/sw.ts"
   ]
 }

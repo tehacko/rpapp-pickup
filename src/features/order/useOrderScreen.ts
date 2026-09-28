@@ -24,9 +24,13 @@ import type { OrderPageViewModel } from './buildOrderPageViewModel.js';
 import {
   confirmOrderPickup,
   holdOrderMutation,
+  markOrderReady,
+  markOrderUnavailable,
   refuseOrderLines,
   releaseOrderHold,
   reprintOrderCredentials,
+  startOrderPreparation,
+  updateOrderPromisedEta,
   type OrderMutationContext,
 } from './orderScreenMutations.js';
 import { resolveOrderScreenState, type OrderScreenState } from './orderScreenState.js';
@@ -37,7 +41,11 @@ import { resolvePickupCanConfirmCashPayment } from '../cash-confirm/resolvePicku
 import { useConfirmCashReceived } from '../cash-confirm/useConfirmCashReceived.js';
 import { isPickupCashConfirmEnabled } from '../cash-confirm/pickupCashConfirmEnabled.js';
 import { usePickupStaffSession } from '../../shared/session/PickupStaffSessionProvider.js';
-import { PICKUP_SELL_CAPABILITY } from '../../shared/entitlements/pickupStaffFunctions.js';
+import {
+  hasPickupMarkReadyCapability,
+  hasPickupStartPreparationCapability,
+  PICKUP_SELL_CAPABILITY,
+} from '../../shared/entitlements/pickupStaffFunctions.js';
 
 export interface OrderScreenActions {
   readonly setPickupCode: (value: string) => void;
@@ -52,6 +60,13 @@ export interface OrderScreenActions {
   readonly onHold: () => void;
   readonly onRelease: () => void;
   readonly onReprint: () => void;
+  readonly onStartPreparation: () => void;
+  readonly onMarkReady: () => void;
+  readonly onMarkUnavailable: (input: {
+    scope: 'ITEM' | 'ORDER';
+    lineIds?: number[];
+  }) => void;
+  readonly onUpdatePromisedEta: (promisedPickupAtIso: string) => void;
   readonly onConfirmCash: () => void;
   readonly pendingCashConfirm: boolean;
   readonly onRetry: () => void;
@@ -76,6 +91,10 @@ export function useOrderScreen(
   const { sessionClaims } = usePickupStaffSession();
   const sellCapabilityEnabled =
     sessionClaims?.capabilities.includes(PICKUP_SELL_CAPABILITY) === true;
+  const startPreparationCapabilityEnabled = hasPickupStartPreparationCapability(
+    sessionClaims?.capabilities,
+  );
+  const markReadyCapabilityEnabled = hasPickupMarkReadyCapability(sessionClaims?.capabilities);
   const { fulfillmentId = '' } = useParams();
   const [searchParams] = useSearchParams();
   const scanToken = searchParams.get('scanToken') ?? '';
@@ -350,19 +369,31 @@ export function useOrderScreen(
     if (order === null) {
       return null;
     }
-    return buildOrderPageViewModel(order, fulfillmentId, tenantCode, {
-      pickupCode,
-      holdReason,
-      partialQty,
-      partialSelected,
-      refuseQty,
-      refuseSelected,
-      isCoolingDown: submitCooldown.isCoolingDown,
-    }, cashConfirmEnabled, sellCapabilityEnabled, canConfirmCashPayment);
+    return buildOrderPageViewModel(
+      order,
+      fulfillmentId,
+      tenantCode,
+      {
+        pickupCode,
+        holdReason,
+        partialQty,
+        partialSelected,
+        refuseQty,
+        refuseSelected,
+        isCoolingDown: submitCooldown.isCoolingDown,
+      },
+      cashConfirmEnabled,
+      sellCapabilityEnabled,
+      canConfirmCashPayment,
+      startPreparationCapabilityEnabled,
+      markReadyCapabilityEnabled,
+    );
   }, [
     canConfirmCashPayment,
     cashConfirmEnabled,
     sellCapabilityEnabled,
+    startPreparationCapabilityEnabled,
+    markReadyCapabilityEnabled,
     fulfillmentId,
     holdReason,
     order,
@@ -396,6 +427,10 @@ export function useOrderScreen(
           descriptionKey: 'pickup.repin.reprintDescription',
           action: () => void reprintOrderCredentials(mutationContext),
         }),
+      onStartPreparation: () => void startOrderPreparation(mutationContext),
+      onMarkReady: () => void markOrderReady(mutationContext),
+      onMarkUnavailable: (input) => void markOrderUnavailable(mutationContext, input),
+      onUpdatePromisedEta: (iso) => void updateOrderPromisedEta(mutationContext, iso),
       onConfirmCash: () => {
         if (order === null) {
           return;

@@ -248,6 +248,7 @@ describe('useConfirmCashReceived', () => {
           activePickupPointId: 'all',
           errorMessage: null,
           showOfflineRetryBanner: false,
+          showNewOrdersPausedBanner: false,
           showPickupPointTabs: false,
           lastUpdatedAt: Date.parse('2026-07-06T11:00:30.000Z'),
         },

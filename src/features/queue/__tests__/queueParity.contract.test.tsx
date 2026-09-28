@@ -68,6 +68,7 @@ describe('pickup queue parity contract', () => {
             isEmpty: false,
             errorMessage: null,
             showOfflineRetryBanner: false,
+            showNewOrdersPausedBanner: false,
             showPickupPointTabs: false,
             lastUpdatedAt: null,
           }}

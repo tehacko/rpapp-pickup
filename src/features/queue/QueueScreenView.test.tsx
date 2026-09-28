@@ -40,6 +40,7 @@ function createViewModel(overrides: Partial<QueuePageViewModel> = {}): QueuePage
     isEmpty: false,
     errorMessage: null,
     showOfflineRetryBanner: false,
+    showNewOrdersPausedBanner: false,
     showPickupPointTabs: true,
     lastUpdatedAt: Date.parse('2026-07-18T12:00:00.000Z'),
     ...overrides,

@@ -32,9 +32,11 @@ import {
   handleOrderMutationError,
   handleOrderRateLimit,
   holdOrderMutation,
+  markOrderReady,
   refuseOrderLines,
   releaseOrderHold,
   reprintOrderCredentials,
+  startOrderPreparation,
 } from '../orderScreenMutations.js';
 
 function makeOrder(overrides: Partial<ResolveResponse> = {}): ResolveResponse {
@@ -82,8 +84,12 @@ function makeCtx(
     confirmPickup: jest.fn(async () => undefined),
     refuseLines: jest.fn(async () => undefined),
     holdOrder: jest.fn(async () => undefined),
+    startPreparation: jest.fn(async () => undefined),
+    markReady: jest.fn(async () => undefined),
     releaseHold: jest.fn(async () => undefined),
     reprintCredentials: jest.fn(async () => ({ ok: true })),
+    markUnavailable: jest.fn(async () => undefined),
+    updatePromisedEta: jest.fn(async () => undefined),
     ...gatewayOverrides,
   };
 
@@ -404,5 +410,44 @@ describe('reprintOrderCredentials', () => {
     });
     await reprintOrderCredentials(hardFail);
     expect(hardFail.showToast).toHaveBeenCalledWith('pickup.toast.reprintFailed', 'error');
+  });
+});
+
+describe('startOrderPreparation / markOrderReady (P1)', () => {
+  it('POSTs start-preparation with version and refreshes on success', async () => {
+    const startPreparation = jest.fn(async () => undefined);
+    const ctx = makeCtx({
+      order: makeOrder({ fulfillmentStatus: 'ACCEPTED' }),
+      gateway: { startPreparation },
+    });
+    await startOrderPreparation(ctx);
+    expect(startPreparation).toHaveBeenCalledWith('demo', 'token', 42, 3);
+    expect(ctx.showToast).toHaveBeenCalledWith('pickup.toast.startPrepSuccess', 'success');
+    expect(ctx.refreshOrder).toHaveBeenCalled();
+  });
+
+  it('POSTs mark-ready with version and refreshes on success', async () => {
+    const markReady = jest.fn(async () => undefined);
+    const ctx = makeCtx({
+      order: makeOrder({ fulfillmentStatus: 'PREPARING' }),
+      gateway: { markReady },
+    });
+    await markOrderReady(ctx);
+    expect(markReady).toHaveBeenCalledWith('demo', 'token', 42, 3);
+    expect(ctx.showToast).toHaveBeenCalledWith('pickup.toast.markReadySuccess', 'success');
+    expect(ctx.refreshOrder).toHaveBeenCalled();
+  });
+
+  it('surfaces version conflict on start preparation', async () => {
+    const ctx = makeCtx({
+      gateway: {
+        startPreparation: jest.fn(async () => {
+          throw new PickupApiError(409, 'conflict', { code: 'FULFILLMENT_VERSION_CONFLICT' });
+        }),
+      },
+    });
+    await startOrderPreparation(ctx);
+    expect(ctx.showToast).toHaveBeenCalledWith('pickup.toast.versionConflict', 'error');
+    expect(ctx.refreshOrder).toHaveBeenCalled();
   });
 });

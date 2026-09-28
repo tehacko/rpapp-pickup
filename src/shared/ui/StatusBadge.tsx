@@ -4,8 +4,18 @@ import { Badge, type BadgeTone } from './Badge.js';
 import { cn } from './cn.js';
 
 export type PickupStatusKey =
+  | 'accepted'
+  | 'ACCEPTED'
+  | 'preparing'
+  | 'PREPARING'
   | 'ready'
   | 'READY_FOR_PICKUP'
+  | 'collected'
+  | 'COLLECTED'
+  | 'canceled'
+  | 'CANCELED'
+  | 'pending_payment'
+  | 'PENDING_PAYMENT'
   | 'held'
   | 'HELD'
   | 'refused'
@@ -32,8 +42,13 @@ export interface StatusBadgeProps extends Omit<HTMLAttributes<HTMLSpanElement>, 
 }
 
 const KNOWN_STATUS_TONES = new Set([
+  'accepted',
+  'preparing',
   'ready',
   'ready_for_pickup',
+  'collected',
+  'canceled',
+  'pending_payment',
   'held',
   'refused',
   'failed',
@@ -43,17 +58,20 @@ const KNOWN_STATUS_TONES = new Set([
 
 export function mapStatusToTone(status: string): BadgeTone {
   const normalized = status.trim().toLowerCase();
-  if (normalized === 'ready' || normalized === 'ready_for_pickup') {
+  if (normalized === 'ready' || normalized === 'ready_for_pickup' || normalized === 'collected') {
     return 'success';
   }
-  if (normalized === 'held') {
+  if (
+    normalized === 'accepted' ||
+    normalized === 'preparing' ||
+    normalized === 'held' ||
+    normalized === 'aging' ||
+    normalized === 'pending_payment'
+  ) {
     return 'warn';
   }
-  if (normalized === 'refused' || normalized === 'failed') {
+  if (normalized === 'refused' || normalized === 'failed' || normalized === 'canceled') {
     return 'danger';
-  }
-  if (normalized === 'aging') {
-    return 'warn';
   }
   if (normalized === 'oos') {
     return 'neutral';

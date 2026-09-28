@@ -25,6 +25,10 @@ export interface OrderPageViewModel {
   readonly order: ResolveResponse;
   readonly canConfirm: boolean;
   readonly isOnHold: boolean;
+  /** P1 — show Start prep when ACCEPTED + cap (Q2). */
+  readonly showStartPreparation: boolean;
+  /** P1 — show Mark ready when PREPARING + cap (Q2). */
+  readonly showMarkReady: boolean;
   readonly showCashConfirm: boolean;
   readonly showCashReceived: boolean;
   readonly cashAmountLabel: string | null;
@@ -59,6 +63,8 @@ export function buildOrderPageViewModel(
   cashConfirmEnabled: boolean,
   sellCapabilityEnabled: boolean,
   canConfirmCashPayment: boolean,
+  startPreparationCapabilityEnabled = false,
+  markReadyCapabilityEnabled = false,
 ): OrderPageViewModel {
   const awaitingCash =
     cashConfirmEnabled &&
@@ -82,12 +88,17 @@ export function buildOrderPageViewModel(
           '',
         ) || null
       : null;
+  const isOnHold = order.heldAt != null;
+  const status = order.fulfillmentStatus;
   return {
     fulfillmentId,
     tenantCode,
     order,
     canConfirm: !order.paymentRequired && order.allowedForStaff !== false,
-    isOnHold: order.heldAt != null,
+    isOnHold,
+    showStartPreparation:
+      status === 'ACCEPTED' && startPreparationCapabilityEnabled && !isOnHold,
+    showMarkReady: status === 'PREPARING' && markReadyCapabilityEnabled && !isOnHold,
     showCashConfirm: awaitingCash,
     showCashReceived,
     cashAmountLabel: cashAmountLabel === '' ? null : cashAmountLabel,

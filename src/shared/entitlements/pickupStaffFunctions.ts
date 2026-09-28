@@ -17,6 +17,42 @@ export const PICKUP_SELL_CAPABILITY = 'sell';
 /** Session capability token that unlocks staff pickup-points / queue / scan APIs. */
 export const PICKUP_SCAN_CAPABILITY = 'scan';
 
+/**
+ * P1 / Q2 — Start preparation (ACCEPTED → PREPARING).
+ * PIN staff: `scan` also unlocks (order-level ops). Employees need this explicit cap (P8).
+ */
+export const PICKUP_START_PREPARATION_CAPABILITY = 'start_preparation' as const;
+
+/**
+ * P1 / Q2 — Mark ready (PREPARING → READY_FOR_PICKUP).
+ * PIN staff: `scan` also unlocks. Employees need this explicit cap (P8).
+ */
+export const PICKUP_MARK_READY_CAPABILITY = 'mark_ready' as const;
+
+export function hasPickupStartPreparationCapability(
+  capabilities: readonly string[] | null | undefined,
+): boolean {
+  if (capabilities === null || capabilities === undefined) {
+    return false;
+  }
+  return (
+    capabilities.includes(PICKUP_START_PREPARATION_CAPABILITY) ||
+    capabilities.includes(PICKUP_SCAN_CAPABILITY)
+  );
+}
+
+export function hasPickupMarkReadyCapability(
+  capabilities: readonly string[] | null | undefined,
+): boolean {
+  if (capabilities === null || capabilities === undefined) {
+    return false;
+  }
+  return (
+    capabilities.includes(PICKUP_MARK_READY_CAPABILITY) ||
+    capabilities.includes(PICKUP_SCAN_CAPABILITY)
+  );
+}
+
 /** Canonical hold-floor override capability (plan Part 2 / Wave B). */
 export const PICKUP_HOLD_FLOOR_OVERRIDE_CAPABILITY =
   'ops:inventory:checkup.hold_floor_override' as const;

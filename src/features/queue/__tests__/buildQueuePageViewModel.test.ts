@@ -137,7 +137,7 @@ describe('buildQueuePageViewModel', () => {
         }),
         makeQueueItem({ fulfillmentId: 11, pickupPointId: null, pickupPointName: null }),
       ],
-      { activePickupPointId: 'all', errorMessage: null, showOfflineRetryBanner: false, showPickupPointTabs: true, lastUpdatedAt: now },
+      { activePickupPointId: 'all', errorMessage: null, showOfflineRetryBanner: false, showNewOrdersPausedBanner: false, showPickupPointTabs: true, lastUpdatedAt: now },
       { unassignedPickupPoint: 'No pickup point' },
       null,
       true,
@@ -188,7 +188,7 @@ describe('buildQueuePageViewModel', () => {
       {
         activePickupPointId: 'all',
         errorMessage: null,
-        showOfflineRetryBanner: false,
+        showOfflineRetryBanner: false, showNewOrdersPausedBanner: false,
         showPickupPointTabs: false,
         lastUpdatedAt: now,
       },
@@ -223,7 +223,7 @@ describe('buildQueuePageViewModel', () => {
       {
         activePickupPointId: 'all',
         errorMessage: 'stale',
-        showOfflineRetryBanner: true,
+        showOfflineRetryBanner: true, showNewOrdersPausedBanner: false,
         showPickupPointTabs: true,
         lastUpdatedAt: null,
       },
@@ -250,7 +250,7 @@ describe('buildQueuePageViewModel', () => {
       {
         activePickupPointId: 'all',
         errorMessage: null,
-        showOfflineRetryBanner: false,
+        showOfflineRetryBanner: false, showNewOrdersPausedBanner: false,
         showPickupPointTabs: false,
         lastUpdatedAt: null,
       },
@@ -277,7 +277,7 @@ describe('buildQueuePageViewModel', () => {
       {
         activePickupPointId: 'all',
         errorMessage: null,
-        showOfflineRetryBanner: false,
+        showOfflineRetryBanner: false, showNewOrdersPausedBanner: false,
         showPickupPointTabs: false,
         lastUpdatedAt: null,
       },
@@ -303,7 +303,7 @@ describe('buildQueuePageViewModel', () => {
       {
         activePickupPointId: 'all',
         errorMessage: null,
-        showOfflineRetryBanner: false,
+        showOfflineRetryBanner: false, showNewOrdersPausedBanner: false,
         showPickupPointTabs: false,
         lastUpdatedAt: null,
       },
@@ -339,7 +339,7 @@ describe('buildQueuePageViewModel', () => {
       {
         activePickupPointId: 'all',
         errorMessage: null,
-        showOfflineRetryBanner: false,
+        showOfflineRetryBanner: false, showNewOrdersPausedBanner: false,
         showPickupPointTabs: false,
         lastUpdatedAt: pollTickBefore,
       },
@@ -360,7 +360,7 @@ describe('buildQueuePageViewModel', () => {
       {
         activePickupPointId: 'all',
         errorMessage: null,
-        showOfflineRetryBanner: false,
+        showOfflineRetryBanner: false, showNewOrdersPausedBanner: false,
         showPickupPointTabs: false,
         lastUpdatedAt: pollTickAfter,
       },
@@ -390,7 +390,7 @@ describe('buildQueuePageViewModel', () => {
       {
         activePickupPointId: 'all',
         errorMessage: null,
-        showOfflineRetryBanner: false,
+        showOfflineRetryBanner: false, showNewOrdersPausedBanner: false,
         showPickupPointTabs: false,
         lastUpdatedAt: null,
       },

@@ -1,9 +1,15 @@
-import type { CurrencyCode, LocalizedNameMap } from 'pi-kiosk-shared';
+import type { CurrencyCode, LocalizedNameMap, OrderFulfillmentStatus } from 'pi-kiosk-shared';
+
+export type { OrderFulfillmentStatus };
 
 export interface FulfillmentLine {
   lineId: number;
   productId: number | null;
   variantId: number | null;
+  /** Catalog product name when resolve DTO includes it (G17). */
+  productName?: string | null;
+  /** Variant name when resolve DTO includes it (G17). */
+  variantName?: string | null;
   quantityOrdered: number;
   quantityCollected: number;
   quantityRefused: number;
@@ -16,7 +22,8 @@ export interface ResolveResponse {
   transactionId: number;
   salesPointId: number;
   version: number;
-  fulfillmentStatus: string;
+  /** Backend FSM status — includes P1 `ACCEPTED` (paid, not preparing). */
+  fulfillmentStatus: OrderFulfillmentStatus | string;
   /** Present when backend resolve DTO includes transaction row status. */
   transactionStatus?: string;
   /** Present when backend resolve DTO includes payment method. */
@@ -33,6 +40,12 @@ export interface ResolveResponse {
   allowedForStaff: boolean | null;
   heldAt: string | null;
   holdReason: string | null;
+  /** Spec §10 easy-contact — show when API provides. */
+  customerPhone?: string | null;
+  /** Spec §10 easy-contact — show when API provides. */
+  customerEmail?: string | null;
+  /** Promised pickup time for staff ETA edits. */
+  promisedPickupAt?: string | null;
   lines: FulfillmentLine[];
   promotions?: {
     readonly appliedDiscount: {

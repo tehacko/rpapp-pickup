@@ -161,17 +161,38 @@ export function QueueScreenView({
 
       <PickupListLayout
         banner={
-          viewModel.showOfflineRetryBanner ? (
-            <div data-testid="queue-offline-banner">
-              <OfflineBanner
-                message={t('pickup.queue.offlineBanner')}
-                action={{
-                  label: t('pickup.queue.retry'),
-                  onClick: actions.refresh,
-                }}
-              />
-            </div>
-          ) : null
+          <>
+            {viewModel.showNewOrdersPausedBanner ? (
+              <div
+                className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] px-3 py-2"
+                role="status"
+                data-testid="queue-new-orders-paused-banner"
+              >
+                <p className="text-sm font-medium text-[var(--color-on-surface)]">
+                  {t('pickup.queue.newOrdersPausedTitle', {
+                    defaultValue: 'New orders paused',
+                  })}
+                </p>
+                <p className="mt-0.5 text-xs text-[var(--color-on-surface-muted)]">
+                  {t('pickup.queue.newOrdersPausedBody', {
+                    defaultValue:
+                      'This shop is not accepting new orders. Existing orders in the queue stay visible.',
+                  })}
+                </p>
+              </div>
+            ) : null}
+            {viewModel.showOfflineRetryBanner ? (
+              <div data-testid="queue-offline-banner">
+                <OfflineBanner
+                  message={t('pickup.queue.offlineBanner')}
+                  action={{
+                    label: t('pickup.queue.retry'),
+                    onClick: actions.refresh,
+                  }}
+                />
+              </div>
+            ) : null}
+          </>
         }
         contentActions={refreshActions}
       >

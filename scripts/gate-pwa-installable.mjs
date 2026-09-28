@@ -108,6 +108,14 @@ if (swPath === null) {
   if (swSource.includes('runtime-config.json')) {
     errors.push('runtime-config.json must not be in precache');
   }
+  // G22 — push + notificationclick must ship inside VitePWA /sw.js (injectManifest).
+  if (!swSource.includes('notificationclick')) {
+    errors.push('service worker missing notificationclick handler (G22 web push deep-link)');
+  }
+  // Minified SW still retains the event name string for addEventListener("push", …).
+  if (!swSource.includes('"push"') && !swSource.includes("'push'")) {
+    errors.push('service worker missing push handler evidence (G22)');
+  }
 }
 
 const indexPath = join(distDir, 'index.html');

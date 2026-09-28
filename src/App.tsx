@@ -17,6 +17,10 @@ const LoginPage = lazy(async () => {
   const mod = await import('./pages/LoginPage');
   return { default: mod.LoginPage };
 });
+const RegisterPage = lazy(async () => {
+  const mod = await import('./pages/RegisterPage');
+  return { default: mod.RegisterPage };
+});
 const OrderPage = lazy(async () => {
   const mod = await import('./pages/OrderPage');
   return { default: mod.OrderPage };
@@ -114,6 +118,7 @@ export function App(): JSX.Element {
       <Routes>
         <Route path="/" element={<RootPage />} />
         <Route path="/:tenantCode/login" element={<LoginPage />} />
+        <Route path="/:tenantCode/register" element={<RegisterPage />} />
         <Route path="/:tenantCode/device-pairing" element={<DevicePairingPage />} />
 
         <Route path="/:tenantCode" element={<PickupAppShell />}>

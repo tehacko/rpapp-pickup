@@ -32,7 +32,12 @@ export default defineConfig(({ mode }) => {
     '/health': { target: proxyTarget, changeOrigin: true },
   };
 
+  // injectManifest: src/sw.ts owns precache + push/notificationclick (G22).
+  // Still emitted as /sw.js — registerPickupPwaServiceWorker unchanged.
   const pwaPlugins = VitePWA({
+    strategies: 'injectManifest',
+    srcDir: 'src',
+    filename: 'sw.ts',
     registerType: 'prompt',
     injectRegister: false,
     manifest: {
@@ -76,15 +81,9 @@ export default defineConfig(({ mode }) => {
         },
       ],
     },
-    workbox: {
+    injectManifest: {
       globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
       globIgnores: ['**/runtime-config.json'],
-      navigateFallback: 'index.html',
-      navigateFallbackDenylist: [/^\/api\//, /^\/events\//, /^\/health/],
-      cleanupOutdatedCaches: true,
-      runtimeCaching: [],
-      skipWaiting: false,
-      clientsClaim: true,
     },
     devOptions: { enabled: false },
   });

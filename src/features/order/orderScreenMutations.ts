@@ -163,6 +163,99 @@ export async function holdOrderMutation(ctx: OrderMutationContext): Promise<void
   }
 }
 
+/** P1 — staff Start prep: ACCEPTED → PREPARING. */
+export async function startOrderPreparation(ctx: OrderMutationContext): Promise<void> {
+  if (!ctx.order || !ctx.accessToken || ctx.submitCooldown.isCoolingDown) {
+    return;
+  }
+  try {
+    await ctx.gateway.startPreparation(
+      ctx.tenantCode,
+      ctx.accessToken,
+      ctx.order.fulfillmentId,
+      ctx.order.version,
+    );
+    ctx.showToast(ctx.t('pickup.toast.startPrepSuccess'), 'success');
+    await ctx.refreshOrder();
+  } catch (err) {
+    handleOrderMutationError(err, 'pickup.toast.startPrepFailed', ctx, 'startPreparation');
+  }
+}
+
+/** P1 — staff Mark ready: PREPARING → READY_FOR_PICKUP. */
+export async function markOrderReady(ctx: OrderMutationContext): Promise<void> {
+  if (!ctx.order || !ctx.accessToken || ctx.submitCooldown.isCoolingDown) {
+    return;
+  }
+  try {
+    await ctx.gateway.markReady(
+      ctx.tenantCode,
+      ctx.accessToken,
+      ctx.order.fulfillmentId,
+      ctx.order.version,
+    );
+    ctx.showToast(ctx.t('pickup.toast.markReadySuccess'), 'success');
+    await ctx.refreshOrder();
+  } catch (err) {
+    handleOrderMutationError(err, 'pickup.toast.markReadyFailed', ctx, 'markReady');
+  }
+}
+
+/** P7 A11 — staff mark unavailable (ITEM|ORDER). */
+export async function markOrderUnavailable(
+  ctx: OrderMutationContext,
+  input: { scope: 'ITEM' | 'ORDER'; lineIds?: number[] },
+): Promise<void> {
+  if (!ctx.order || !ctx.accessToken || ctx.submitCooldown.isCoolingDown) {
+    return;
+  }
+  if (input.scope === 'ITEM' && (input.lineIds == null || input.lineIds.length === 0)) {
+    ctx.showToast(ctx.t('pickup.toast.unavailableSelectLines', {
+      defaultValue: 'Select at least one line.',
+    }), 'error');
+    return;
+  }
+  try {
+    await ctx.gateway.markUnavailable(ctx.tenantCode, ctx.accessToken, ctx.order.fulfillmentId, {
+      version: ctx.order.version,
+      scope: input.scope,
+      ...(input.lineIds != null ? { lineIds: input.lineIds } : {}),
+    });
+    ctx.showToast(
+      ctx.t('pickup.toast.unavailableSuccess', {
+        defaultValue: 'Marked unavailable — customer will choose next step.',
+      }),
+      'success',
+    );
+    await ctx.refreshOrder();
+  } catch (err) {
+    handleOrderMutationError(err, 'pickup.toast.unavailableFailed', ctx, 'markUnavailable');
+  }
+}
+
+/** P1a A6 — staff promised ETA update. */
+export async function updateOrderPromisedEta(
+  ctx: OrderMutationContext,
+  promisedPickupAt: string,
+): Promise<void> {
+  if (!ctx.order || !ctx.accessToken || ctx.submitCooldown.isCoolingDown) {
+    return;
+  }
+  try {
+    await ctx.gateway.updatePromisedEta(ctx.tenantCode, ctx.accessToken, ctx.order.fulfillmentId, {
+      version: ctx.order.version,
+      promisedPickupAt,
+    });
+    ctx.showToast(
+      ctx.t('pickup.toast.etaSuccess', { defaultValue: 'Promised pickup time updated.' }),
+      'success',
+    );
+    await ctx.refreshOrder();
+  } catch (err) {
+    handleOrderMutationError(err, 'pickup.toast.etaFailed', ctx, 'updatePromisedEta');
+  }
+}
+
 export async function releaseOrderHold(ctx: OrderMutationContext): Promise<void> {
   if (!ctx.order || !ctx.accessToken || ctx.submitCooldown.isCoolingDown) {
     return;

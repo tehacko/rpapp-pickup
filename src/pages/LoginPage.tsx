@@ -18,7 +18,7 @@ import {
 } from '../shared/ui/FormErrorSummary.js';
 import { SailorMark } from '../shared/ui/SailorMark.js';
 import { SectionCard } from '../shared/ui/SectionCard.js';
-import { fetchSalesPointById, loginPickupStaff, PickupApiError } from '../api/pickupApi';
+import { fetchSalesPointById, loginPickupEmployee, loginPickupStaff, PickupApiError } from '../api/pickupApi';
 import { resolvePostLoginPath } from '../shared/entitlements/pickupStaffFunctions.js';
 import {
   buildEntitledFunctions,
@@ -58,6 +58,9 @@ export function LoginPage(): JSX.Element {
   const kioskHintDefault = searchParams.get('kioskHint')?.trim() ?? '';
   const [salesPointId, setSalesPointId] = useState(kioskHintDefault);
   const [pin, setPin] = useState('');
+  const [employeeEmail, setEmployeeEmail] = useState('');
+  const [employeePassword, setEmployeePassword] = useState('');
+  const [loginMode, setLoginMode] = useState<'pin' | 'employee'>('pin');
   const [deviceCode, setDeviceCode] = useState('');
   const [pmName, setPmName] = useState<string | null>(null);
   const [pmLoading, setPmLoading] = useState(false);
@@ -133,6 +136,27 @@ export function LoginPage(): JSX.Element {
     setFormError(null);
     setIsSubmitting(true);
     try {
+      if (loginMode === 'employee') {
+        const email = employeeEmail.trim();
+        if (email.length === 0 || employeePassword.length < 8) {
+          setFormError(t('pickup.login.employeeCredentialsInvalid'));
+          return;
+        }
+        await loginPickupEmployee({
+          tenantCode,
+          email,
+          password: employeePassword,
+        });
+        const claims = await establishSession(tenantCode);
+        rememberPickupLastTenant(tenantCode);
+        const postLoginFunctions =
+          entitlementSnapshot !== null
+            ? buildEntitledFunctions(entitlementSnapshot, claims.capabilities)
+            : [];
+        navigate(resolvePostLoginPath(tenantCode, postLoginFunctions));
+        return;
+      }
+
       if (!isSuperPickuperLogin && validSalesPointId === null) {
         setFieldErrors({ salesPointId: t('pickup.login.salesPointIdInvalid') });
         return;
@@ -276,53 +300,105 @@ export function LoginPage(): JSX.Element {
               </p>
             ) : null}
 
+            <div className="flex gap-3 text-sm" role="tablist" aria-label={t('pickup.login.modeLabel')}>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={loginMode === 'pin'}
+                className="underline-offset-2 hover:underline data-[active=true]:font-semibold"
+                data-active={loginMode === 'pin'}
+                data-testid="pickup-login-mode-pin"
+                onClick={() => setLoginMode('pin')}
+              >
+                {t('pickup.login.modePin')}
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={loginMode === 'employee'}
+                className="underline-offset-2 hover:underline data-[active=true]:font-semibold"
+                data-active={loginMode === 'employee'}
+                data-testid="pickup-login-mode-employee"
+                onClick={() => setLoginMode('employee')}
+              >
+                {t('pickup.login.modeEmployee')}
+              </button>
+            </div>
+
             <form
               className="flex flex-col gap-[var(--pickup-space-3)]"
               onSubmit={(event) => void onSubmit(event)}
               noValidate
             >
               <FormErrorSummary errors={summaryErrors} />
-              <FormField
-                id={LOGIN_FIELD_IDS.salesPointId}
-                label={t('pickup.login.salesPointId')}
-                value={salesPointId}
-                onChange={(event) => setSalesPointId(event.target.value)}
-                disabled={submitCooldown.isCoolingDown || isTenantInactive}
-                placeholder={t('pickup.login.salesPointIdPlaceholder')}
-                autoComplete="username"
-                invalid={Boolean(fieldErrors.salesPointId)}
-              />
-              <FormField
-                id={LOGIN_FIELD_IDS.pin}
-                data-testid="pickup-pin"
-                label={t('pickup.login.pin')}
-                type="password"
-                inputMode="numeric"
-                value={pin}
-                onChange={(event) => setPin(event.target.value)}
-                disabled={submitCooldown.isCoolingDown || isTenantInactive}
-                placeholder={t('pickup.login.pinPlaceholder')}
-                autoComplete="current-password"
-                invalid={Boolean(fieldErrors.pin)}
-              />
-              {showDeviceCodeField ? (
-                <FormField
-                  id={LOGIN_FIELD_IDS.deviceCode}
-                  label={t('pickup.login.deviceCode')}
-                  value={deviceCode}
-                  onChange={(event) => setDeviceCode(event.target.value)}
-                  disabled={submitCooldown.isCoolingDown || isTenantInactive}
-                  placeholder={t('pickup.login.deviceCodePlaceholder')}
-                  autoComplete="off"
-                />
-              ) : null}
-              <div className="pt-1">
-                <TurnstileExecuteWidget
-                  turnstile={turnstile}
-                  className="w-full"
-                  testId="pickup-turnstile-execute-field"
-                />
-              </div>
+              {loginMode === 'employee' ? (
+                <>
+                  <FormField
+                    id="pickup-employee-email"
+                    data-testid="pickup-employee-email"
+                    label={t('pickup.login.employeeEmail')}
+                    type="email"
+                    value={employeeEmail}
+                    onChange={(event) => setEmployeeEmail(event.target.value)}
+                    disabled={submitCooldown.isCoolingDown || isTenantInactive}
+                    autoComplete="username"
+                  />
+                  <FormField
+                    id="pickup-employee-password"
+                    data-testid="pickup-employee-password"
+                    label={t('pickup.login.employeePassword')}
+                    type="password"
+                    value={employeePassword}
+                    onChange={(event) => setEmployeePassword(event.target.value)}
+                    disabled={submitCooldown.isCoolingDown || isTenantInactive}
+                    autoComplete="current-password"
+                  />
+                </>
+              ) : (
+                <>
+                  <FormField
+                    id={LOGIN_FIELD_IDS.salesPointId}
+                    label={t('pickup.login.salesPointId')}
+                    value={salesPointId}
+                    onChange={(event) => setSalesPointId(event.target.value)}
+                    disabled={submitCooldown.isCoolingDown || isTenantInactive}
+                    placeholder={t('pickup.login.salesPointIdPlaceholder')}
+                    autoComplete="username"
+                    invalid={Boolean(fieldErrors.salesPointId)}
+                  />
+                  <FormField
+                    id={LOGIN_FIELD_IDS.pin}
+                    data-testid="pickup-pin"
+                    label={t('pickup.login.pin')}
+                    type="password"
+                    inputMode="numeric"
+                    value={pin}
+                    onChange={(event) => setPin(event.target.value)}
+                    disabled={submitCooldown.isCoolingDown || isTenantInactive}
+                    placeholder={t('pickup.login.pinPlaceholder')}
+                    autoComplete="current-password"
+                    invalid={Boolean(fieldErrors.pin)}
+                  />
+                  {showDeviceCodeField ? (
+                    <FormField
+                      id={LOGIN_FIELD_IDS.deviceCode}
+                      label={t('pickup.login.deviceCode')}
+                      value={deviceCode}
+                      onChange={(event) => setDeviceCode(event.target.value)}
+                      disabled={submitCooldown.isCoolingDown || isTenantInactive}
+                      placeholder={t('pickup.login.deviceCodePlaceholder')}
+                      autoComplete="off"
+                    />
+                  ) : null}
+                  <div className="pt-1">
+                    <TurnstileExecuteWidget
+                      turnstile={turnstile}
+                      className="w-full"
+                      testId="pickup-turnstile-execute-field"
+                    />
+                  </div>
+                </>
+              )}
               <Button
                 type="submit"
                 block
