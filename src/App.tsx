@@ -65,6 +65,22 @@ const CheckupPage = lazy(async () => {
   const mod = await import('./features/checkup/CheckupPage');
   return { default: mod.CheckupPage };
 });
+const SelfScanBoardPage = lazy(async () => {
+  const mod = await import('./features/self-scan/SelfScanBoardPage');
+  return { default: mod.SelfScanBoardPage };
+});
+const SelfScanDetailPage = lazy(async () => {
+  const mod = await import('./features/self-scan/SelfScanDetailPage');
+  return { default: mod.SelfScanDetailPage };
+});
+const SelfScanHistoryPage = lazy(async () => {
+  const mod = await import('./features/self-scan/SelfScanHistoryPage');
+  return { default: mod.SelfScanHistoryPage };
+});
+const SelfScanVerifyPage = lazy(async () => {
+  const mod = await import('./features/self-scan/SelfScanPaidVerifyPage');
+  return { default: mod.SelfScanPaidVerifyPage };
+});
 
 function RouteFallback(): JSX.Element {
   const { t } = useTranslation('pickup');
@@ -169,6 +185,38 @@ export function App(): JSX.Element {
           <Route
             path="checkup"
             element={withPickupRouteBoundary('checkup', 'pickup-eb-l3-checkup', <CheckupPage />)}
+          />
+          <Route
+            path="self-scan"
+            element={withPickupRouteBoundary(
+              'self-scan',
+              'pickup-eb-l3-self-scan',
+              <SelfScanBoardPage />,
+            )}
+          />
+          <Route
+            path="self-scan/history"
+            element={withPickupRouteBoundary(
+              'self-scan-history',
+              'pickup-eb-l3-self-scan-history',
+              <SelfScanHistoryPage />,
+            )}
+          />
+          <Route
+            path="self-scan/verify"
+            element={withPickupRouteBoundary(
+              'self-scan-verify',
+              'pickup-eb-l3-self-scan-verify',
+              <SelfScanVerifyPage />,
+            )}
+          />
+          <Route
+            path="self-scan/:basketId"
+            element={withPickupRouteBoundary(
+              'self-scan-detail',
+              'pickup-eb-l3-self-scan-detail',
+              <SelfScanDetailPage />,
+            )}
           />
           <Route
             path="order/:fulfillmentId"

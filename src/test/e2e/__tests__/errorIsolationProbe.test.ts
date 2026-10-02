@@ -16,6 +16,10 @@ describe('errorIsolationProbe', () => {
       expect(isErrorIsolationProbeFeature('barcode-detail')).toBe(true);
       expect(isErrorIsolationProbeFeature('restock')).toBe(true);
       expect(isErrorIsolationProbeFeature('checkup')).toBe(true);
+      expect(isErrorIsolationProbeFeature('self-scan')).toBe(true);
+      expect(isErrorIsolationProbeFeature('self-scan-history')).toBe(true);
+      expect(isErrorIsolationProbeFeature('self-scan-verify')).toBe(true);
+      expect(isErrorIsolationProbeFeature('self-scan-detail')).toBe(true);
     });
 
     it('rejects unknown strings', () => {

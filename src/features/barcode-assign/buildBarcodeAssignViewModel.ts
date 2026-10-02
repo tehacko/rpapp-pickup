@@ -81,11 +81,19 @@ export function buildBarcodeAssignDetailPath(
   tenantCode: string,
   productId: number,
   variantId?: number,
+  returnBasketPublicId?: string | null,
 ): string {
   const encodedTenant = encodeURIComponent(tenantCode);
   const encodedProduct = encodeURIComponent(String(productId));
-  if (variantId !== undefined) {
-    return `/${encodedTenant}/barcode-assign/${encodedProduct}/variants/${encodeURIComponent(String(variantId))}`;
+  const base =
+    variantId !== undefined
+      ? `/${encodedTenant}/barcode-assign/${encodedProduct}/variants/${encodeURIComponent(String(variantId))}`
+      : `/${encodedTenant}/barcode-assign/${encodedProduct}`;
+  const returnBasket = returnBasketPublicId?.trim() ?? '';
+  if (returnBasket.length === 0) {
+    return base;
   }
-  return `/${encodedTenant}/barcode-assign/${encodedProduct}`;
+  const params = new URLSearchParams();
+  params.set('returnBasket', returnBasket);
+  return `${base}?${params.toString()}`;
 }

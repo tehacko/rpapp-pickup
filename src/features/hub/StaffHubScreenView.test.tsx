@@ -47,6 +47,7 @@ function createViewModel(overrides: Partial<StaffHubViewModel> = {}): StaffHubVi
     canAssign: false,
     canSell: false,
     canResupply: false,
+    canSelfScan: false,
     showDeviceRegistry: false,
     pairedDeviceLabel: null,
     showPickupPointSwitcher: false,

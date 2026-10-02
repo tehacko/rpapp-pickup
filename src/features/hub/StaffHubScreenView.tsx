@@ -32,6 +32,13 @@ const deviceLinkClass = cn(
   'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus-ring)]',
 );
 
+const selfScanTileClass = cn(
+  'flex min-h-11 flex-col items-start justify-center gap-0.5 rounded-[var(--radius-lg)] border border-[var(--color-border)]',
+  'bg-[var(--color-surface)] px-3 py-2 text-left text-sm font-medium text-[var(--color-on-surface)] no-underline',
+  'hover:bg-[var(--color-surface-hover)]',
+  'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus-ring)]',
+);
+
 const emptyIconClass = 'h-10 w-10 stroke-[1.75]';
 
 const KPI_SKELETON_KEYS = [
@@ -82,7 +89,8 @@ export function StaffHubScreenView({ viewModel, actions }: StaffHubScreenViewPro
     viewModel.canScan ||
     viewModel.canAssign ||
     viewModel.canSell ||
-    viewModel.canResupply;
+    viewModel.canResupply ||
+    viewModel.canSelfScan;
   const hasDashboard = viewModel.canAssign || viewModel.canResupply || viewModel.canScan;
   const devicePairingPath = `/${encodeURIComponent(viewModel.tenantCode)}/device-pairing`;
   const lastUpdatedLabel = formatHubLastUpdated(viewModel.lastUpdatedAt, i18n.language, t);
@@ -151,6 +159,43 @@ export function StaffHubScreenView({ viewModel, actions }: StaffHubScreenViewPro
         lead={t('pickup.hub.lead')}
         titleIcon={LayoutDashboard}
       />
+
+      {viewModel.canSelfScan ? (
+        <SectionCard title={t('pickup.hub.selfScanTitle')} data-testid="hub-self-scan-tiles">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+            <Link
+              to={`/${encodeURIComponent(viewModel.tenantCode)}/self-scan`}
+              className={selfScanTileClass}
+              data-testid="hub-self-scan-live"
+            >
+              <span>{t('pickup.hub.selfScanLive')}</span>
+              <span className="text-xs font-normal text-[var(--color-on-surface-muted)]">
+                {t('pickup.hub.selfScanLiveHint')}
+              </span>
+            </Link>
+            <Link
+              to={`/${encodeURIComponent(viewModel.tenantCode)}/self-scan/history`}
+              className={selfScanTileClass}
+              data-testid="hub-self-scan-history"
+            >
+              <span>{t('pickup.hub.selfScanHistory')}</span>
+              <span className="text-xs font-normal text-[var(--color-on-surface-muted)]">
+                {t('pickup.hub.selfScanHistoryHint')}
+              </span>
+            </Link>
+            <Link
+              to={`/${encodeURIComponent(viewModel.tenantCode)}/self-scan/verify`}
+              className={selfScanTileClass}
+              data-testid="hub-self-scan-verify"
+            >
+              <span>{t('pickup.hub.selfScanVerify')}</span>
+              <span className="text-xs font-normal text-[var(--color-on-surface-muted)]">
+                {t('pickup.hub.selfScanVerifyHint')}
+              </span>
+            </Link>
+          </div>
+        </SectionCard>
+      ) : null}
 
       {viewModel.showPickupPointSwitcher ? (
         <SectionCard title={t('pickup.hub.pickupPointTitle')} data-testid="hub-pickup-point-card">

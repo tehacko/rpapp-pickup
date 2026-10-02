@@ -34,6 +34,8 @@ export interface StaffHubViewModel {
   readonly canAssign: boolean;
   readonly canSell: boolean;
   readonly canResupply: boolean;
+  /** Self-Scan live board entitlement (same gate as fulfillment_scan). */
+  readonly canSelfScan: boolean;
   readonly showDeviceRegistry: boolean;
   readonly pairedDeviceLabel: string | null;
   readonly showPickupPointSwitcher: boolean;
@@ -59,6 +61,7 @@ export function buildStaffHubViewModel(input: {
   canAssign: boolean;
   canSell: boolean;
   canResupply: boolean;
+  canSelfScan?: boolean;
   showDeviceRegistry: boolean;
   pairedDeviceLabel: string | null;
   showPickupPointSwitcher: boolean;
@@ -79,12 +82,14 @@ export function buildStaffHubViewModel(input: {
     checkupStats: input.checkupStats,
     queueStats: input.queueStats,
   };
+  const canSelfScan = input.canSelfScan ?? input.canScan;
   return {
     tenantCode: input.tenantCode,
     canScan: input.canScan,
     canAssign: input.canAssign,
     canSell: input.canSell,
     canResupply: input.canResupply,
+    canSelfScan,
     showDeviceRegistry: input.showDeviceRegistry,
     pairedDeviceLabel: input.pairedDeviceLabel,
     showPickupPointSwitcher: input.showPickupPointSwitcher,

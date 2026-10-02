@@ -1,5 +1,5 @@
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { PickupStaffFunction } from '../../shared/entitlements/pickupStaffFunctions.js';
 import { usePickupEntitlement } from '../../hooks/usePickupEntitlement.js';
@@ -23,6 +23,8 @@ import {
 } from './buildBarcodeAssignDetailViewModel.js';
 import type { IBarcodeAssignGateway } from './IBarcodeAssignGateway.js';
 import { barcodeAssignGateway } from './barcodeAssignGateway.js';
+import { recordSelfScanFr11Assign } from '../self-scan/selfScanApi.js';
+import { selfScanDetailPath } from '../self-scan/selfScanPaths.js';
 
 function parsePositiveInt(value: string | undefined): number | undefined {
   if (value === undefined) {
@@ -108,6 +110,8 @@ export function useBarcodeAssignDetailScreen(
       ? sessionClaims.salesPointId
       : null;
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const returnBasket = searchParams.get('returnBasket')?.trim() ?? '';
   const { productId: productIdParam, variantId: variantIdParam } = useParams();
   const productId = Number(productIdParam);
   const routeVariantId = parsePositiveInt(variantIdParam);
@@ -389,8 +393,42 @@ export function useBarcodeAssignDetailScreen(
         draftTouchedRef.current = false;
         setDraftCodeState('');
       }
+
+      // FR-11: after assign from Self-Scan unknown deep-link, clear assist trail + return to basket.
+      if (returnBasket.length > 0 && accessToken !== null) {
+        const assignedCode = (next.barcode ?? draftCode).trim();
+        if (assignedCode.length > 0) {
+          void recordSelfScanFr11Assign(tenantCode, accessToken, returnBasket, {
+            productId,
+            barcode: assignedCode,
+            variantId: variantId ?? null,
+          })
+            .catch(() => {
+              // Catalog assign already succeeded; assist-trail clear is best-effort.
+            })
+            .finally(() => {
+              navigate(selfScanDetailPath(tenantCode, returnBasket));
+            });
+          return;
+        }
+        navigate(selfScanDetailPath(tenantCode, returnBasket));
+      }
     },
-    [clearTrustedResult, setCheckOverride, setConfirmClear, setConfirmOverwriteSynced, setDraftCodeState, setState],
+    [
+      accessToken,
+      clearTrustedResult,
+      draftCode,
+      navigate,
+      productId,
+      returnBasket,
+      setCheckOverride,
+      setConfirmClear,
+      setConfirmOverwriteSynced,
+      setDraftCodeState,
+      setState,
+      tenantCode,
+      variantId,
+    ],
   );
 
   const save = useCallback(
@@ -549,10 +587,16 @@ export function useBarcodeAssignDetailScreen(
       return;
     }
     navigate(
-      buildBarcodeAssignDetailPath(tenantCode, viewModel.conflictProductId, viewModel.conflictVariantId),
+      buildBarcodeAssignDetailPath(
+        tenantCode,
+        viewModel.conflictProductId,
+        viewModel.conflictVariantId,
+        returnBasket.length > 0 ? returnBasket : null,
+      ),
     );
   }, [
     navigate,
+    returnBasket,
     tenantCode,
     viewModel.canOpenConflictProduct,
     viewModel.conflictProductId,
@@ -632,7 +676,14 @@ export function useBarcodeAssignDetailScreen(
       confirmClear: confirmClearAction,
       removeAlt,
       openVariant: (nextVariantId: number) => {
-        navigate(buildBarcodeAssignDetailPath(tenantCode, productId, nextVariantId));
+        navigate(
+          buildBarcodeAssignDetailPath(
+            tenantCode,
+            productId,
+            nextVariantId,
+            returnBasket.length > 0 ? returnBasket : null,
+          ),
+        );
       },
       retryCatalog: () => {
         setCatalogReloadToken((token) => token + 1);
@@ -648,6 +699,7 @@ export function useBarcodeAssignDetailScreen(
       productId,
       removeAlt,
       retryConflictCheck,
+      returnBasket,
       save,
       setCameraEnabled,
       setCameraSessionKey,

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { PickupStaffFunction } from '../../shared/entitlements/pickupStaffFunctions.js';
 import { usePickupEntitlement } from '../../hooks/usePickupEntitlement.js';
@@ -41,11 +41,14 @@ export function useBarcodeAssignScreen(
   const tenantCode = useTenantCode();
   const accessToken = useStaffToken();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { t } = useTranslation();
   const localeTag = usePickupLocaleTag();
   const { entitledFunctions } = usePickupEntitlement(tenantCode);
   const { handleError } = usePickupErrorHandler();
-  const [query, setQuery] = useState('');
+  /** FR-11 Self-Scan unknown barcode deep-link: ?q=<barcode>&returnBasket=<id> */
+  const [query, setQuery] = useState(() => searchParams.get('q')?.trim() ?? '');
+  const returnBasket = searchParams.get('returnBasket')?.trim() ?? '';
   const [catalogFilter, setCatalogFilterState] =
     useState<BarcodeAssignCatalogFilterId>('all');
   const [items, setItems] = useState<readonly BarcodeAssignCatalogItem[]>([]);
@@ -109,9 +112,16 @@ export function useBarcodeAssignScreen(
 
   const openRow = useCallback(
     (productId: number, variantId?: number): void => {
-      navigate(buildBarcodeAssignDetailPath(tenantCode, productId, variantId));
+      navigate(
+        buildBarcodeAssignDetailPath(
+          tenantCode,
+          productId,
+          variantId,
+          returnBasket.length > 0 ? returnBasket : null,
+        ),
+      );
     },
-    [navigate, tenantCode],
+    [navigate, returnBasket, tenantCode],
   );
 
   const retry = useCallback((): void => {

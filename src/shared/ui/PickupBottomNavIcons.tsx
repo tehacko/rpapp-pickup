@@ -6,6 +6,7 @@ import {
   ListOrdered,
   Menu,
   PackagePlus,
+  ScanBarcode,
   ScanLine,
   ShoppingCart,
 } from 'lucide-react';
@@ -16,6 +17,7 @@ const PICKUP_BOTTOM_NAV_ICON_BY_ID: Readonly<Record<string, LucideIcon>> = {
   scan: ScanLine,
   queue: ListOrdered,
   sell: ShoppingCart,
+  'self-scan': ScanBarcode,
   'barcode-assign': Barcode,
   restock: PackagePlus,
   checkup: ClipboardCheck,

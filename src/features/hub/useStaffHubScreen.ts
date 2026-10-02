@@ -293,6 +293,7 @@ export function useStaffHubScreen(): UseStaffHubScreenResult {
         canAssign,
         canSell,
         canResupply,
+        canSelfScan: canScan,
         showDeviceRegistry: deviceFlags.registryEnabled,
         pairedDeviceLabel: pairedDevice?.deviceLabel ?? null,
         showPickupPointSwitcher: isRoamingStaff,

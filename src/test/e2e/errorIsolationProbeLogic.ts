@@ -12,6 +12,10 @@ export const ERROR_ISOLATION_PROBE_FEATURES = [
   'barcode-detail',
   'restock',
   'checkup',
+  'self-scan',
+  'self-scan-history',
+  'self-scan-verify',
+  'self-scan-detail',
 ] as const;
 
 export type ErrorIsolationProbeFeature =

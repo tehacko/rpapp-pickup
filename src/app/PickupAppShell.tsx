@@ -328,6 +328,15 @@ function PickupAppShellChrome({ bottomNav }: PickupAppShellProps): JSX.Element {
   ];
 
   const moreItems: readonly { id: string; to: string; labelKey: string }[] = [
+    ...(canScan
+      ? [
+          {
+            id: 'self-scan',
+            to: buildTenantPath(tenantCode, 'self-scan'),
+            labelKey: 'nav.bottom.selfScan',
+          },
+        ]
+      : []),
     ...(canAssign
       ? [
           {
