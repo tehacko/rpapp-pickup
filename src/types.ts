@@ -28,6 +28,8 @@ export interface ResolveResponse {
   transactionStatus?: string;
   /** Present when backend resolve DTO includes payment method. */
   paymentMethod?: string | null;
+  /** Dual cash regimes (V1A §4) — deferred CF confirm eligibility. */
+  cashConfirmationPolicy?: string | null;
   amountMinor?: number;
   currency?: string;
   paymentCompleted: boolean;
@@ -65,6 +67,8 @@ export interface QueueItem {
   transactionStatus?: string;
   /** Present when backend queue DTO includes payment method. */
   paymentMethod?: string | null;
+  /** Dual cash regimes (V1A §4) — deferred CF confirm eligibility. */
+  cashConfirmationPolicy?: string | null;
   amountMinor?: number | null;
   currency?: string | null;
   pickupPointId: number | null;

@@ -146,10 +146,12 @@ export function sortQueueItemsAwaitingCashFirst(items: readonly QueueItem[]): Qu
     const aAwaiting = isAwaitingCashConfirmation({
       transactionStatus: a.transactionStatus,
       paymentMethod: a.paymentMethod,
+      cashConfirmationPolicy: a.cashConfirmationPolicy,
     });
     const bAwaiting = isAwaitingCashConfirmation({
       transactionStatus: b.transactionStatus,
       paymentMethod: b.paymentMethod,
+      cashConfirmationPolicy: b.cashConfirmationPolicy,
     });
     if (aAwaiting === bAwaiting) {
       return 0;
@@ -172,6 +174,7 @@ export function buildQueueListItemViewModels(
     const awaitingCash = isAwaitingCashConfirmation({
       transactionStatus: item.transactionStatus,
       paymentMethod: item.paymentMethod,
+      cashConfirmationPolicy: item.cashConfirmationPolicy,
     });
     const ageInfo = computeQueueAge(item.promisedPickupAt, nowMs);
     const ageLabel = formatQueueAgeLabel(ageInfo);

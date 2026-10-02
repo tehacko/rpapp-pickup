@@ -73,6 +73,7 @@ export function buildOrderPageViewModel(
     isAwaitingCashConfirmation({
       transactionStatus: order.transactionStatus,
       paymentMethod: order.paymentMethod,
+      cashConfirmationPolicy: order.cashConfirmationPolicy,
     });
   const showCashReceived =
     cashConfirmEnabled &&

@@ -19,6 +19,7 @@ export function recoverCashConfirmFromQueue(
     isAwaitingCashConfirmation({
       transactionStatus: item.transactionStatus,
       paymentMethod: item.paymentMethod,
+      cashConfirmationPolicy: item.cashConfirmationPolicy,
     })
   ) {
     return 'AWAITING';
