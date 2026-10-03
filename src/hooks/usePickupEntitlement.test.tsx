@@ -124,6 +124,8 @@ describe('usePickupEntitlement', () => {
 
     expect(result.current.isLoginAllowed).toBe(true);
     expect(result.current.entitledFunctions).toContain('fulfillment_scan');
+    expect(result.current.entitledFunctions).not.toContain('start_preparation');
+    expect(result.current.entitledFunctions).not.toContain('mark_ready');
     expect(result.current.isLoading).toBe(false);
   });
 

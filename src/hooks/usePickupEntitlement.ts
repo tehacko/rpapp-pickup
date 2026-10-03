@@ -4,6 +4,11 @@
 import { useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
+  isProductCapabilityActivable,
+  productCapabilityIdForEntitlementBlock,
+  type EntitlementBlockKey,
+} from 'pi-kiosk-shared';
+import {
   fetchPickupStaffEntitlement,
   type PickupStaffEntitlementSnapshot,
 } from '../api/pickupApi.js';
@@ -17,6 +22,22 @@ import { isTenantInactiveError } from '../lib/tenantInactive.js';
 import { resolvePickupDeviceFlags } from './pickupDeviceFlags.js';
 
 export type { PickupStaffEntitlementSnapshot as PickupEntitlementSnapshot };
+
+function resolveClientProductReadinessMode(): 'test' | 'production' {
+  return process.env.NODE_ENV === 'test' ? 'test' : 'production';
+}
+
+function isPickupBlockReadinessActivable(blockKey: EntitlementBlockKey): boolean {
+  const capabilityId = productCapabilityIdForEntitlementBlock(blockKey);
+  if (capabilityId === undefined) {
+    return true;
+  }
+  return isProductCapabilityActivable({
+    capabilityId,
+    surface: 'pickup',
+    mode: resolveClientProductReadinessMode(),
+  });
+}
 
 export interface UsePickupEntitlementResult {
   /** Null until the entitlement query settles successfully. */
@@ -45,10 +66,19 @@ export function buildEntitledFunctions(
 ): readonly PickupStaffFunctionKey[] {
   const functions: PickupStaffFunctionKey[] = [];
   // Match BE login/JWT scan mint: staff_pickup_scan ∧ order_pickup_infrastructure.
-  if (snapshot.staffPickupScan && snapshot.orderPickupInfrastructure) {
+  if (
+    snapshot.staffPickupScan &&
+    snapshot.orderPickupInfrastructure &&
+    isPickupBlockReadinessActivable('staff_pickup_scan') &&
+    isPickupBlockReadinessActivable('order_pickup_infrastructure')
+  ) {
     functions.push(PickupStaffFunction.FULFILLMENT_SCAN);
   }
-  if (snapshot.assignBarcode) {
+  if (
+    snapshot.assignBarcode &&
+    isPickupBlockReadinessActivable('product_barcode_administration') &&
+    isPickupBlockReadinessActivable('product_vending')
+  ) {
     functions.push(PickupStaffFunction.BARCODE_ASSIGN);
   }
   const pickupResupplyEnabled = snapshot.pickupResupplyEnabled === true;
@@ -56,7 +86,11 @@ export function buildEntitledFunctions(
     sessionCapabilities !== null &&
     sessionCapabilities !== undefined &&
     sessionCapabilities.includes(PICKUP_RESUPPLY_CAPABILITY);
-  if (pickupResupplyEnabled && hasResupplyCap) {
+  if (
+    pickupResupplyEnabled &&
+    hasResupplyCap &&
+    isPickupBlockReadinessActivable('inventory_management')
+  ) {
     functions.push(PickupStaffFunction.STOCK_RESUPPLY);
   }
   return functions;
@@ -85,9 +119,15 @@ export function usePickupEntitlement(tenantCode: string): UsePickupEntitlementRe
   const isLoginAllowed =
     query.isSuccess &&
     snapshot !== null &&
-    ((snapshot.staffPickupScan && snapshot.orderPickupInfrastructure) ||
-      snapshot.assignBarcode ||
-      snapshot.pickupResupplyEnabled === true);
+    ((snapshot.staffPickupScan &&
+      snapshot.orderPickupInfrastructure &&
+      isPickupBlockReadinessActivable('staff_pickup_scan') &&
+      isPickupBlockReadinessActivable('order_pickup_infrastructure')) ||
+      (snapshot.assignBarcode &&
+        isPickupBlockReadinessActivable('product_barcode_administration') &&
+        isPickupBlockReadinessActivable('product_vending')) ||
+      (snapshot.pickupResupplyEnabled === true &&
+        isPickupBlockReadinessActivable('inventory_management')));
 
   const denialReason: UsePickupEntitlementResult['denialReason'] = (() => {
     if (!query.isSuccess || snapshot === null) {
