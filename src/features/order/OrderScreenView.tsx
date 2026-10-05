@@ -21,6 +21,8 @@ import { PromoDiscountLine } from './PromoDiscountLine.js';
 import { StaffUnavailableEtaPanel } from './StaffUnavailableEtaPanel.js';
 import { usePickupEntitlement } from '../../hooks/usePickupEntitlement.js';
 import { formatPickupCashAmountLabel } from '../cash-confirm/formatPickupCashAmountLabel.js';
+import { PickupRefundIntake } from '../refunds/PickupRefundIntake.js';
+import { usePickupStaffSession } from '../../shared/session/PickupStaffSessionProvider.js';
 
 const CHROME_PAD = {
   paddingBottom:
@@ -93,6 +95,7 @@ export function OrderScreenView({
 }: OrderScreenViewProps): JSX.Element {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { accessToken, sessionClaims } = usePickupStaffSession();
   const entitlement = usePickupEntitlement(tenantCode);
   const promotionsEnabled = entitlement.snapshot?.promotionsProgram === true;
   const encodedTenant = encodeURIComponent(tenantCode);
@@ -334,6 +337,19 @@ export function OrderScreenView({
             />
           </div>
         </SectionCard>
+
+        {accessToken !== null ? (
+          <PickupRefundIntake
+            tenantCode={tenantCode}
+            accessToken={accessToken}
+            transactionId={order.transactionId}
+            currency={order.currency ?? 'CZK'}
+            amountMajor={(order.amountMinor ?? 0) / 100}
+            lines={order.lines}
+            customerEmail={order.customerEmail}
+            capabilities={sessionClaims?.capabilities ?? []}
+          />
+        ) : null}
       </PickupListLayout>
 
       <PickupStickyCta

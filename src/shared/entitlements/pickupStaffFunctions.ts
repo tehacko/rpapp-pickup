@@ -17,6 +17,42 @@ export const PICKUP_SELL_CAPABILITY = 'sell';
 /** Session capability token that unlocks staff pickup-points / queue / scan APIs. */
 export const PICKUP_SCAN_CAPABILITY = 'scan';
 
+/** V1A.6 — money create / list / get / linked disposition. */
+export const PICKUP_REFUND_CAPABILITY = 'refund';
+
+/** V1A.6 — ALTERNATIVE_* refund method. */
+export const PICKUP_REFUND_ALTERNATIVE_CAPABILITY = 'refund_alternative_method';
+
+/** V1A.6 — complaint intake / resolve / money-less disposition. */
+export const PICKUP_COMPLAINT_INTAKE_CAPABILITY = 'complaint_intake';
+
+export function hasPickupRefundCapability(
+  capabilities: readonly string[] | null | undefined,
+): boolean {
+  if (capabilities === null || capabilities === undefined) {
+    return false;
+  }
+  return capabilities.includes(PICKUP_REFUND_CAPABILITY);
+}
+
+export function hasPickupComplaintIntakeCapability(
+  capabilities: readonly string[] | null | undefined,
+): boolean {
+  if (capabilities === null || capabilities === undefined) {
+    return false;
+  }
+  return capabilities.includes(PICKUP_COMPLAINT_INTAKE_CAPABILITY);
+}
+
+export function hasPickupRefundAlternativeCapability(
+  capabilities: readonly string[] | null | undefined,
+): boolean {
+  if (capabilities === null || capabilities === undefined) {
+    return false;
+  }
+  return capabilities.includes(PICKUP_REFUND_ALTERNATIVE_CAPABILITY);
+}
+
 /**
  * P1 / Q2 — Start preparation (ACCEPTED → PREPARING).
  * PIN staff: `scan` also unlocks (order-level ops). Employees need this explicit cap (P8).

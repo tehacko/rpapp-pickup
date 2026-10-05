@@ -2,6 +2,7 @@
  * @jest-environment jsdom
  */
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import {
@@ -11,6 +12,14 @@ import {
 import type { ResolveResponse } from '../../types.js';
 import type { OrderScreenActions } from './useOrderScreen.js';
 import { OrderScreenView } from './OrderScreenView.js';
+
+const sessionState: {
+  accessToken: string | null;
+  capabilities: readonly string[];
+} = {
+  accessToken: 'tok',
+  capabilities: ['refund', 'complaint_intake'],
+};
 
 jest.mock('pi-kiosk-shared/ui', () => {
   const ReactActual = jest.requireActual<typeof import('react')>('react');
@@ -42,6 +51,17 @@ jest.mock('../../hooks/usePickupEntitlement.js', () => ({
   usePickupEntitlement: () => ({
     snapshot: { promotionsProgram: false },
   }),
+}));
+
+jest.mock('../../shared/session/PickupStaffSessionProvider.js', () => ({
+  usePickupStaffSession: () => ({
+    accessToken: sessionState.accessToken,
+    sessionClaims: { capabilities: sessionState.capabilities },
+  }),
+}));
+
+jest.mock('../../shared/ui/Toast/toastApi.js', () => ({
+  toastApi: jest.fn(),
 }));
 
 function makeOrder(overrides: Partial<ResolveResponse> = {}): ResolveResponse {
@@ -120,28 +140,35 @@ function createCashReceivedViewModel(): OrderPageViewModel {
 }
 
 function renderOrderScreen(viewModel: OrderPageViewModel): void {
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
   render(
-    <MemoryRouter initialEntries={['/demo/order/7?code=ABCD']}>
-      <Routes>
-        <Route
-          path="/:tenantCode/order/:fulfillmentId"
-          element={
-            <OrderScreenView
-              screenState={{ kind: 'ready', order: viewModel.order }}
-              viewModel={viewModel}
-              actions={createActions()}
-              tenantCode="demo"
-            />
-          }
-        />
-      </Routes>
-    </MemoryRouter>,
+    <QueryClientProvider client={client}>
+      <MemoryRouter initialEntries={['/demo/order/7?code=ABCD']}>
+        <Routes>
+          <Route
+            path="/:tenantCode/order/:fulfillmentId"
+            element={
+              <OrderScreenView
+                screenState={{ kind: 'ready', order: viewModel.order }}
+                viewModel={viewModel}
+                actions={createActions()}
+                tenantCode="demo"
+              />
+            }
+          />
+        </Routes>
+      </MemoryRouter>
+    </QueryClientProvider>,
   );
 }
 
 describe('OrderScreenView', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    sessionState.accessToken = 'tok';
+    sessionState.capabilities = ['refund', 'complaint_intake'];
   });
 
   it('G12/G14: renders pickup-order-cash-received banner when showCashReceived is true', () => {
@@ -154,6 +181,31 @@ describe('OrderScreenView', () => {
     expect(banner).toBeTruthy();
     expect(banner.textContent).toContain('180 Kč RECEIVED');
     expect(screen.queryByTestId('pickup-order-cash-confirm')).toBeNull();
+    expect(screen.getByTestId('pickup-refund-intake')).toBeTruthy();
+    expect(screen.getByTestId('pickup-refund-caps').textContent).toBe(
+      'refund,complaint_intake',
+    );
+  });
+
+  it('G10: caps off — no money or complaint intake CTA on order screen', () => {
+    sessionState.capabilities = [];
+    renderOrderScreen(createCashReceivedViewModel());
+
+    expect(screen.queryByTestId('pickup-refund-submit')).toBeNull();
+    expect(screen.queryByTestId('pickup-complaint-submit')).toBeNull();
+    expect(screen.getByTestId('pickup-refund-caps').textContent).toBe('');
+  });
+
+  it('G10: caps on — refund intake is present with money and complaint CTAs', () => {
+    sessionState.capabilities = ['refund', 'complaint_intake'];
+    renderOrderScreen(createCashReceivedViewModel());
+
+    expect(screen.getByTestId('pickup-refund-intake')).toBeTruthy();
+    expect(screen.getByTestId('pickup-refund-submit')).toBeTruthy();
+    expect(screen.getByTestId('pickup-complaint-submit')).toBeTruthy();
+    expect(screen.getByTestId('pickup-refund-caps').textContent).toBe(
+      'refund,complaint_intake',
+    );
   });
 
   it('P1: sticky CTA is Start prep when ACCEPTED + cap', () => {
