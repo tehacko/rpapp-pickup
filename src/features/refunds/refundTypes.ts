@@ -1,5 +1,9 @@
 import {
   REFUND_STAFF_REASONS,
+  serializeAlternativeRefundBody,
+  serializeCreateRefundAttemptBody,
+  type AlternativeRefundBody,
+  type CreateRefundAttemptBody,
   type RefundAttemptStatus,
   type RefundCustomerStatus,
   type RefundMethod,
@@ -27,21 +31,29 @@ export type ComplaintRequestedRemedy =
   | 'PRICE_REDUCTION'
   | 'OTHER';
 
-export interface CreatePickupRefundBody {
-  readonly transactionId: number;
-  readonly amount: number;
-  readonly currency: string;
-  readonly staffReason: RefundStaffReason;
-  readonly note?: string;
-  readonly method?: RefundMethod;
-  readonly complaintCaseId?: string;
-  readonly lines: readonly {
-    readonly productId: number;
-    readonly variantId?: number | null;
-    readonly quantity: number;
-    readonly amount: number;
-    readonly productNameSnapshot?: string;
-  }[];
+/** Canonical pickup create-refund POST body — shared Zod (no businessBasis / productNameSnapshot). */
+export type CreatePickupRefundBody = CreateRefundAttemptBody;
+
+/**
+ * Body for POST …/refunds/:sourceAttemptId/alternative (05-F05).
+ * Pickup only offers ALTERNATIVE_CASH (never invent ALT_BANK payout).
+ */
+export type CreatePickupAlternativeRefundBody = Omit<AlternativeRefundBody, 'method'> & {
+  readonly method: 'ALTERNATIVE_CASH';
+};
+
+/** Canonical pickup create-refund POST body via shared schema.safeParse (G19). */
+export function serializeCreatePickupRefundBody(
+  input: CreatePickupRefundBody,
+): CreateRefundAttemptBody {
+  return serializeCreateRefundAttemptBody(input);
+}
+
+/** Omit client productNameSnapshot — server-derived only (G20). */
+export function serializeCreatePickupAlternativeRefundBody(
+  input: CreatePickupAlternativeRefundBody,
+): AlternativeRefundBody {
+  return serializeAlternativeRefundBody(input);
 }
 
 export interface IntakeComplaintBody {

@@ -3,6 +3,8 @@
 interface Window {
   /** Playwright chaos probe — set via `addInitScript`; never via `?e2eThrow=` alone. */
   __RPAPP_E2E_THROW__?: string;
+  /** Playwright hermetic: skip PARTIAL product-grid AND for pickup staff ops (non-production only). */
+  __RPAPP_E2E_PICKUP_SKIP_CAPABILITY_GRID__?: boolean;
 }
 
 interface ImportMetaEnv {

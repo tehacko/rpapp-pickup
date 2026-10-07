@@ -1,6 +1,7 @@
 import type { RefundReadDTO } from 'pi-kiosk-shared';
 import type {
   ComplaintReadDTO,
+  CreatePickupAlternativeRefundBody,
   CreatePickupRefundBody,
   IntakeComplaintBody,
   RecordDispositionBody,
@@ -13,6 +14,12 @@ export interface IRefundsGateway {
     tenantCode: string,
     accessToken: string,
     body: CreatePickupRefundBody,
+  ): Promise<RefundReadDTO>;
+  createAlternativeRefund(
+    tenantCode: string,
+    accessToken: string,
+    sourceAttemptId: string,
+    body: CreatePickupAlternativeRefundBody,
   ): Promise<RefundReadDTO>;
   getRefund(
     tenantCode: string,

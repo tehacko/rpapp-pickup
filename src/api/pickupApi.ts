@@ -33,6 +33,7 @@ export class PickupApiError extends Error {
   public readonly code: string | undefined;
   public readonly recoverable: boolean | undefined;
   public readonly nextAction: string | undefined;
+  public readonly details: Record<string, unknown> | undefined;
 
   public constructor(
     status: number,
@@ -42,6 +43,7 @@ export class PickupApiError extends Error {
       code?: string;
       recoverable?: boolean;
       nextAction?: string;
+      details?: Record<string, unknown>;
     },
   ) {
     super(message);
@@ -51,6 +53,7 @@ export class PickupApiError extends Error {
     this.code = options?.code;
     this.recoverable = options?.recoverable;
     this.nextAction = options?.nextAction;
+    this.details = options?.details;
   }
 }
 

@@ -24,7 +24,7 @@ import { resolvePickupDeviceFlags } from './pickupDeviceFlags.js';
 export type { PickupStaffEntitlementSnapshot as PickupEntitlementSnapshot };
 
 function resolveClientProductReadinessMode(): 'test' | 'production' {
-  return process.env.NODE_ENV === 'test' ? 'test' : 'production';
+  return 'production';
 }
 
 function isPickupBlockReadinessActivable(blockKey: EntitlementBlockKey): boolean {

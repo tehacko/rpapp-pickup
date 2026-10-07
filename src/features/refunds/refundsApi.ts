@@ -12,10 +12,15 @@ import { authHeaders, pickupFetchInit } from '../../lib/auth.js';
 import { PickupApiError } from '../../api/pickupApi.js';
 import type {
   ComplaintReadDTO,
+  CreatePickupAlternativeRefundBody,
   CreatePickupRefundBody,
   IntakeComplaintBody,
   RecordDispositionBody,
   ReturnDispositionReadDTO,
+} from './refundTypes.js';
+import {
+  serializeCreatePickupAlternativeRefundBody,
+  serializeCreatePickupRefundBody,
 } from './refundTypes.js';
 
 export interface PickupTransactionRefundsListDTO {
@@ -29,6 +34,7 @@ interface AdditiveEnvelope<T> {
   readonly data?: T;
   readonly error?: string | { readonly message?: string; readonly code?: string };
   readonly code?: string;
+  readonly details?: Record<string, unknown>;
 }
 
 function generateIdempotencyKey(): string {
@@ -59,6 +65,7 @@ async function throwIfFailed(res: Response): Promise<void> {
   }
   let message = res.statusText;
   let code: string | undefined;
+  let details: Record<string, unknown> | undefined;
   try {
     const json = (await res.json()) as AdditiveEnvelope<unknown>;
     if (typeof json.error === 'string') {
@@ -70,10 +77,16 @@ async function throwIfFailed(res: Response): Promise<void> {
     if (code === undefined && typeof json.code === 'string') {
       code = json.code;
     }
+    if (json.details !== undefined && typeof json.details === 'object' && json.details !== null) {
+      details = json.details;
+    }
   } catch {
     message = res.statusText;
   }
-  throw new PickupApiError(res.status, message, code !== undefined ? { code } : undefined);
+  throw new PickupApiError(res.status, message, {
+    ...(code !== undefined ? { code } : {}),
+    ...(details !== undefined ? { details } : {}),
+  });
 }
 
 function envelopeErrorMessage(json: AdditiveEnvelope<unknown>, fallback: string): string {
@@ -204,13 +217,34 @@ export async function createPickupRefund(
   body: CreatePickupRefundBody,
 ): Promise<RefundReadDTO> {
   const path = staffPath(tenantCode, '/refunds');
+  const canonical = serializeCreatePickupRefundBody(body);
   const res = await pickupFetch(path, {
     method: 'POST',
     headers: mutationHeaders(accessToken),
-    body: JSON.stringify(body),
+    body: JSON.stringify(canonical),
   });
   const data = await readSuccessData<unknown>(res, 'Invalid refund create response');
-  return asRefundRead(data, body.transactionId);
+  return asRefundRead(data, canonical.transactionId);
+}
+
+export async function createPickupAlternativeRefund(
+  tenantCode: string,
+  accessToken: string,
+  sourceAttemptId: string,
+  body: CreatePickupAlternativeRefundBody,
+): Promise<RefundReadDTO> {
+  const path = staffPath(
+    tenantCode,
+    `/refunds/${encodeURIComponent(sourceAttemptId)}/alternative`,
+  );
+  const canonical = serializeCreatePickupAlternativeRefundBody(body);
+  const res = await pickupFetch(path, {
+    method: 'POST',
+    headers: mutationHeaders(accessToken),
+    body: JSON.stringify(canonical),
+  });
+  const data = await readSuccessData<unknown>(res, 'Invalid alternative refund response');
+  return asRefundRead(data, canonical.transactionId);
 }
 
 export async function getPickupRefund(

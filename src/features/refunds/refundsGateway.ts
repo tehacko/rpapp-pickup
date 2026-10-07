@@ -1,6 +1,7 @@
 import { reportPickupError } from '../../shared/hooks/usePickupErrorHandler.js';
 import type { IRefundsGateway } from './IRefundsGateway.js';
 import {
+  createPickupAlternativeRefund,
   createPickupRefund,
   getPickupComplaint,
   getPickupRefund,
@@ -18,6 +19,19 @@ export const refundsGateway: IRefundsGateway = {
       return await createPickupRefund(tenantCode, accessToken, body);
     } catch (err) {
       reportPickupError(err, 'refunds.create');
+      throw err;
+    }
+  },
+  async createAlternativeRefund(tenantCode, accessToken, sourceAttemptId, body) {
+    try {
+      return await createPickupAlternativeRefund(
+        tenantCode,
+        accessToken,
+        sourceAttemptId,
+        body,
+      );
+    } catch (err) {
+      reportPickupError(err, 'refunds.alternative');
       throw err;
     }
   },

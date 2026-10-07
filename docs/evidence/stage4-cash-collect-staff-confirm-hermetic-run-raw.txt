@@ -1,9 +1,4 @@
-﻿Date: 2026-10-06 22:23:55 +02:00
-Command: $env:E2E_SHARED_PREBUILT='1'; $env:HERMETIC_FORCE_WEBSERVER='1'; $env:E2E_SKIP_HERMETIC_PREFLIGHT='1'; npx playwright test e2e/cash-collect-staff-confirm-hermetic.spec.ts --project=chromium --workers=1
-Cwd: rpapp-pickup
-Exit: 0
-
-
+﻿
 Running 4 tests using 1 worker
 
 node.exe : (node:32884) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
@@ -20,4 +15,3 @@ At line:1 char:1
   ok 4 [chromium] ÔÇ║ e2e\cash-collect-staff-confirm-hermetic.spec.ts:127:3 ÔÇ║ cash collect staff confirm (hermetic) ÔÇ║ G9 ÔÇö staff reload after confirm preserves completed row (no awaiting-cash) (5.5s)
 
   4 passed (26.3s)
-

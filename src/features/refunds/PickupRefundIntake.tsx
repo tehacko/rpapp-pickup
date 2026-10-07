@@ -77,7 +77,11 @@ export function PickupRefundIntake({
   const canAltMethod = hasPickupRefundAlternativeCapability(capabilities);
 
   const [staffReason, setStaffReason] = useState<RefundStaffReason>('CUSTOMER_CANCEL_RETURN');
+  /** 05-F05 — ALTERNATIVE_CASH only after native ORIGINAL failure (never ALTERNATIVE_BANK). */
   const [refundMethod, setRefundMethod] = useState<RefundMethod>('ORIGINAL');
+  const [nativeFailedSourceId, setNativeFailedSourceId] = useState<string | null>(null);
+  /** G26 — mandatory-withdrawal alt cash requires customerConsentToAltMethodAt. */
+  const [customerConsentedAlt, setCustomerConsentedAlt] = useState(false);
   const [note, setNote] = useState('');
   const [refundError, setRefundError] = useState<{ status: number; message: string } | null>(
     null,
@@ -188,11 +192,22 @@ export function PickupRefundIntake({
   }, [pollStartedAtMs]);
 
   useEffect(() => {
-    const status = refundQuery.data?.attemptStatus;
-    if (status === 'SUCCEEDED') {
+    if (refundQuery.data?.attemptStatus === 'SUCCEEDED') {
       toastApi(t('pickup.refunds.succeededToast'), 'success');
     }
   }, [refundQuery.data?.attemptStatus, t]);
+
+  const statusDrivenFailedSourceId =
+    canAltMethod &&
+    attemptId !== null &&
+    (refundQuery.data?.attemptStatus === 'FAILED' ||
+      refundQuery.data?.attemptStatus === 'REQUIRES_ACTION')
+      ? attemptId
+      : null;
+  const effectiveNativeFailedSourceId = nativeFailedSourceId ?? statusDrivenFailedSourceId;
+  const showAltCashOption = canAltMethod && effectiveNativeFailedSourceId !== null;
+  const effectiveRefundMethod =
+    statusDrivenFailedSourceId !== null ? 'ALTERNATIVE_CASH' : refundMethod;
 
   const draftLines = useMemo(() => {
     const eligible = lines.filter(
@@ -210,9 +225,6 @@ export function PickupRefundIntake({
         variantId: first.variantId,
         quantity: qty,
         amount: amountMajor,
-        ...(first.productName != null && first.productName.trim().length > 0
-          ? { productNameSnapshot: first.productName.trim() }
-          : {}),
       },
     ];
   }, [amountMajor, lines]);
@@ -253,13 +265,52 @@ export function PickupRefundIntake({
     }
     setRefundSubmitting(true);
     try {
-      const method = canAltMethod ? refundMethod : 'ORIGINAL';
+      if (
+        showAltCashOption &&
+        effectiveRefundMethod === 'ALTERNATIVE_CASH' &&
+        effectiveNativeFailedSourceId !== null
+      ) {
+        if (!customerConsentedAlt) {
+          setRefundError({
+            status: 409,
+            message: t('pickup.refunds.consentRequired', {
+              defaultValue:
+                'Customer consent is required for alternative cash after mandatory withdrawal.',
+            }),
+          });
+          setRefundSubmitting(false);
+          return;
+        }
+        const alt = await gateway.createAlternativeRefund(
+          tenantCode,
+          accessToken,
+          effectiveNativeFailedSourceId,
+          {
+            transactionId,
+            amount: amountMajor,
+            currency,
+            staffReason,
+            method: 'ALTERNATIVE_CASH',
+            lines: draftLines,
+            transitionReason: 'native_refund_failed',
+            customerConsentToAltMethodAt: new Date().toISOString(),
+            ...(note.trim().length > 0 ? { note: note.trim() } : {}),
+          },
+        );
+        setAttemptId(alt.attemptId);
+        setNativeFailedSourceId(null);
+        setRefundMethod('ORIGINAL');
+        setPollStartedAtMs(Date.now());
+        setPollTimedOut(false);
+        return;
+      }
+
       const created = await gateway.createRefund(tenantCode, accessToken, {
         transactionId,
         amount: amountMajor,
         currency,
         staffReason,
-        method,
+        method: 'ORIGINAL',
         lines: draftLines,
         ...(note.trim().length > 0 ? { note: note.trim() } : {}),
         ...(caseId !== null ? { complaintCaseId: caseId } : {}),
@@ -268,7 +319,44 @@ export function PickupRefundIntake({
       setPollStartedAtMs(Date.now());
       setPollTimedOut(false);
     } catch (err) {
-      setRefundError(formatHttpError(err));
+      const formatted = formatHttpError(err);
+      setRefundError(formatted);
+      if (
+        canAltMethod &&
+        err instanceof PickupApiError &&
+        (err.code === 'REFUND_ALTERNATIVE_REQUIRED' ||
+          err.code === 'REFUND_RAIL_UNSUPPORTED')
+      ) {
+        const fromDetails = err.details?.['attemptId'] ?? err.details?.['sourceAttemptId'];
+        if (typeof fromDetails === 'string' && fromDetails.trim().length > 0) {
+          setNativeFailedSourceId(fromDetails.trim());
+          setAttemptId(fromDetails.trim());
+          setRefundMethod('ALTERNATIVE_CASH');
+        } else {
+          try {
+            const listed = await gateway.listTransactionRefunds(
+              tenantCode,
+              accessToken,
+              transactionId,
+            );
+            const source = [...listed.refunds]
+              .reverse()
+              .find(
+                (row) =>
+                  row.method === 'ORIGINAL' &&
+                  (row.attemptStatus === 'FAILED' ||
+                    row.attemptStatus === 'REQUIRES_ACTION'),
+              );
+            if (source !== undefined) {
+              setNativeFailedSourceId(source.attemptId);
+              setAttemptId(source.attemptId);
+              setRefundMethod('ALTERNATIVE_CASH');
+            }
+          } catch {
+            // keep primary create error visible
+          }
+        }
+      }
     } finally {
       setRefundSubmitting(false);
     }
@@ -490,21 +578,48 @@ export function PickupRefundIntake({
               ))}
             </select>
           </label>
-          {canAltMethod ? (
+          {showAltCashOption ? (
             <label className="flex flex-col gap-1 text-sm">
               {t('pickup.refunds.method')}
               <select
                 className="min-h-11 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2"
-                value={refundMethod}
+                value={effectiveRefundMethod}
                 data-testid="pickup-refund-method"
                 onChange={(e) => {
-                  setRefundMethod(e.target.value as RefundMethod);
+                  const next = e.target.value;
+                  if (next === 'ORIGINAL' || next === 'ALTERNATIVE_CASH') {
+                    setRefundMethod(next);
+                  }
                 }}
               >
                 <option value="ORIGINAL">ORIGINAL</option>
                 <option value="ALTERNATIVE_CASH">ALTERNATIVE_CASH</option>
-                <option value="ALTERNATIVE_BANK">ALTERNATIVE_BANK</option>
               </select>
+              <span className="text-xs text-[var(--color-on-surface-muted)]">
+                {t('pickup.refunds.altCashAfterNativeFail', {
+                  defaultValue:
+                    'ALTERNATIVE_CASH only after native ORIGINAL failed. ALTERNATIVE_BANK is unavailable.',
+                })}
+              </span>
+              {effectiveRefundMethod === 'ALTERNATIVE_CASH' ? (
+                <label className="mt-2 flex items-start gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    className="mt-1 min-h-5 min-w-5"
+                    checked={customerConsentedAlt}
+                    data-testid="pickup-refund-alt-consent"
+                    onChange={(e) => {
+                      setCustomerConsentedAlt(e.target.checked);
+                    }}
+                  />
+                  <span>
+                    {t('pickup.refunds.altConsent', {
+                      defaultValue:
+                        'Customer consented to alternative cash payout (mandatory withdrawal).',
+                    })}
+                  </span>
+                </label>
+              ) : null}
             </label>
           ) : null}
           <label className="flex flex-col gap-1 text-sm">

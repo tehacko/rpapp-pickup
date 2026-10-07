@@ -162,16 +162,21 @@ export async function installPickupCashAwaitingQueueMocks(
 
 /** Deep-link queue after shell hydrate — same gate sequence as enterprise UX helpers. */
 export async function openPickupQueue(page: Page): Promise<void> {
-  const entitlementResponse = page.waitForResponse(
-    (response) =>
-      response.url().includes('/pickup/staff/entitlement') && response.status() === 200,
-    { timeout: 60_000 },
-  );
-  const queueResponse = page.waitForResponse(
-    (response) =>
-      isPickupStaffQueuePollRequest(new URL(response.url())) && response.status() === 200,
-    { timeout: 60_000 },
-  );
+  // Register listeners before navigation; tolerate cache hits that skip a second fetch.
+  const entitlementResponse = page
+    .waitForResponse(
+      (response) =>
+        response.url().includes('/pickup/staff/entitlement') && response.status() === 200,
+      { timeout: 60_000 },
+    )
+    .catch(() => null);
+  const queueResponse = page
+    .waitForResponse(
+      (response) =>
+        isPickupStaffQueuePollRequest(new URL(response.url())) && response.status() === 200,
+      { timeout: 60_000 },
+    )
+    .catch(() => null);
 
   await page.goto(`/${PICKUP_EUX_TENANT}/queue`, { waitUntil: 'domcontentloaded' });
 
@@ -180,8 +185,7 @@ export async function openPickupQueue(page: Page): Promise<void> {
     await expect(hydrate).toBeHidden({ timeout: 60_000 });
   }
 
-  await entitlementResponse;
-  await queueResponse;
+  await Promise.all([entitlementResponse, queueResponse]);
 
   await expect(page.getByTestId('pickup-screen-state-loading')).toBeHidden({ timeout: 15_000 });
   await expect(page.getByTestId('queue-screen')).toBeVisible({ timeout: 15_000 });

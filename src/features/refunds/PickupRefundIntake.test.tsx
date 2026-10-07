@@ -63,6 +63,11 @@ function pendingRefund(): RefundReadDTO {
 function stubGateway(overrides: Partial<IRefundsGateway> = {}): IRefundsGateway {
   return {
     createRefund: jest.fn(async () => pendingRefund()),
+    createAlternativeRefund: jest.fn(async () => ({
+      ...pendingRefund(),
+      attemptId: 'att-alt-1',
+      method: 'ALTERNATIVE_CASH',
+    })),
     getRefund: jest.fn(async () => pendingRefund()),
     listTransactionRefunds: jest.fn(async () => ({ refunds: [pendingRefund()] })),
     intakeComplaint: jest.fn(async () => ({
@@ -292,7 +297,7 @@ describe('PickupRefundIntake', () => {
     });
   });
 
-  it('JWT refund_alternative_method reveals ALTERNATIVE_* methods', async () => {
+  it('JWT refund_alternative_method keeps ORIGINAL-first; no ALTERNATIVE_BANK peer choice', async () => {
     const gateway = stubGateway();
     render(
       wrap(
@@ -312,14 +317,74 @@ describe('PickupRefundIntake', () => {
     expect(screen.getByTestId('pickup-refund-caps')).toHaveTextContent(
       'refund,refund_alternative_method',
     );
-    const method = screen.getByTestId('pickup-refund-method');
-    fireEvent.change(method, { target: { value: 'ALTERNATIVE_CASH' } });
+    expect(screen.queryByTestId('pickup-refund-method')).not.toBeInTheDocument();
     fireEvent.click(screen.getByTestId('pickup-refund-submit'));
     await waitFor(() => {
       expect(gateway.createRefund).toHaveBeenCalledWith(
         'acme',
         'tok',
-        expect.objectContaining({ method: 'ALTERNATIVE_CASH' }),
+        expect.objectContaining({ method: 'ORIGINAL' }),
+      );
+    });
+    expect(gateway.createAlternativeRefund).not.toHaveBeenCalled();
+  });
+
+  it('after native FAILED poll, ALTERNATIVE_CASH posts to alternative endpoint (not BANK)', async () => {
+    const gateway = stubGateway({
+      getRefund: jest.fn(async () => ({
+        ...pendingRefund(),
+        attemptStatus: 'FAILED',
+        customerStatus: 'needs_resolution',
+      })),
+    });
+    render(
+      wrap(
+        <PickupRefundIntake
+          tenantCode="acme"
+          accessToken="tok"
+          transactionId={42}
+          currency="CZK"
+          amountMajor={80}
+          lines={[line]}
+          capabilities={['refund', 'refund_alternative_method']}
+          gateway={gateway}
+        />,
+      ),
+    );
+
+    fireEvent.click(screen.getByTestId('pickup-refund-submit'));
+    await waitFor(() => {
+      expect(screen.getByTestId('pickup-refund-method')).toBeInTheDocument();
+    });
+    expect(screen.getByTestId('pickup-refund-method').textContent).toContain('ALTERNATIVE_CASH');
+    expect(screen.getByTestId('pickup-refund-method').textContent).not.toContain(
+      'ALTERNATIVE_BANK',
+    );
+    fireEvent.change(screen.getByTestId('pickup-refund-method'), {
+      target: { value: 'ALTERNATIVE_CASH' },
+    });
+    expect(screen.getByTestId('pickup-refund-alt-consent')).toBeInTheDocument();
+
+    // G26 — deny without consent
+    fireEvent.click(screen.getByTestId('pickup-refund-submit'));
+    await waitFor(() => {
+      expect(screen.getByTestId('pickup-refund-error')).toHaveTextContent(
+        'pickup.refunds.consentRequired',
+      );
+    });
+    expect(gateway.createAlternativeRefund).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByTestId('pickup-refund-alt-consent'));
+    fireEvent.click(screen.getByTestId('pickup-refund-submit'));
+    await waitFor(() => {
+      expect(gateway.createAlternativeRefund).toHaveBeenCalledWith(
+        'acme',
+        'tok',
+        'att-1',
+        expect.objectContaining({
+          method: 'ALTERNATIVE_CASH',
+          customerConsentToAltMethodAt: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/),
+        }),
       );
     });
   });
