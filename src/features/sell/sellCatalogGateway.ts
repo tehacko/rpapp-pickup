@@ -11,6 +11,11 @@ import type {
   SellCashPrepareResult,
   SellConfig,
 } from './sellTypes.js';
+import {
+  persistCommerceOrderId,
+  readCommerceOrderIdFromUnknown,
+  readLastPersistedCommerceOrderId,
+} from './persistCommerceOrderId.js';
 
 function sellBase(tenantCode: string): string {
   return `/api/${encodeURIComponent(tenantCode)}/v1/pickup/staff/sell`;
@@ -97,18 +102,31 @@ export const sellCatalogGateway: ISellCatalogGateway = {
       currency: CurrencyCode;
       pickupPointId?: number;
       collectTiming?: 'NOW' | 'LATER';
+      commerceOrderId?: string;
     },
   ): Promise<SellCashPrepareResult> {
     return withCatalogLog('prepareCashCheckout', async () => {
+      const persistedOrderId = input.commerceOrderId ?? readLastPersistedCommerceOrderId();
       const res = await fetch(`${sellBase(tenantCode)}/cash-prepare`, {
         method: 'POST',
         headers: {
           ...authHeaders(accessToken),
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(input),
+        body: JSON.stringify({
+          items: input.items,
+          currency: input.currency,
+          ...(input.pickupPointId !== undefined ? { pickupPointId: input.pickupPointId } : {}),
+          ...(input.collectTiming !== undefined ? { collectTiming: input.collectTiming } : {}),
+          ...(persistedOrderId !== undefined ? { commerceOrderId: persistedOrderId } : {}),
+        }),
       });
-      return parseJson<SellCashPrepareResult>(res);
+      const prepared = await parseJson<SellCashPrepareResult>(res);
+      const createdOrderId = readCommerceOrderIdFromUnknown(prepared);
+      if (createdOrderId !== undefined) {
+        persistCommerceOrderId(prepared.checkoutSessionId, createdOrderId);
+      }
+      return prepared;
     });
   },
 
@@ -122,14 +140,20 @@ export const sellCatalogGateway: ISellCatalogGateway = {
     },
   ): Promise<SellCashCompleteResult> {
     return withCatalogLog('completeCashCheckout', async () => {
+      const idempotencyKey = input.idempotencyKey || generateIdempotencyKey();
+      // Complete wire is strict: checkoutSessionId + idempotencyKey + amountMinor only.
       const res = await fetch(`${sellBase(tenantCode)}/cash-complete`, {
         method: 'POST',
         headers: {
           ...authHeaders(accessToken),
           'Content-Type': 'application/json',
-          'Idempotency-Key': input.idempotencyKey || generateIdempotencyKey(),
+          'Idempotency-Key': idempotencyKey,
         },
-        body: JSON.stringify(input),
+        body: JSON.stringify({
+          checkoutSessionId: input.checkoutSessionId,
+          idempotencyKey,
+          amountMinor: input.amountMinor,
+        }),
       });
       return parseJson<SellCashCompleteResult>(res);
     });

@@ -47,6 +47,7 @@ export interface SellCashPrepareResult {
   readonly checkoutSessionId: string;
   readonly amountMinor: number;
   readonly currency: CurrencyCode;
+  readonly commerceOrderId?: string;
 }
 
 export interface SellCashCompleteResult {

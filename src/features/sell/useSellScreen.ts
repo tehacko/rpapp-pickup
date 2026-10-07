@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { isCurrencyCode, type CurrencyCode } from 'pi-kiosk-shared';
 import { PickupApiError } from '../../api/pickupApi.js';
@@ -12,6 +12,12 @@ import type { ISellCatalogGateway } from './ISellCatalogGateway.js';
 import { catalogLog } from './logging.js';
 import { sellCatalogGateway } from './sellCatalogGateway.js';
 import {
+  clearPersistedCommerceOrderId,
+  persistCommerceOrderId,
+  readCommerceOrderIdFromUnknown,
+  readLastPersistedCommerceOrderId,
+} from './persistCommerceOrderId.js';
+import {
   addSellCartLine,
   catalogItemToCartLineInput,
   removeSellCartLine,
@@ -19,6 +25,20 @@ import {
   toSellCashPrepareLines,
 } from './sellCartLogic.js';
 import type { SellCartLine, SellCatalogItem, SellConfig } from './sellTypes.js';
+
+interface PendingSellCashCheckout {
+  readonly checkoutSessionId: string;
+  readonly amountMinor: number;
+  readonly cartFingerprint: string;
+  readonly idempotencyKey: string;
+}
+
+function sellCartFingerprint(lines: readonly SellCartLine[]): string {
+  return lines
+    .map((line) => `${line.productId}:${line.variantId ?? ''}:${line.quantity}`)
+    .sort()
+    .join('|');
+}
 
 const DEFAULT_SELL_CURRENCY: CurrencyCode = 'CZK';
 
@@ -86,8 +106,17 @@ export function useSellScreen(
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [checkoutMessage, setCheckoutMessage] = useState<string | null>(null);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  const pendingCashRef = useRef<PendingSellCashCheckout | null>(null);
 
   const canSell = configLoaded && configError === null && config.sellingEnabled;
+  const cartFingerprint = useMemo(() => sellCartFingerprint(cartLines), [cartLines]);
+
+  useEffect(() => {
+    const pending = pendingCashRef.current;
+    if (pending !== null && pending.cartFingerprint !== cartFingerprint) {
+      pendingCashRef.current = null;
+    }
+  }, [cartFingerprint]);
 
   useEffect(() => {
     if (!accessToken) {
@@ -224,21 +253,52 @@ export function useSellScreen(
     setCheckoutMessage(null);
     void (async () => {
       try {
-        const idempotencyKey =
-          typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
-            ? crypto.randomUUID()
-            : `sell-${Date.now()}`;
-        const prepared = await gateway.prepareCashCheckout(tenantCode, accessToken, {
-          items: toSellCashPrepareLines(cartLines),
-          currency: config.currency,
-          pickupPointId: activePickupPointId ?? undefined,
-          collectTiming: 'NOW',
-        });
+        const fingerprint = sellCartFingerprint(cartLines);
+        const pending = pendingCashRef.current;
+        let checkoutSessionId: string;
+        let amountMinor: number;
+        let idempotencyKey: string;
+
+        if (pending !== null && pending.cartFingerprint === fingerprint) {
+          // G29: failed-then-retry keeps the same prepare checkoutSessionId (no new ORDER).
+          checkoutSessionId = pending.checkoutSessionId;
+          amountMinor = pending.amountMinor;
+          idempotencyKey = pending.idempotencyKey;
+        } else {
+          idempotencyKey =
+            typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+              ? crypto.randomUUID()
+              : `sell-${Date.now()}`;
+          const lastOrderId = readLastPersistedCommerceOrderId();
+          const prepared = await gateway.prepareCashCheckout(tenantCode, accessToken, {
+            items: toSellCashPrepareLines(cartLines),
+            currency: config.currency,
+            pickupPointId: activePickupPointId ?? undefined,
+            collectTiming: 'NOW',
+            ...(lastOrderId !== undefined ? { commerceOrderId: lastOrderId } : {}),
+          });
+          const preparedOrderId =
+            prepared.commerceOrderId ?? readCommerceOrderIdFromUnknown(prepared);
+          if (preparedOrderId !== undefined) {
+            persistCommerceOrderId(prepared.checkoutSessionId, preparedOrderId);
+          }
+          checkoutSessionId = prepared.checkoutSessionId;
+          amountMinor = prepared.amountMinor;
+          pendingCashRef.current = {
+            checkoutSessionId,
+            amountMinor,
+            cartFingerprint: fingerprint,
+            idempotencyKey,
+          };
+        }
+
         const completed = await gateway.completeCashCheckout(tenantCode, accessToken, {
-          checkoutSessionId: prepared.checkoutSessionId,
+          checkoutSessionId,
           idempotencyKey,
-          amountMinor: prepared.amountMinor,
+          amountMinor,
         });
+        pendingCashRef.current = null;
+        clearPersistedCommerceOrderId(checkoutSessionId);
         setCartLines([]);
         setCheckoutMessage(
           t('pickup.sell.checkoutSuccess', { transactionId: completed.transactionId }),
@@ -251,8 +311,15 @@ export function useSellScreen(
           err.recoverable === true &&
           err.nextAction === 'confirm_via_queue'
         ) {
+          // Payment already recorded — do not retry complete with a new prepare.
+          const pending = pendingCashRef.current;
+          pendingCashRef.current = null;
+          if (pending !== null) {
+            clearPersistedCommerceOrderId(pending.checkoutSessionId);
+          }
           setCheckoutError(t('pickup.sell.checkoutConfirmFailedRecoverable'));
         } else {
+          // Keep pending prepare so retry reuses the same checkoutSessionId + commerceOrderId.
           setCheckoutError(
             err instanceof Error ? err.message : t('pickup.sell.checkoutFailed'),
           );

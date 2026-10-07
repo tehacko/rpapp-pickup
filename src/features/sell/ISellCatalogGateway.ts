@@ -23,6 +23,7 @@ export interface ISellCatalogGateway {
       currency: CurrencyCode;
       pickupPointId?: number;
       collectTiming?: 'NOW' | 'LATER';
+      commerceOrderId?: string;
     },
   ): Promise<SellCashPrepareResult>;
   completeCashCheckout(
