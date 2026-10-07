@@ -1,9 +1,5 @@
 import {
   REFUND_STAFF_REASONS,
-  serializeAlternativeRefundBody,
-  serializeCreateRefundAttemptBody,
-  type AlternativeRefundBody,
-  type CreateRefundAttemptBody,
   type RefundAttemptStatus,
   type RefundCustomerStatus,
   type RefundMethod,
@@ -11,6 +7,12 @@ import {
   type RefundReadItemDTO,
   type RefundStaffReason,
 } from 'pi-kiosk-shared';
+import {
+  serializeAlternativeRefundBody,
+  serializeCreateRefundAttemptBody,
+  type AlternativeRefundBody,
+  type CreateRefundAttemptBody,
+} from './createRefundAttemptBody.js';
 
 export const REFUND_POLL_INTERVAL_MS = 5_000;
 export const REFUND_POLL_MAX_MS = 5 * 60 * 1_000;
