@@ -637,6 +637,51 @@ export async function markReady(
   await handleMutationFailure(res, path, 'POST');
 }
 
+/** Shipping Light — PREPARING → READY_TO_SHIP (requires Idempotency-Key). */
+export async function markReadyToShip(
+  tenantCode: string,
+  accessToken: string,
+  fulfillmentId: number,
+  body: { version: number; deviceCode?: string },
+  idempotencyKey: string
+): Promise<void> {
+  const path = `/api/${encodeURIComponent(tenantCode)}/v1/pickup/fulfillments/${encodeURIComponent(String(fulfillmentId))}/mark-ready-to-ship`;
+  const res = await pickupFetch(path, {
+    method: 'POST',
+    headers: mutationHeaders(accessToken, idempotencyKey),
+    body: JSON.stringify(withPairedDeviceCode(tenantCode, body)),
+  });
+  if (res.ok) {
+    return;
+  }
+  await handleMutationFailure(res, path, 'POST');
+}
+
+/** Shipping Light — READY_TO_SHIP → SHIPPED (requires Idempotency-Key). */
+export async function markShipped(
+  tenantCode: string,
+  accessToken: string,
+  fulfillmentId: number,
+  body: {
+    version: number;
+    carrierName?: string | null;
+    trackingRef?: string | null;
+    deviceCode?: string;
+  },
+  idempotencyKey: string
+): Promise<void> {
+  const path = `/api/${encodeURIComponent(tenantCode)}/v1/pickup/fulfillments/${encodeURIComponent(String(fulfillmentId))}/mark-shipped`;
+  const res = await pickupFetch(path, {
+    method: 'POST',
+    headers: mutationHeaders(accessToken, idempotencyKey),
+    body: JSON.stringify(withPairedDeviceCode(tenantCode, body)),
+  });
+  if (res.ok) {
+    return;
+  }
+  await handleMutationFailure(res, path, 'POST');
+}
+
 /** P7 A11 — staff marks item|ORDER unavailable (pending customer decision). */
 export async function markUnavailable(
   tenantCode: string,

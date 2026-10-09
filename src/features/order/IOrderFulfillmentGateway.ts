@@ -76,6 +76,21 @@ export interface IOrderFulfillmentGateway {
     version: number,
   ): Promise<void>;
 
+  markReadyToShip(
+    tenantCode: string,
+    accessToken: string,
+    fulfillmentId: number,
+    version: number,
+  ): Promise<void>;
+
+  markShipped(
+    tenantCode: string,
+    accessToken: string,
+    fulfillmentId: number,
+    version: number,
+    opts?: { carrierName?: string | null; trackingRef?: string | null },
+  ): Promise<void>;
+
   releaseHold(
     tenantCode: string,
     accessToken: string,

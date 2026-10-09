@@ -86,6 +86,8 @@ function makeCtx(
     holdOrder: jest.fn(async () => undefined),
     startPreparation: jest.fn(async () => undefined),
     markReady: jest.fn(async () => undefined),
+    markReadyToShip: jest.fn(async () => undefined),
+    markShipped: jest.fn(async () => undefined),
     releaseHold: jest.fn(async () => undefined),
     reprintCredentials: jest.fn(async () => ({ ok: true })),
     markUnavailable: jest.fn(async () => undefined),

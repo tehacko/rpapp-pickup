@@ -127,6 +127,8 @@ function createActions(): OrderScreenActions {
     onReprint: jest.fn(),
     onStartPreparation: jest.fn(),
     onMarkReady: jest.fn(),
+    onMarkReadyToShip: jest.fn(),
+    onMarkShipped: jest.fn(),
     onMarkUnavailable: jest.fn(),
     onUpdatePromisedEta: jest.fn(),
     onConfirmCash: jest.fn(),

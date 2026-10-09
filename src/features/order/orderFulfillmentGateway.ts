@@ -5,6 +5,8 @@ import {
   fetchResolveByCode,
   holdOrder,
   markReady,
+  markReadyToShip,
+  markShipped,
   markUnavailable,
   refuseLines,
   releaseHold,
@@ -65,6 +67,32 @@ export const orderFulfillmentGateway: IOrderFulfillmentGateway = {
 
   markReady: (tenantCode, accessToken, fulfillmentId, version) =>
     withClaimLog('markReady', () => markReady(tenantCode, accessToken, fulfillmentId, { version })),
+
+  markReadyToShip: (tenantCode, accessToken, fulfillmentId, version) =>
+    withClaimLog('markReadyToShip', () =>
+      markReadyToShip(
+        tenantCode,
+        accessToken,
+        fulfillmentId,
+        { version },
+        `ship-ready-${fulfillmentId}-${version}-${Date.now().toString(36)}`,
+      ),
+    ),
+
+  markShipped: (tenantCode, accessToken, fulfillmentId, version, opts) =>
+    withClaimLog('markShipped', () =>
+      markShipped(
+        tenantCode,
+        accessToken,
+        fulfillmentId,
+        {
+          version,
+          carrierName: opts?.carrierName,
+          trackingRef: opts?.trackingRef,
+        },
+        `shipped-${fulfillmentId}-${version}-${Date.now().toString(36)}`,
+      ),
+    ),
 
   releaseHold: (tenantCode, accessToken, fulfillmentId, version) =>
     withClaimLog('releaseHold', () => releaseHold(tenantCode, accessToken, fulfillmentId, version)),

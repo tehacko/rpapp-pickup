@@ -25,6 +25,8 @@ import {
   confirmOrderPickup,
   holdOrderMutation,
   markOrderReady,
+  markOrderReadyToShip,
+  markOrderShipped,
   markOrderUnavailable,
   refuseOrderLines,
   releaseOrderHold,
@@ -62,6 +64,8 @@ export interface OrderScreenActions {
   readonly onReprint: () => void;
   readonly onStartPreparation: () => void;
   readonly onMarkReady: () => void;
+  readonly onMarkReadyToShip: () => void;
+  readonly onMarkShipped: () => void;
   readonly onMarkUnavailable: (input: {
     scope: 'ITEM' | 'ORDER';
     lineIds?: number[];
@@ -429,6 +433,8 @@ export function useOrderScreen(
         }),
       onStartPreparation: () => void startOrderPreparation(mutationContext),
       onMarkReady: () => void markOrderReady(mutationContext),
+      onMarkReadyToShip: () => void markOrderReadyToShip(mutationContext),
+      onMarkShipped: () => void markOrderShipped(mutationContext),
       onMarkUnavailable: (input) => void markOrderUnavailable(mutationContext, input),
       onUpdatePromisedEta: (iso) => void updateOrderPromisedEta(mutationContext, iso),
       onConfirmCash: () => {

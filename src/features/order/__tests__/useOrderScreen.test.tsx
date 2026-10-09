@@ -117,6 +117,8 @@ function createGatewayMock(): jest.Mocked<IOrderFulfillmentGateway> {
     holdOrder: jest.fn(),
     startPreparation: jest.fn(),
     markReady: jest.fn(),
+    markReadyToShip: jest.fn(),
+    markShipped: jest.fn(),
     releaseHold: jest.fn(),
     reprintCredentials: jest.fn(),
     markUnavailable: jest.fn(),

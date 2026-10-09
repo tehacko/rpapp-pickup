@@ -1,6 +1,7 @@
 import type { FulfillmentLine, ResolveResponse } from '../../types.js';
 import { isAwaitingCashConfirmation } from '../cash-confirm/isAwaitingCashConfirmation.js';
 import { formatPickupCashAmountLabel } from '../cash-confirm/formatPickupCashAmountLabel.js';
+import { isPickupShippingModalityUxVisible } from './shippingLightEnabled.js';
 
 export interface OrderLineSelectionState {
   readonly partialQty: Record<number, number>;
@@ -29,6 +30,14 @@ export interface OrderPageViewModel {
   readonly showStartPreparation: boolean;
   /** P1 — show Mark ready when PREPARING + cap (Q2). */
   readonly showMarkReady: boolean;
+  /** Shipping Light — PREPARING → READY_TO_SHIP (mode SHIPPING + shippingLightEnabled). */
+  readonly showMarkReadyToShip: boolean;
+  /** Shipping Light — READY_TO_SHIP → SHIPPED (mode SHIPPING + shippingLightEnabled). */
+  readonly showMarkShipped: boolean;
+  /**
+   * Pack destination — only when shippingLightEnabled ON + SHIPPING + resolve DTO address.
+   */
+  readonly shippingAddress: ResolveResponse['shippingAddress'] | null;
   readonly showCashConfirm: boolean;
   readonly showCashReceived: boolean;
   readonly cashAmountLabel: string | null;
@@ -91,15 +100,29 @@ export function buildOrderPageViewModel(
       : null;
   const isOnHold = order.heldAt != null;
   const status = order.fulfillmentStatus;
+  const isShipping = order.fulfillmentMode === 'SHIPPING';
+  /** G7 — CTAs + address require flag ON; mode alone is insufficient (S23). */
+  const shippingModalityUx = isPickupShippingModalityUxVisible(order);
   return {
     fulfillmentId,
     tenantCode,
     order,
-    canConfirm: !order.paymentRequired && order.allowedForStaff !== false,
+    canConfirm:
+      !isShipping && !order.paymentRequired && order.allowedForStaff !== false,
     isOnHold,
     showStartPreparation:
       status === 'ACCEPTED' && startPreparationCapabilityEnabled && !isOnHold,
-    showMarkReady: status === 'PREPARING' && markReadyCapabilityEnabled && !isOnHold,
+    showMarkReady:
+      !isShipping && status === 'PREPARING' && markReadyCapabilityEnabled && !isOnHold,
+    showMarkReadyToShip:
+      shippingModalityUx && status === 'PREPARING' && markReadyCapabilityEnabled && !isOnHold,
+    showMarkShipped:
+      shippingModalityUx &&
+      status === 'READY_TO_SHIP' &&
+      markReadyCapabilityEnabled &&
+      !isOnHold,
+    shippingAddress:
+      shippingModalityUx && order.shippingAddress != null ? order.shippingAddress : null,
     showCashConfirm: awaitingCash,
     showCashReceived,
     cashAmountLabel: cashAmountLabel === '' ? null : cashAmountLabel,

@@ -197,6 +197,32 @@ export function OrderScreenView({
         {t('pickup.order.markReady')}
       </Button>
     );
+  } else if (viewModel.showMarkReadyToShip) {
+    stickyPrimary = (
+      <Button
+        type="button"
+        data-testid="pickup-mark-ready-to-ship"
+        onClick={actions.onMarkReadyToShip}
+        disabled={viewModel.isCoolingDown}
+        className="inline-flex items-center gap-2"
+      >
+        <PackageCheck className="h-4 w-4 stroke-[1.75]" aria-hidden />
+        {t('pickup.order.markReadyToShip', { defaultValue: 'Ready to ship' })}
+      </Button>
+    );
+  } else if (viewModel.showMarkShipped) {
+    stickyPrimary = (
+      <Button
+        type="button"
+        data-testid="pickup-mark-shipped"
+        onClick={actions.onMarkShipped}
+        disabled={viewModel.isCoolingDown}
+        className="inline-flex items-center gap-2"
+      >
+        <PackageCheck className="h-4 w-4 stroke-[1.75]" aria-hidden />
+        {t('pickup.order.markShipped', { defaultValue: 'Mark shipped' })}
+      </Button>
+    );
   } else {
     stickyPrimary = (
       <Button
@@ -277,6 +303,25 @@ export function OrderScreenView({
                 </a>
               }
             />
+          ) : null}
+          {viewModel.shippingAddress != null ? (
+            <div data-testid="pickup-order-shipping-address" className="mt-[var(--pickup-space-3)]">
+              <MetaRow
+                label={t('pickup.order.shippingRecipientLabel', { defaultValue: 'Ship to' })}
+                value={viewModel.shippingAddress.recipientName}
+              />
+              <MetaRow
+                label={t('pickup.order.shippingAddressLabel', { defaultValue: 'Address' })}
+                value={[
+                  viewModel.shippingAddress.line1,
+                  viewModel.shippingAddress.line2,
+                  `${viewModel.shippingAddress.postalCode} ${viewModel.shippingAddress.city}`.trim(),
+                  viewModel.shippingAddress.countryCode,
+                ]
+                  .filter((part): part is string => part != null && part.trim().length > 0)
+                  .join(', ')}
+              />
+            </div>
           ) : null}
           {renderOrderCashConfirmSection(viewModel, actions, order, t)}
           <div className="mt-2">

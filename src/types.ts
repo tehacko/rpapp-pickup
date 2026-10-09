@@ -22,6 +22,8 @@ export interface ResolveResponse {
   transactionId: number;
   salesPointId: number;
   version: number;
+  /** Orthogonal modality — SHIPPING uses READY_TO_SHIP / SHIPPED / DELIVERED. */
+  fulfillmentMode?: 'PICKUP' | 'SHIPPING' | string;
   /** Backend FSM status — includes P1 `ACCEPTED` (paid, not preparing). */
   fulfillmentStatus: OrderFulfillmentStatus | string;
   /** Present when backend resolve DTO includes transaction row status. */
@@ -48,6 +50,24 @@ export interface ResolveResponse {
   customerEmail?: string | null;
   /** Promised pickup time for staff ETA edits. */
   promisedPickupAt?: string | null;
+  /**
+   * G7 — resolve DTO mirror of plan flag shippingLightEnabled (S23).
+   * Pickup CTAs + address display gate on this; do not use fulfillmentMode alone.
+   */
+  shippingLightEnabled?: boolean;
+  /**
+   * Present when fulfillmentMode=SHIPPING and shippingLightEnabled (pack destination).
+   */
+  shippingAddress?: {
+    recipientName: string;
+    line1: string;
+    line2: string | null;
+    city: string;
+    postalCode: string;
+    countryCode: string;
+    phone: string | null;
+    email: string | null;
+  };
   lines: FulfillmentLine[];
   promotions?: {
     readonly appliedDiscount: {

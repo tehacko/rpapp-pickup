@@ -115,6 +115,94 @@ describe('buildOrderPageViewModel', () => {
     expect(refreshedVm.order.version).toBe(4);
   });
 
+  it('G7/G13: shipping mark-ready/ship CTAs require SHIPPING + shippingLightEnabled', () => {
+    const sampleAddress = {
+      recipientName: 'Ada Lovelace',
+      line1: '1 Analytical Engine Rd',
+      line2: null,
+      city: 'London',
+      postalCode: 'SW1A 1AA',
+      countryCode: 'GB',
+      phone: null,
+      email: null,
+    };
+
+    const pickupPreparing = buildOrderPageViewModel(
+      makeOrder({ fulfillmentStatus: 'PREPARING', fulfillmentMode: 'PICKUP' }),
+      '42',
+      'demo',
+      baseUi,
+      true,
+      true,
+      true,
+      true,
+      true,
+    );
+    expect(pickupPreparing.showMarkReadyToShip).toBe(false);
+    expect(pickupPreparing.showMarkShipped).toBe(false);
+    expect(pickupPreparing.showMarkReady).toBe(true);
+    expect(pickupPreparing.shippingAddress).toBeNull();
+
+    const shippingFlagOff = buildOrderPageViewModel(
+      makeOrder({
+        fulfillmentStatus: 'PREPARING',
+        fulfillmentMode: 'SHIPPING',
+        shippingLightEnabled: false,
+        shippingAddress: sampleAddress,
+      }),
+      '42',
+      'demo',
+      baseUi,
+      true,
+      true,
+      true,
+      true,
+      true,
+    );
+    expect(shippingFlagOff.showMarkReadyToShip).toBe(false);
+    expect(shippingFlagOff.showMarkShipped).toBe(false);
+    expect(shippingFlagOff.showMarkReady).toBe(false);
+    expect(shippingFlagOff.shippingAddress).toBeNull();
+
+    const shippingPreparing = buildOrderPageViewModel(
+      makeOrder({
+        fulfillmentStatus: 'PREPARING',
+        fulfillmentMode: 'SHIPPING',
+        shippingLightEnabled: true,
+        shippingAddress: sampleAddress,
+      }),
+      '42',
+      'demo',
+      baseUi,
+      true,
+      true,
+      true,
+      true,
+      true,
+    );
+    expect(shippingPreparing.showMarkReadyToShip).toBe(true);
+    expect(shippingPreparing.showMarkReady).toBe(false);
+    expect(shippingPreparing.shippingAddress).toEqual(sampleAddress);
+
+    const shippingReady = buildOrderPageViewModel(
+      makeOrder({
+        fulfillmentStatus: 'READY_TO_SHIP',
+        fulfillmentMode: 'SHIPPING',
+        shippingLightEnabled: true,
+      }),
+      '42',
+      'demo',
+      baseUi,
+      true,
+      true,
+      true,
+      true,
+      true,
+    );
+    expect(shippingReady.showMarkShipped).toBe(true);
+    expect(shippingReady.shippingAddress).toBeNull();
+  });
+
   it('P1: shows Start prep only for ACCEPTED with cap and not on hold', () => {
     const accepted = buildOrderPageViewModel(
       makeOrder({ fulfillmentStatus: 'ACCEPTED' }),

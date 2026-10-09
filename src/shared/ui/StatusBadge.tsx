@@ -10,6 +10,9 @@ export type PickupStatusKey =
   | 'PREPARING'
   | 'ready'
   | 'READY_FOR_PICKUP'
+  | 'READY_TO_SHIP'
+  | 'SHIPPED'
+  | 'DELIVERED'
   | 'collected'
   | 'COLLECTED'
   | 'canceled'
@@ -58,7 +61,14 @@ const KNOWN_STATUS_TONES = new Set([
 
 export function mapStatusToTone(status: string): BadgeTone {
   const normalized = status.trim().toLowerCase();
-  if (normalized === 'ready' || normalized === 'ready_for_pickup' || normalized === 'collected') {
+  if (
+    normalized === 'ready' ||
+    normalized === 'ready_for_pickup' ||
+    normalized === 'ready_to_ship' ||
+    normalized === 'shipped' ||
+    normalized === 'delivered' ||
+    normalized === 'collected'
+  ) {
     return 'success';
   }
   if (

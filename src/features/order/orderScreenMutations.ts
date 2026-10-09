@@ -201,6 +201,50 @@ export async function markOrderReady(ctx: OrderMutationContext): Promise<void> {
   }
 }
 
+/** Shipping Light — PREPARING → READY_TO_SHIP. */
+export async function markOrderReadyToShip(ctx: OrderMutationContext): Promise<void> {
+  if (!ctx.order || !ctx.accessToken || ctx.submitCooldown.isCoolingDown) {
+    return;
+  }
+  try {
+    await ctx.gateway.markReadyToShip(
+      ctx.tenantCode,
+      ctx.accessToken,
+      ctx.order.fulfillmentId,
+      ctx.order.version,
+    );
+    ctx.showToast(
+      ctx.t('pickup.toast.markReadyToShipSuccess', { defaultValue: 'Ready to ship' }),
+      'success',
+    );
+    await ctx.refreshOrder();
+  } catch (err) {
+    handleOrderMutationError(err, 'pickup.toast.markReadyToShipFailed', ctx, 'markReadyToShip');
+  }
+}
+
+/** Shipping Light — READY_TO_SHIP → SHIPPED. */
+export async function markOrderShipped(ctx: OrderMutationContext): Promise<void> {
+  if (!ctx.order || !ctx.accessToken || ctx.submitCooldown.isCoolingDown) {
+    return;
+  }
+  try {
+    await ctx.gateway.markShipped(
+      ctx.tenantCode,
+      ctx.accessToken,
+      ctx.order.fulfillmentId,
+      ctx.order.version,
+    );
+    ctx.showToast(
+      ctx.t('pickup.toast.markShippedSuccess', { defaultValue: 'Marked as shipped' }),
+      'success',
+    );
+    await ctx.refreshOrder();
+  } catch (err) {
+    handleOrderMutationError(err, 'pickup.toast.markShippedFailed', ctx, 'markShipped');
+  }
+}
+
 /** P7 A11 — staff mark unavailable (ITEM|ORDER). */
 export async function markOrderUnavailable(
   ctx: OrderMutationContext,
