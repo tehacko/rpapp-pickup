@@ -82,8 +82,8 @@ export function PickupSideNav({
   }
   const showChip = chipParts.length > 0;
   const expandLabel = railExpanded
-    ? t('nav.side.collapse', { defaultValue: 'Collapse navigation' })
-    : t('nav.side.expand', { defaultValue: 'Expand navigation' });
+    ? t('nav.side.collapse')
+    : t('nav.side.expand');
 
   return (
     <Tooltip.Provider delayDuration={300}>
@@ -125,7 +125,7 @@ export function PickupSideNav({
           {railExpanded ? (
             <div className="min-w-0">
               <p className="m-0 truncate text-sm font-semibold tracking-wide text-[var(--brand-consumer-accent-soft)]">
-                Pickup
+                {t('nav.side.brand')}
               </p>
               <p className="m-0 truncate text-xs text-[var(--brand-consumer-accent-soft)]/70">
                 {tenantCode}
@@ -141,7 +141,7 @@ export function PickupSideNav({
           >
             <WifiOff className="h-3.5 w-3.5 shrink-0 stroke-[1.75]" aria-hidden />
             {railExpanded ? (
-              <span>{t('nav.side.offline', { defaultValue: 'Offline' })}</span>
+              <span>{t('nav.side.offline')}</span>
             ) : null}
           </div>
         ) : null}

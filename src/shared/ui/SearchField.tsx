@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef } from 'react';
 import { Search, X } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { Input } from './Input.js';
 import { IconButton } from './IconButton.js';
 import { cn } from './cn.js';
@@ -31,6 +32,7 @@ export function SearchField({
   'aria-label': ariaLabel,
   testId = 'pickup-search-field',
 }: SearchFieldProps): JSX.Element {
+  const { t } = useTranslation('pickup');
   const inputId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -57,7 +59,7 @@ export function SearchField({
         }}
         placeholder={placeholder}
         disabled={disabled}
-        aria-label={ariaLabel ?? placeholder ?? 'Search'}
+        aria-label={ariaLabel ?? placeholder ?? t('shared.search')}
         className="pr-11 pl-10"
         data-testid={`${testId}-input`}
       />
@@ -65,7 +67,7 @@ export function SearchField({
         <span className="absolute right-1 top-1/2 -translate-y-1/2">
           <IconButton
             icon={X}
-            aria-label="Clear search"
+            aria-label={t('shared.clearSearch')}
             size="sm"
             tone="muted"
             disabled={disabled}

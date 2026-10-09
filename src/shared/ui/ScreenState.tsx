@@ -65,8 +65,8 @@ export const ScreenState = memo<ScreenStateProps>((props) => {
   return (
     <EmptyState
       icon={icon}
-      title={title ?? t('pickup.common.emptyTitle', { defaultValue: 'Nothing here' })}
-      message={message ?? t('pickup.common.empty', { defaultValue: 'No items to show.' })}
+      title={title ?? t('pickup.common.emptyTitle')}
+      message={message ?? t('pickup.common.empty')}
       hint={hint}
       action={
         action !== undefined

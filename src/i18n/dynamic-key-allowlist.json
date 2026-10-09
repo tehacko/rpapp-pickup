@@ -1,9 +1,43 @@
 {
   "_notes": [
-    "PickupStaffRePinModal uses titleKey/descriptionKey props passed from callers with known i18n key prefixes."
+    "Non-regex entries require exact dynamic-expression match (no substring bypass).",
+    "Regex entries are anchored full-match patterns for verified dynamic t() call sites only.",
+    "BarcodeAssignDetailScreenView ternaries use \\s so CRLF/LF source formatting both match."
   ],
   "patterns": [
+    "key",
     "titleKey",
-    "descriptionKey"
+    "descriptionKey",
+    "labelKey",
+    "item.labelKey",
+    "option.labelKey",
+    "status.labelKey",
+    "badge.key",
+    "draftBadge.key",
+    "kpi.labelKey",
+    "refreshingLabelKey",
+    "viewModel.screenshotBanCopyKey",
+    "BARCODE_ASSIGN_CATALOG_FILTER_I18N_KEYS[id]",
+    "BARCODE_ASSIGN_CATALOG_FILTER_I18N_KEYS.aria",
+    "RESTOCK_CATALOG_FILTER_I18N_KEYS[id]",
+    "regex:^primaryLocked\\s*\\?\\s*'pickup\\.barcodeAssign\\.confirmOverwriteAlt'\\s*:\\s*'pickup\\.barcodeAssign\\.confirmOverwrite'$",
+    "regex:^primaryLocked\\s*\\?\\s*'pickup\\.barcodeAssign\\.confirmMoveAlt'\\s*:\\s*'pickup\\.barcodeAssign\\.confirmMove'$",
+    "regex:^primaryLocked\\s*\\?\\s*'pickup\\.barcodeAssign\\.moveAlt'\\s*:\\s*'pickup\\.barcodeAssign\\.moveHere'$",
+    "regex:^`pickup\\.checkup\\.mismatch\\.\\$\\{line\\.mismatch\\}`$",
+    "regex:^`pickup\\.checkup\\.shrinkage\\.\\$\\{reason\\}`$",
+    "regex:^`pickup\\.selfScan\\.status\\.\\$\\{row\\.status\\}`$",
+    "regex:^`pickup\\.selfScan\\.status\\.\\$\\{viewModel\\.status\\}`$",
+    "regex:^`pickup\\.selfScan\\.selective\\.\\$\\{viewModel\\.selectiveCheckStatus\\}`$",
+    "regex:^`pickup\\.selfScan\\.txStatus\\.\\$\\{viewModel\\.status\\}`$",
+    "regex:^`\\$\\{prefix\\}\\.runningDegraded`$",
+    "regex:^`\\$\\{prefix\\}\\.cameraRunningZxingAssist`$",
+    "regex:^`\\$\\{prefix\\}\\.cameraRunningZbar`$",
+    "regex:^`\\$\\{prefix\\}\\.cameraRunning`$",
+    "regex:^`\\$\\{i18nPrefix\\}\\.snapNoCodeFound`$",
+    "regex:^`\\$\\{i18nPrefix\\}\\.cameraRetry`$",
+    "regex:^`\\$\\{i18nPrefix\\}\\.cameraRecoveryManual`$",
+    "regex:^`\\$\\{i18nPrefix\\}\\.snapPreviewAriaLabel`$",
+    "regex:^`\\$\\{i18nPrefix\\}\\.snapPreview`$",
+    "regex:^`\\$\\{i18nPrefix\\}\\.startCamera`$"
   ]
 }

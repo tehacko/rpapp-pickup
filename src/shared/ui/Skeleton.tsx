@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { cn } from './cn.js';
 
 const pulseClass =
@@ -8,15 +9,14 @@ export interface SkeletonProps {
   readonly 'aria-label'?: string;
 }
 
-export function Skeleton({
-  className,
-  'aria-label': ariaLabel = 'Loading',
-}: SkeletonProps): JSX.Element {
+export function Skeleton({ className, 'aria-label': ariaLabel }: SkeletonProps): JSX.Element {
+  const { t } = useTranslation('pickup');
+
   return (
     <div
       className={cn(pulseClass, className)}
       aria-busy="true"
-      aria-label={ariaLabel}
+      aria-label={ariaLabel ?? t('pickup.common.loading')}
       data-testid="pickup-skeleton"
     />
   );
@@ -30,11 +30,16 @@ export interface SkeletonTextProps {
 const SKELETON_TEXT_KEYS = ['sk-text-1', 'sk-text-2', 'sk-text-3', 'sk-text-4', 'sk-text-5'] as const;
 
 export function SkeletonText({ lines = 2, className }: SkeletonTextProps): JSX.Element {
+  const { t } = useTranslation('pickup');
   const count = Math.min(Math.max(lines, 1), SKELETON_TEXT_KEYS.length);
   const keys = SKELETON_TEXT_KEYS.slice(0, count);
 
   return (
-    <div className={cn('flex flex-col gap-2', className)} aria-busy="true" aria-label="Loading">
+    <div
+      className={cn('flex flex-col gap-2', className)}
+      aria-busy="true"
+      aria-label={t('pickup.common.loading')}
+    >
       {keys.map((key, index) => {
         const widthClass = (() => {
           if (index === keys.length - 1) {
@@ -65,6 +70,7 @@ const SKELETON_ROW_KEYS = [
 ] as const;
 
 export function SkeletonRow({ count = 3, className }: SkeletonRowProps): JSX.Element {
+  const { t } = useTranslation('pickup');
   const safeCount = Math.min(Math.max(count, 1), SKELETON_ROW_KEYS.length);
   const keys = SKELETON_ROW_KEYS.slice(0, safeCount);
 
@@ -72,7 +78,7 @@ export function SkeletonRow({ count = 3, className }: SkeletonRowProps): JSX.Ele
     <div
       className={cn('flex flex-col gap-3', className)}
       aria-busy="true"
-      aria-label="Loading"
+      aria-label={t('pickup.common.loading')}
       data-testid="pickup-skeleton-row"
     >
       {keys.map((key) => (

@@ -27,19 +27,16 @@ export function ClaimBadge({ claim, className }: ClaimBadgeProps): JSX.Element {
     dataClaim = 'expires-soon';
     tone = 'warn';
     label = t('pickup.claim.expiresSoon', {
-      defaultValue: `${claim.deviceLabel} · expires soon`,
       device: claim.deviceLabel,
     });
   } else if (claim.isClaimedByCurrentDevice) {
     dataClaim = 'this-device';
     tone = 'success';
     label = t('pickup.claim.thisDevice', {
-      defaultValue: `${claim.deviceLabel} · this device`,
       device: claim.deviceLabel,
     });
   } else {
     label = t('pickup.claim.otherDevice', {
-      defaultValue: claim.deviceLabel,
       device: claim.deviceLabel,
     });
   }

@@ -48,9 +48,7 @@ export function RefusePanel({
                 min={0}
                 max={line.quantityRemaining}
                 disabled={!selected || lineDisabled}
-                aria-label={t('pickup.refuse.qty', {
-                  defaultValue: `Line ${String(line.lineId)} refuse quantity`,
-                })}
+                aria-label={t('pickup.refuse.qty')}
                 testId={`pickup-refuse-qty-${line.lineId}`}
                 onDec={() => onChangeQty(line.lineId, Math.max(0, qty - 1))}
                 onInc={() =>

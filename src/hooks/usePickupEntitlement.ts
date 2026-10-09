@@ -17,6 +17,7 @@ import {
   PickupStaffFunction,
   type PickupStaffFunctionKey,
 } from '../shared/entitlements/pickupStaffFunctions.js';
+import { isPickupHermeticCapabilityGridBypass } from '../shared/entitlements/pickupHermeticCapabilityGridBypass.js';
 import { usePickupStaffSession } from '../shared/session/PickupStaffSessionProvider.js';
 import { isTenantInactiveError } from '../lib/tenantInactive.js';
 import { resolvePickupDeviceFlags } from './pickupDeviceFlags.js';
@@ -28,6 +29,9 @@ function resolveClientProductReadinessMode(): 'test' | 'production' {
 }
 
 function isPickupBlockReadinessActivable(blockKey: EntitlementBlockKey): boolean {
+  if (isPickupHermeticCapabilityGridBypass()) {
+    return true;
+  }
   const capabilityId = productCapabilityIdForEntitlementBlock(blockKey);
   if (capabilityId === undefined) {
     return true;

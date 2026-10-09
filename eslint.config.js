@@ -10,7 +10,7 @@ import globals from 'globals';
 export default [
   js.configs.recommended,
   {
-    ignores: ['dist/**', 'node_modules/**', 'coverage/**', 'start.js'],
+    ignores: ['dist/**', 'node_modules/**', 'coverage/**', 'start.js', 'vendor/**'],
   },
   {
     files: ['**/*.{ts,tsx}'],
@@ -89,6 +89,7 @@ export default [
       'dist/**',
       'node_modules/**',
       'coverage/**',
+      'vendor/**',
       'vite.config.ts',
       'playwright.config.ts',
       'e2e/**',

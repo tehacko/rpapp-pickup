@@ -210,9 +210,7 @@ export async function markOrderUnavailable(
     return;
   }
   if (input.scope === 'ITEM' && (input.lineIds == null || input.lineIds.length === 0)) {
-    ctx.showToast(ctx.t('pickup.toast.unavailableSelectLines', {
-      defaultValue: 'Select at least one line.',
-    }), 'error');
+    ctx.showToast(ctx.t('pickup.toast.unavailableSelectLines'), 'error');
     return;
   }
   try {
@@ -222,9 +220,7 @@ export async function markOrderUnavailable(
       ...(input.lineIds != null ? { lineIds: input.lineIds } : {}),
     });
     ctx.showToast(
-      ctx.t('pickup.toast.unavailableSuccess', {
-        defaultValue: 'Marked unavailable — customer will choose next step.',
-      }),
+      ctx.t('pickup.toast.unavailableSuccess'),
       'success',
     );
     await ctx.refreshOrder();
@@ -247,7 +243,7 @@ export async function updateOrderPromisedEta(
       promisedPickupAt,
     });
     ctx.showToast(
-      ctx.t('pickup.toast.etaSuccess', { defaultValue: 'Promised pickup time updated.' }),
+      ctx.t('pickup.toast.etaSuccess'),
       'success',
     );
     await ctx.refreshOrder();

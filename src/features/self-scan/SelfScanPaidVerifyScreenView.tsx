@@ -113,9 +113,7 @@ export function SelfScanPaidVerifyScreenView({
                 variant="outline"
                 data-testid="self-scan-verify-status"
               >
-                {t(`pickup.selfScan.txStatus.${viewModel.status}`, {
-                  defaultValue: viewModel.status,
-                })}
+                {t(`pickup.selfScan.txStatus.${viewModel.status}`)}
               </Badge>
             }
           />

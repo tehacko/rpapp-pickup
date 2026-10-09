@@ -250,7 +250,7 @@ export function OrderScreenView({
           />
           {order.customerPhone != null && order.customerPhone.trim().length > 0 ? (
             <MetaRow
-              label={t('pickup.order.phoneLabel', { defaultValue: 'Phone' })}
+              label={t('pickup.order.phoneLabel')}
               value={
                 <a
                   className="inline-flex items-center gap-1.5 font-medium text-[var(--color-on-surface)] hover:underline"
@@ -265,7 +265,7 @@ export function OrderScreenView({
           ) : null}
           {order.customerEmail != null && order.customerEmail.trim().length > 0 ? (
             <MetaRow
-              label={t('pickup.order.emailLabel', { defaultValue: 'Email' })}
+              label={t('pickup.order.emailLabel')}
               value={
                 <a
                   className="inline-flex items-center gap-1.5 font-medium text-[var(--color-on-surface)] hover:underline"

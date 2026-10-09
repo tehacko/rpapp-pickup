@@ -91,9 +91,7 @@ export function PartialConfirmPanel({
                   min={0}
                   max={line.quantityRemaining}
                   disabled={!selected || lineDisabled}
-                  aria-label={t('pickup.partial.qty', {
-                    defaultValue: `Line ${String(line.lineId)} quantity`,
-                  })}
+                  aria-label={t('pickup.partial.qty')}
                   testId={`pickup-partial-qty-${line.lineId}`}
                   onDec={() => onChangeQty(line.lineId, Math.max(0, qty - 1))}
                   onInc={() =>

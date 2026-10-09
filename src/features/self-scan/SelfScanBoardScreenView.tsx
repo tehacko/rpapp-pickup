@@ -155,9 +155,7 @@ export function SelfScanBoardScreenView({
                   <QueueRow
                     fulfillmentId={row.publicId}
                     status={row.status}
-                    statusLabel={t(`pickup.selfScan.status.${row.status}`, {
-                      defaultValue: row.status,
-                    })}
+                    statusLabel={t(`pickup.selfScan.status.${row.status}`)}
                     title={row.title}
                     subtitle={t('pickup.selfScan.rowSubtitle', {
                       lines: row.lineCountLabel,

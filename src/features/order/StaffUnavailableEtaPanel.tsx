@@ -53,19 +53,16 @@ export function StaffUnavailableEtaPanel({
     .filter((l) => selected[l.lineId] === true)
     .map((l) => l.lineId);
 
-  const lineFallback = t('pickup.order.line', { defaultValue: 'Line' });
+  const lineFallback = t('pickup.order.line');
 
   return (
     <div className="flex flex-col gap-[var(--pickup-space-4)]" data-testid="pickup-staff-a11-eta">
       <div>
         <PageSectionHeader
-          title={t('pickup.unavailable.title', { defaultValue: 'Mark unavailable (A11)' })}
+          title={t('pickup.unavailable.title')}
         />
         <p className="m-0 mb-2 text-xs text-[var(--color-on-surface-muted)]">
-          {t('pickup.unavailable.hint', {
-            defaultValue:
-              'Customer chooses accept remainder or cancel all. Not the same as refuse lines.',
-          })}
+          {t('pickup.unavailable.hint')}
         </p>
         <ul className="m-0 mb-2 list-none p-0">
           {openLines.map((line) => {
@@ -98,7 +95,7 @@ export function StaffUnavailableEtaPanel({
             disabled={disabled || selectedIds.length === 0}
             onClick={() => onMarkUnavailable({ scope: 'ITEM', lineIds: selectedIds })}
           >
-            {t('pickup.unavailable.markItems', { defaultValue: 'Mark selected unavailable' })}
+            {t('pickup.unavailable.markItems')}
           </Button>
           <Button
             type="button"
@@ -107,17 +104,17 @@ export function StaffUnavailableEtaPanel({
             disabled={disabled || openLines.length === 0}
             onClick={() => onMarkUnavailable({ scope: 'ORDER' })}
           >
-            {t('pickup.unavailable.markOrder', { defaultValue: 'Mark entire order unavailable' })}
+            {t('pickup.unavailable.markOrder')}
           </Button>
         </div>
       </div>
 
       <div>
         <PageSectionHeader
-          title={t('pickup.eta.title', { defaultValue: 'Promised pickup time' })}
+          title={t('pickup.eta.title')}
         />
         <MetaRow
-          label={t('pickup.eta.current', { defaultValue: 'Current ETA' })}
+          label={t('pickup.eta.current')}
           value={
             promisedPickupAt != null && promisedPickupAt.length > 0
               ? promisedPickupAt
@@ -125,7 +122,7 @@ export function StaffUnavailableEtaPanel({
           }
         />
         <label className="mt-2 flex flex-col gap-1 text-sm" htmlFor="pickup-promised-eta-input">
-          {t('pickup.eta.newLabel', { defaultValue: 'New promised time' })}
+          {t('pickup.eta.newLabel')}
           <input
             id="pickup-promised-eta-input"
             type="datetime-local"
@@ -150,7 +147,7 @@ export function StaffUnavailableEtaPanel({
               onUpdatePromisedEta(new Date(ms).toISOString());
             }}
           >
-            {t('pickup.eta.submit', { defaultValue: 'Update promised ETA' })}
+            {t('pickup.eta.submit')}
           </Button>
         </div>
       </div>

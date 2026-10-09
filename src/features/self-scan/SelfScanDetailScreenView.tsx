@@ -217,9 +217,7 @@ export function SelfScanDetailScreenView({
         <MetaRow label={t('pickup.selfScan.totalLabel')} value={viewModel.totalLabel} />
         <MetaRow
           label={t('pickup.selfScan.selectiveStatusLabel')}
-          value={t(`pickup.selfScan.selective.${viewModel.selectiveCheckStatus}`, {
-            defaultValue: viewModel.selectiveCheckStatus,
-          })}
+          value={t(`pickup.selfScan.selective.${viewModel.selectiveCheckStatus}`)}
         />
       </SectionCard>
 

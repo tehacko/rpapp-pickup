@@ -1,4 +1,5 @@
 import { Minus, Plus } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { IconButton } from './IconButton.js';
 import { cn } from './cn.js';
 
@@ -30,6 +31,7 @@ export function QuantityStepper({
   className,
   testId = 'pickup-quantity-stepper',
 }: QuantityStepperProps): JSX.Element {
+  const { t } = useTranslation('pickup');
   const atMin = value <= min;
   const atMax = max !== undefined && value >= max;
 
@@ -44,7 +46,7 @@ export function QuantityStepper({
         icon={Minus}
         size="sm"
         tone="muted"
-        aria-label={`${ariaLabel}: decrease`}
+        aria-label={t('pickup.partial.decrease')}
         disabled={disabled || atMin}
         onClick={onDec}
         data-testid={`${testId}-dec`}
@@ -59,7 +61,7 @@ export function QuantityStepper({
       <IconButton
         icon={Plus}
         size="sm"
-        aria-label={`${ariaLabel}: increase`}
+        aria-label={t('pickup.partial.increase')}
         disabled={disabled || atMax}
         onClick={onInc}
         data-testid={`${testId}-inc`}

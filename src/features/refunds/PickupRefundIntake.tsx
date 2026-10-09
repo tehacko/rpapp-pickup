@@ -273,10 +273,7 @@ export function PickupRefundIntake({
         if (!customerConsentedAlt) {
           setRefundError({
             status: 409,
-            message: t('pickup.refunds.consentRequired', {
-              defaultValue:
-                'Customer consent is required for alternative cash after mandatory withdrawal.',
-            }),
+            message: t('pickup.refunds.consentRequired'),
           });
           setRefundSubmitting(false);
           return;
@@ -596,10 +593,7 @@ export function PickupRefundIntake({
                 <option value="ALTERNATIVE_CASH">ALTERNATIVE_CASH</option>
               </select>
               <span className="text-xs text-[var(--color-on-surface-muted)]">
-                {t('pickup.refunds.altCashAfterNativeFail', {
-                  defaultValue:
-                    'ALTERNATIVE_CASH only after native ORIGINAL failed. ALTERNATIVE_BANK is unavailable.',
-                })}
+                {t('pickup.refunds.altCashAfterNativeFail')}
               </span>
               {effectiveRefundMethod === 'ALTERNATIVE_CASH' ? (
                 <label className="mt-2 flex items-start gap-2 text-sm">
@@ -613,10 +607,7 @@ export function PickupRefundIntake({
                     }}
                   />
                   <span>
-                    {t('pickup.refunds.altConsent', {
-                      defaultValue:
-                        'Customer consented to alternative cash payout (mandatory withdrawal).',
-                    })}
+                    {t('pickup.refunds.altConsent')}
                   </span>
                 </label>
               ) : null}

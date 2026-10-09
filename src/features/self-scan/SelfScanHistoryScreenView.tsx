@@ -107,9 +107,7 @@ export function SelfScanHistoryScreenView({
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
                       <StatusBadge
-                        label={t(`pickup.selfScan.status.${row.status}`, {
-                          defaultValue: row.status,
-                        })}
+                        label={t(`pickup.selfScan.status.${row.status}`)}
                         status={row.status}
                       />
                       <span className="font-mono font-semibold">{row.title}</span>

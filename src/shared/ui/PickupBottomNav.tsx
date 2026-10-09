@@ -81,7 +81,7 @@ export function PickupBottomNav({
           data-testid="pickup-bottom-nav-offline"
         >
           <WifiOff className="h-3.5 w-3.5 stroke-[1.75]" aria-hidden />
-          <span>{t('nav.bottom.offline', { defaultValue: 'Offline' })}</span>
+          <span>{t('nav.bottom.offline')}</span>
           <span
             className="inline-block h-1.5 w-1.5 rounded-full bg-[var(--color-warning,var(--color-on-surface-muted))]"
             aria-hidden

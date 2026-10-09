@@ -138,7 +138,7 @@ export function PickupMoreDrawer({
               <section aria-labelledby="pickup-more-actions-heading">
                 <SectionHeading>
                   <span id="pickup-more-actions-heading">
-                    {t('nav.more.actions', { defaultValue: 'Actions' })}
+                    {t('nav.more.actions')}
                   </span>
                 </SectionHeading>
                 <ul className="flex flex-col gap-0.5">
@@ -160,7 +160,7 @@ export function PickupMoreDrawer({
               <section aria-labelledby="pickup-more-device-heading">
                 <SectionHeading>
                   <span id="pickup-more-device-heading">
-                    {t('nav.more.device', { defaultValue: 'Device' })}
+                    {t('nav.more.device')}
                   </span>
                 </SectionHeading>
                 <ul className="flex flex-col gap-0.5">

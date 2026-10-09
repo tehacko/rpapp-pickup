@@ -39,13 +39,13 @@ function resolveAgeDisplayLabel(
     return item.ageLabel;
   }
   if (item.age.labelKind === 'in') {
-    return t('pickup.queue.ageIn', { minutes, defaultValue: item.ageLabel });
+    return t('pickup.queue.ageIn', { minutes });
   }
   if (item.age.labelKind === 'ago') {
-    return t('pickup.queue.ageAgo', { minutes, defaultValue: item.ageLabel });
+    return t('pickup.queue.ageAgo', { minutes });
   }
   if (item.age.labelKind === 'overdue') {
-    return t('pickup.queue.ageOverdue', { minutes, defaultValue: item.ageLabel });
+    return t('pickup.queue.ageOverdue', { minutes });
   }
   return item.ageLabel;
 }
@@ -63,7 +63,7 @@ function formatLastUpdated(
     minute: '2-digit',
     second: '2-digit',
   });
-  return t('pickup.queue.lastUpdated', { time, defaultValue: `Updated ${time}` });
+  return t('pickup.queue.lastUpdated', { time });
 }
 
 export interface QueueScreenViewProps {
@@ -169,15 +169,10 @@ export function QueueScreenView({
                 data-testid="queue-new-orders-paused-banner"
               >
                 <p className="text-sm font-medium text-[var(--color-on-surface)]">
-                  {t('pickup.queue.newOrdersPausedTitle', {
-                    defaultValue: 'New orders paused',
-                  })}
+                  {t('pickup.queue.newOrdersPausedTitle')}
                 </p>
                 <p className="mt-0.5 text-xs text-[var(--color-on-surface-muted)]">
-                  {t('pickup.queue.newOrdersPausedBody', {
-                    defaultValue:
-                      'This shop is not accepting new orders. Existing orders in the queue stay visible.',
-                  })}
+                  {t('pickup.queue.newOrdersPausedBody')}
                 </p>
               </div>
             ) : null}
