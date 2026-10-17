@@ -4,6 +4,7 @@ import {
   loadCommerceE2eState,
   tenantV1Path,
 } from '../../../up-backend/e2e/helpers/commerceE2eState.js';
+import { pickupLogin, pickupStaffRequestHeaders } from '../helpers/barcodeIntegrationHarness.js';
 
 const integrationEnabled = process.env.E2E_INTEGRATION === '1';
 
@@ -18,44 +19,45 @@ test.describe('barcode assign integration (BAR-PR-17)', () => {
     const state = loadCommerceE2eState();
     const base = apiBase();
     const tenant = state.tenantCode;
-    const salesPointId = state.cashPm.salesPointId;
     const productId = state.productId;
     const barcode = `BAR-INT-${String(Date.now())}`;
 
     const health = await request.get(`${base}/health`);
     expect(health.ok()).toBeTruthy();
 
-    const loginRes = await request.post(`${base}${tenantV1Path(tenant, 'pickup/auth/login')}`, {
-      headers: { 'Accept-Encoding': 'identity' },
-      data: { salesPointId, pin: state.pickupPin },
-    });
-    expect(loginRes.ok()).toBeTruthy();
-    const token = ((await loginRes.json()) as { data: { accessToken: string } }).data.accessToken;
+    const token = await pickupLogin(request, state);
 
-    const assignRes = await request.put(
-      `${base}${tenantV1Path(tenant, `pickup/products/${productId}/barcode/primary`)}`,
+    // Spec Lock: when product_barcode_administration is write-entitled, primary = slug
+    // and cannot be mutated — pickup staff must assign via alt barcodes.
+    const assignRes = await request.post(
+      `${base}${tenantV1Path(tenant, `pickup/products/${productId}/barcode/alt`)}`,
       {
         headers: {
-          Authorization: `Bearer ${token}`,
-          'Accept-Encoding': 'identity',
-          'Content-Type': 'application/json',
+          ...pickupStaffRequestHeaders(token),
           'Idempotency-Key': `pw-barcode-${String(Date.now())}`,
         },
         data: { code: barcode },
       },
     );
+    if (!assignRes.ok()) {
+      throw new Error(
+        `barcode alt assign failed: HTTP ${assignRes.status()} ${await assignRes.text()}`,
+      );
+    }
     expect(assignRes.ok()).toBeTruthy();
-    const assigned = (await assignRes.json()) as { data: { barcode: string } };
-    expect(assigned.data.barcode).toBe(barcode);
+    const assigned = (await assignRes.json()) as {
+      data: { altBarcodes: string[] };
+    };
+    expect(assigned.data.altBarcodes).toContain(barcode);
 
     const getRes = await request.get(
       `${base}${tenantV1Path(tenant, `pickup/products/${productId}/barcode`)}`,
       {
-        headers: { Authorization: `Bearer ${token}`, 'Accept-Encoding': 'identity' },
+        headers: pickupStaffRequestHeaders(token),
       },
     );
     expect(getRes.ok()).toBeTruthy();
-    const loaded = (await getRes.json()) as { data: { barcode: string } };
-    expect(loaded.data.barcode).toBe(barcode);
+    const loaded = (await getRes.json()) as { data: { altBarcodes: string[] } };
+    expect(loaded.data.altBarcodes).toContain(barcode);
   });
 });

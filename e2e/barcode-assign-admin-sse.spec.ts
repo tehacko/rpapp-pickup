@@ -6,6 +6,7 @@ import {
   loginAdminIntegration,
   openAdminProductsGrid,
   pickupLogin,
+  pickupStaffRequestHeaders,
   tenantV1Path,
 } from './helpers/barcodeIntegrationHarness.js';
 
@@ -45,9 +46,7 @@ test.describe('barcode-assign-admin-sse integration (BAR-PR-17 / T-10)', () => {
         `${base}${tenantV1Path(state.tenantCode, `pickup/products/${String(productId)}/barcode/primary`)}`,
         {
       headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-        'Accept-Encoding': 'identity',
+        ...pickupStaffRequestHeaders(token),
         'Idempotency-Key': `pw-sse-${String(Date.now())}`,
       },
           data: { code: barcode },

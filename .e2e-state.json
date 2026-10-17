@@ -1,0 +1,71 @@
+{
+  "tenantCode": "e2e-commerce",
+  "tenantId": 11,
+  "pickupPin": "1234",
+  "productId": 106,
+  "pickupPointId": 10,
+  "donationProjectCode": "e2e-general",
+  "cashPm": {
+    "salesPointId": 15,
+    "slug": "e2e-cash-pm"
+  },
+  "scanPm": {
+    "salesPointId": 16,
+    "slug": "e2e-scan-pm",
+    "scanToken": "eyJ0ZW5hbnRJZCI6MTEsImZ1bGZpbGxtZW50SWQiOjIyMSwidHJhbnNhY3Rpb25JZCI6NjIzLCJwaWNrdXBQb2ludElkIjoxMCwib3JpZ2luU2FsZXNQb2ludElkIjoxNiwic2Nhbk5vbmNlIjoiMmI2MDg3ZDRlNjljMGE5YyIsImV4cCI6MTc5MjY5NTY1NH0.JVxewbaW_fhnm6qf3EpUqo4CJsJed245dUPRAKB1ajE",
+    "fulfillmentId": 221,
+    "transactionId": 623,
+    "version": 2
+  },
+  "tapPm": {
+    "salesPointId": 17,
+    "slug": "e2e-tap-pm"
+  },
+  "pickupEmployee": {
+    "email": "e2e-pickup@commerce.test",
+    "password": "test1234"
+  },
+  "promo": {
+    "progressEventId": "00000000-0000-4000-8000-000000000201",
+    "instantEventId": "00000000-0000-4000-8000-000000000202",
+    "autoDealEventId": "00000000-0000-4000-8000-000000000203",
+    "progressRuleVersionId": "6876dc10-fe7f-49df-b545-3c47fcb0ae12",
+    "progressRewardId": "00000000-0000-4000-8000-000000000101"
+  },
+  "exclusiveCouponId": "00000000-0000-4000-8000-000000000301",
+  "cashTicket": {
+    "transactionId": 620,
+    "fulfillmentId": 218,
+    "pickupCode": "YD8TMV",
+    "version": 2
+  },
+  "pickupStaffTicket": {
+    "transactionId": 621,
+    "fulfillmentId": 219,
+    "pickupCode": "RMJN2R",
+    "version": 2
+  },
+  "customer": {
+    "email": "e2e-tap@commerce.test",
+    "password": "E2E-Tap-Pass-12",
+    "customerId": 97
+  },
+  "admin": {
+    "username": "e2e-admin",
+    "password": "E2E-Admin-Pass-12",
+    "email": "e2e-admin@commerce.test"
+  },
+  "tapReadyOrder": {
+    "transactionId": 624,
+    "fulfillmentId": 222,
+    "version": 2
+  },
+  "receiptReadyOrder": {
+    "transactionId": 624,
+    "paymentId": "pay-1792090858157-3itvpcvjt"
+  },
+  "staffHandoffReadyOrder": {
+    "transactionId": 622,
+    "salesPointId": 15
+  }
+}

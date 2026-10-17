@@ -3,6 +3,7 @@ import {
   apiBase,
   loadCommerceE2eState,
 } from '../../../up-backend/e2e/helpers/commerceE2eState.js';
+import { pickupLogin, pickupStaffRequestHeaders } from '../helpers/barcodeIntegrationHarness.js';
 
 const integrationEnabled = process.env.E2E_INTEGRATION === '1';
 
@@ -20,19 +21,12 @@ test.describe('pickup short-code resolve (integration)', () => {
       return;
     }
 
-    const loginRes = await request.post(`${base}/api/${state.tenantCode}/v1/pickup/auth/login`, {
-      headers: { 'Accept-Encoding': 'identity' },
-      data: {
-        salesPointId: state.cashPm.salesPointId,
-        pin: state.pickupPin,
-      },
-    });
-    const token = ((await loginRes.json()) as { data: { accessToken: string } }).data.accessToken;
+    const token = await pickupLogin(request, state);
 
     const resolveRes = await request.post(
       `${base}/api/${state.tenantCode}/v1/pickup/staff/resolve-by-code`,
       {
-        headers: { Authorization: `Bearer ${token}`, 'Accept-Encoding': 'identity' },
+        headers: pickupStaffRequestHeaders(token),
         data: { pickupCode },
       }
     );

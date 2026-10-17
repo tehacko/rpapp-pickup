@@ -80,7 +80,7 @@ export default defineConfig({
                   process.env.HERMETIC_FORCE_WEBSERVER === '1'
                     ? false
                     : process.env.HERMETIC_REUSE_WEBSERVER === '1' || !process.env.CI,
-                timeout: 120_000,
+                timeout: 240_000,
                 env: {
                   ...process.env,
                   VITE_DEFAULT_LOCALE: 'en',
@@ -94,7 +94,7 @@ export default defineConfig({
                   process.env.HERMETIC_FORCE_WEBSERVER === '1'
                     ? false
                     : process.env.HERMETIC_REUSE_WEBSERVER === '1' || !process.env.CI,
-                timeout: 120_000,
+                timeout: 240_000,
               },
             ]
           : {
@@ -107,7 +107,7 @@ export default defineConfig({
                 process.env.HERMETIC_FORCE_WEBSERVER === '1'
                   ? false
                   : process.env.HERMETIC_REUSE_WEBSERVER === '1' || !process.env.CI,
-              timeout: 120_000,
+              timeout: 240_000,
               env: {
                 ...process.env,
                 VITE_DEFAULT_LOCALE: 'en',
