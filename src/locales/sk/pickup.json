@@ -446,6 +446,7 @@
   "pickup.cashConfirm.success": "Hotovostná platba potvrdená.",
   "pickup.cashConfirm.alreadyCompleted": "Hotovosť už bola potvrdená.",
   "pickup.cashConfirm.failed": "Potvrdenie hotovosti zlyhalo.",
+  "pickup.payment.unavailable": "Platby sú dočasne nedostupné. Skúste to neskôr.",
   "pickup.order.line": "Riadok",
   "pickup.order.ordered": "Objednané",
   "pickup.order.collected": "Vydané",

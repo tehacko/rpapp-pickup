@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { isCurrencyCode, type CurrencyCode } from 'pi-kiosk-shared';
+import { resolvePickupFacingErrorMessage } from '../../shared/errors/resolvePickupCommerceBlockedMessage.js';
 import { PickupApiError } from '../../api/pickupApi.js';
 import { useStaffToken, useTenantCode } from '../../hooks/useStaffToken.js';
 import { usePickupErrorHandler } from '../../shared/hooks/usePickupErrorHandler.js';
@@ -320,8 +321,12 @@ export function useSellScreen(
           setCheckoutError(t('pickup.sell.checkoutConfirmFailedRecoverable'));
         } else {
           // Keep pending prepare so retry reuses the same checkoutSessionId + commerceOrderId.
+          // HYG-G15 — COMMERCE_BLOCKED → payment unavailable (never raw EET/EIČ/POK/code).
           setCheckoutError(
-            err instanceof Error ? err.message : t('pickup.sell.checkoutFailed'),
+            resolvePickupFacingErrorMessage(err, {
+              commerceBlockedMessage: t('pickup.payment.unavailable'),
+              fallback: t('pickup.sell.checkoutFailed'),
+            }),
           );
         }
       } finally {

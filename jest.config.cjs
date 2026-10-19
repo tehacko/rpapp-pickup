@@ -81,6 +81,8 @@ module.exports = {
     '^pi-kiosk-shared/sentry/captureConflictBreadcrumb$':
       '<rootDir>/../shared/src/sentry/captureConflictBreadcrumb.ts',
     '^pi-kiosk-shared/sentry$': '<rootDir>/../shared/src/sentry/initSentry.ts',
+    '^pi-kiosk-shared/eet/CommerceBlockedErrorCode$':
+      '<rootDir>/../shared/src/eet/CommerceBlockedErrorCode.ts',
     '^pi-kiosk-shared$': '<rootDir>/../shared/src/index.ts',
     '^@marsidev/react-turnstile$':
       '<rootDir>/src/test/shims/react-turnstile.shim.tsx',
@@ -103,6 +105,13 @@ module.exports = {
   testPathIgnorePatterns: [
     '/node_modules/',
   ],
+  modulePathIgnorePatterns: [
+    '<rootDir>/vendor/',
+  ],
+  haste: {
+    throwOnModuleCollision: false,
+  },
+
   transform: {
     '^.+\\.(ts|tsx|js)$': [
       'ts-jest',

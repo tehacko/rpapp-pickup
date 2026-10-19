@@ -8,6 +8,7 @@ import type { ICashConfirmGateway } from './ICashConfirmGateway.js';
 import { isPickupCashConfirmEnabled, warnPickupCashConfirmBackendDisabled } from './pickupCashConfirmEnabled.js';
 import { recoverCashConfirmFromQueue } from './recoverCashConfirmFromQueue.js';
 import { PickupApiError } from '../../api/pickupApi.js';
+import { isPickupCommerceBlockedError } from '../../shared/errors/resolvePickupCommerceBlockedMessage.js';
 
 function createCashConfirmIdempotencyKey(transactionId: number): string {
   return `pickup-cash-confirm:${String(transactionId)}`;
@@ -107,7 +108,13 @@ export function useConfirmCashReceived(
             return;
           }
           handleError(err, 'cashConfirm.confirm');
-          toastApi(t('pickup.cashConfirm.retry'), 'error');
+          // HYG-G15 — COMMERCE_BLOCKED → payment unavailable (never raw code in toast).
+          toastApi(
+            isPickupCommerceBlockedError(err)
+              ? t('pickup.payment.unavailable')
+              : t('pickup.cashConfirm.retry'),
+            'error',
+          );
         } finally {
           setPendingTransactionId(null);
         }

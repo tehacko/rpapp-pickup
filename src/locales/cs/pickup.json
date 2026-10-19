@@ -469,6 +469,7 @@
   "pickup.cashConfirm.success": "Hotovost potvrzena.",
   "pickup.cashConfirm.alreadyCompleted": "Hotovost již byla potvrzena.",
   "pickup.cashConfirm.failed": "Potvrzení hotovosti se nezdařilo.",
+  "pickup.payment.unavailable": "Platby jsou dočasně nedostupné. Zkuste to prosím později.",
   "pickup.order.line": "Položka",
   "pickup.order.ordered": "Objednáno",
   "pickup.order.collected": "Vyzvednuto",

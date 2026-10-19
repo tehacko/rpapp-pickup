@@ -527,6 +527,11 @@ export async function fetchQueue(
   return { items: body.data?.items ?? [], ok: true };
 }
 
+/**
+ * HSS-G20: Fulfillment mutations below (confirm/refuse/hold/ready/ship/claim/…) do not
+ * call payment create. Staff sell payment create is only on sell catalog
+ * `/cash-prepare` + `/cash-complete` (see sellCatalogGateway).
+ */
 export async function confirmPickup(
   tenantCode: string,
   accessToken: string,
