@@ -9,18 +9,20 @@
  * On app-only deploys that symlink is broken; npm install can re-assert the
  * lockfile link unless we remove it and install with --no-package-lock.
  *
- * Live monorepo frontends pin file:../shared/pi-kiosk-shared-<version>.tgz; app-only
- * deploys use registry pin (DEFAULT_REGISTRY_TARGET / PI_KIOSK_SHARED_REGISTRY_TAG).
- * Registry fallback: ^2.2.96.
+ * Consumers pin registry `^2.3.50` (npm). App-only uses package.json registry pin or PI_KIOSK_SHARED_REGISTRY_TAG.
+ * C-F02: file:/link:/workspace: without PI_KIOSK_SHARED_REGISTRY_TAG fails closed
+ * (never silent caret fallback to stale registry, e.g. ^2.3.10 → 2.3.48).
+ * Default registry target is exact SSOT 2.3.50 (not a caret).
  */
 import { execSync } from 'node:child_process';
 import { existsSync, readFileSync, rmSync } from 'node:fs';
 import { basename, resolve } from 'node:path';
 
 const SHARED_PACKAGE_NAME = 'pi-kiosk-shared';
-/** Fallback registry range when package.json has no pin (app-only / Railway). */
-const DEFAULT_REGISTRY_TARGET = '^2.3.10';
+/** Exact SSOT floor — never a caret that can resolve below monorepo shared/version. */
+const DEFAULT_REGISTRY_TARGET = '2.3.50';
 const REGISTRY_TAG_ENV = 'PI_KIOSK_SHARED_REGISTRY_TAG';
+const SSOT_FLOOR = '2.3.50';
 
 const siblingPkg = resolve(process.cwd(), '..', 'shared', 'package.json');
 if (existsSync(siblingPkg)) {
@@ -87,7 +89,7 @@ function failNoSafeRegistryTarget(reason) {
   process.exit(1);
 }
 
-function resolveRegistryInstallTarget(rawSpec, safeDefaultTarget) {
+function resolveRegistryInstallTarget(rawSpec) {
   const normalizedSpec = typeof rawSpec === 'string' ? rawSpec.trim() : '';
   const envTarget = (process.env[REGISTRY_TAG_ENV] ?? '').trim();
 
@@ -103,15 +105,10 @@ function resolveRegistryInstallTarget(rawSpec, safeDefaultTarget) {
         reason: `detected local dependency spec "${normalizedSpec}"; using ${REGISTRY_TAG_ENV}=${envTarget}`,
       };
     }
-    if (!isRegistryInstallTarget(safeDefaultTarget)) {
-      failNoSafeRegistryTarget(
-        `Local dependency spec "${normalizedSpec}" detected and default fallback target "${safeDefaultTarget}" is invalid.`,
-      );
-    }
-    return {
-      installTarget: safeDefaultTarget,
-      reason: `detected local dependency spec "${normalizedSpec}"; using safe default ${safeDefaultTarget} (set ${REGISTRY_TAG_ENV} to override)`,
-    };
+    // Fail closed: do not fall back to registry caret/default (stale 2.3.48 risk).
+    failNoSafeRegistryTarget(
+      `Local dependency spec "${normalizedSpec}" on app-only topology requires ${REGISTRY_TAG_ENV} set to exact SSOT >= ${SSOT_FLOOR} (example: ${SSOT_FLOOR}). Silent registry fallback is forbidden (C-F02).`,
+    );
   }
 
   if (isRegistryInstallTarget(normalizedSpec)) {
@@ -161,7 +158,54 @@ function removeBrokenOrLinkedShared() {
   }
 }
 
+function parseStableSemver(version) {
+  if (typeof version !== 'string') {
+    return null;
+  }
+  const match = version.trim().match(/^(\d+)\.(\d+)\.(\d+)$/);
+  if (!match) {
+    return null;
+  }
+  return {
+    major: Number(match[1]),
+    minor: Number(match[2]),
+    patch: Number(match[3]),
+  };
+}
+
+function compareStableSemver(a, b) {
+  if (a.major !== b.major) {
+    return a.major - b.major;
+  }
+  if (a.minor !== b.minor) {
+    return a.minor - b.minor;
+  }
+  return a.patch - b.patch;
+}
+
+function assertInstalledMeetsSsotFloor() {
+  const installedPkgPath = resolve(sharedRoot, 'package.json');
+  let installedVersion = '';
+  try {
+    installedVersion = JSON.parse(readFileSync(installedPkgPath, 'utf8'))?.version ?? '';
+  } catch {
+    installedVersion = '';
+  }
+  const installed = parseStableSemver(installedVersion);
+  const floor = parseStableSemver(SSOT_FLOOR);
+  if (!installed || !floor || compareStableSemver(installed, floor) < 0) {
+    console.error(
+      `[prebuildShared] FAIL: installed pi-kiosk-shared@${installedVersion || '<missing>'} < SSOT floor ${SSOT_FLOOR} (C-F02 anti-stale).`,
+    );
+    console.error(
+      `[prebuildShared] Publish ${SSOT_FLOOR} (OTP) or set ${REGISTRY_TAG_ENV}=${SSOT_FLOOR}. Never accept silent registry 2.3.48.`,
+    );
+    process.exit(1);
+  }
+}
+
 if (sharedInstallOk()) {
+  assertInstalledMeetsSsotFloor();
   console.log(`[prebuildShared] no ../shared — using existing pi-kiosk-shared (${sharedDistJs})`);
   process.exit(0);
 }
@@ -169,7 +213,7 @@ if (sharedInstallOk()) {
 const packageJson = readAppPackageJson();
 const rawSpec = packageJson?.dependencies?.[SHARED_PACKAGE_NAME] ?? DEFAULT_REGISTRY_TARGET;
 const defaultRegistryTarget = resolveDefaultRegistryTargetFromPackage(packageJson);
-const { installTarget, reason } = resolveRegistryInstallTarget(rawSpec, defaultRegistryTarget);
+const { installTarget, reason } = resolveRegistryInstallTarget(rawSpec);
 console.warn(
   `[prebuildShared] pi-kiosk-shared missing or broken (often monorepo lockfile link → ../shared). ${reason}. Fallback default target: ${defaultRegistryTarget}. Installing from registry: pi-kiosk-shared@${installTarget}`,
 );
@@ -210,5 +254,7 @@ if (!sharedInstallOk()) {
   );
   process.exit(1);
 }
+
+assertInstalledMeetsSsotFloor();
 
 console.log(`[prebuildShared] no ../shared — using registry pi-kiosk-shared (${sharedDistJs})`);

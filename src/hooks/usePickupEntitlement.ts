@@ -93,7 +93,8 @@ export function buildEntitledFunctions(
   if (
     pickupResupplyEnabled &&
     hasResupplyCap &&
-    isPickupBlockReadinessActivable('inventory_management')
+    // Package D / D-AC-04: align client readiness with LegacyEntitlementRouteLinks (ops, not core stock).
+    isPickupBlockReadinessActivable('inventory_operations')
   ) {
     functions.push(PickupStaffFunction.STOCK_RESUPPLY);
   }
@@ -131,7 +132,7 @@ export function usePickupEntitlement(tenantCode: string): UsePickupEntitlementRe
         isPickupBlockReadinessActivable('product_barcode_administration') &&
         isPickupBlockReadinessActivable('product_vending')) ||
       (snapshot.pickupResupplyEnabled === true &&
-        isPickupBlockReadinessActivable('inventory_management')));
+        isPickupBlockReadinessActivable('inventory_operations')));
 
   const denialReason: UsePickupEntitlementResult['denialReason'] = (() => {
     if (!query.isSuccess || snapshot === null) {
