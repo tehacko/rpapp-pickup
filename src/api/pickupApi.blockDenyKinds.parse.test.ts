@@ -125,6 +125,95 @@ describe('fetchPickupStaffEntitlement Option A sanitize', () => {
     expect(snap.pickupResupplyEnabled).toBe(true);
     expect(snap.staffPickupScan).toBe(true);
   });
+
+  it('Package G: parses additive accessRevision; omits malformed', async () => {
+    const valid =
+      'ar1:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc';
+    fetchMock.mockResolvedValueOnce(
+      mockResponse({
+        ok: true,
+        json: {
+          data: {
+            revision: 2,
+            staffPickupScan: true,
+            assignBarcode: false,
+            orderPickupInfrastructure: true,
+            promotionsProgram: false,
+            pickupResupplyEnabled: false,
+            accessRevision: valid,
+          },
+        },
+      }),
+    );
+    const withRev = await fetchPickupStaffEntitlement('railway-cafe');
+    expect(withRev.accessRevision).toBe(valid);
+
+    fetchMock.mockResolvedValueOnce(
+      mockResponse({
+        ok: true,
+        json: {
+          data: {
+            revision: 2,
+            staffPickupScan: true,
+            assignBarcode: false,
+            orderPickupInfrastructure: true,
+            promotionsProgram: false,
+            pickupResupplyEnabled: false,
+            accessRevision: 'not-valid',
+          },
+        },
+      }),
+    );
+    const withoutRev = await fetchPickupStaffEntitlement('railway-cafe');
+    expect(withoutRev.accessRevision).toBeUndefined();
+  });
+
+  it('Package G: parses commercialDeniedBlockKeys when present; omits junk/empty', async () => {
+    fetchMock.mockResolvedValueOnce(
+      mockResponse({
+        ok: true,
+        json: {
+          data: {
+            revision: 2,
+            staffPickupScan: true,
+            assignBarcode: false,
+            orderPickupInfrastructure: true,
+            promotionsProgram: false,
+            pickupResupplyEnabled: false,
+            commercialDeniedBlockKeys: [
+              'inventory_operations',
+              'not_a_real_block',
+              'promotions_program',
+            ],
+          },
+        },
+      }),
+    );
+    const withKeys = await fetchPickupStaffEntitlement('railway-cafe');
+    expect(withKeys.commercialDeniedBlockKeys).toEqual([
+      'inventory_operations',
+      'promotions_program',
+    ]);
+
+    fetchMock.mockResolvedValueOnce(
+      mockResponse({
+        ok: true,
+        json: {
+          data: {
+            revision: 2,
+            staffPickupScan: true,
+            assignBarcode: false,
+            orderPickupInfrastructure: true,
+            promotionsProgram: false,
+            pickupResupplyEnabled: false,
+            commercialDeniedBlockKeys: [],
+          },
+        },
+      }),
+    );
+    const emptyKeys = await fetchPickupStaffEntitlement('railway-cafe');
+    expect(emptyKeys.commercialDeniedBlockKeys).toBeUndefined();
+  });
 });
 
 describe('pickupAccessPresentation upgrade CTA guard (Package F)', () => {

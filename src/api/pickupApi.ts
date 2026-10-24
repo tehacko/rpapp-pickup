@@ -5,6 +5,7 @@ import { resolvePickupDeviceFlags } from '../hooks/pickupDeviceFlags.js';
 import {
   getRetryAfterMs,
   isClientAccessDenyKind,
+  isEntitlementBlockKey,
   pickLocalizedApiMessage,
   type ClientAccessDenyKind,
   type LocalizedNameMap,
@@ -16,6 +17,7 @@ import { capturePickupRateLimitBreadcrumb } from '../lib/observability/sentry';
 import { notifyPickupStaffSessionExpired } from '../shared/session/pickupStaffAuthNotify.js';
 import type { QueueItem, ResolveResponse, SalesPointLookupResponse } from '../types';
 import { claimLog } from '../features/order/logging.js';
+import { parseOptionalAccessRevision } from '../shared/entitlements/parseAccessRevision.js';
 
 export interface FulfillmentClaimResult {
   readonly fulfillmentId: number;
@@ -316,6 +318,16 @@ export interface PickupStaffEntitlementSnapshot {
   readonly blockDenyKinds?: Readonly<
     Partial<Record<PickupStaffDenyBlockKey, ClientAccessDenyKind>>
   >;
+  /**
+   * Package G — opaque commercial/access fingerprint (`ar1:` + 64 hex).
+   * Additive optional; when it changes, invalidate staff entitlement query (G-AC-11).
+   */
+  readonly accessRevision?: string;
+  /**
+   * Package G — commercial DENY keys when projection ENFORCE (authoritative).
+   * Omitted under OFF/SHADOW / empty; never invent from SHADOW metadata.
+   */
+  readonly commercialDeniedBlockKeys?: readonly string[];
   readonly deviceFlags: PickupStaffDeviceFlags;
   readonly queueConfig: {
     readonly pushStrategy: 'poll' | 'sse';
@@ -347,6 +359,25 @@ export function parsePickupBlockDenyKinds(
   return Object.keys(out).length > 0 ? out : undefined;
 }
 
+/**
+ * Package G — keep known entitlement block keys only; omit empty / malformed.
+ * Never invent keys from SHADOW metadata (wire omits under OFF/SHADOW).
+ */
+export function parsePickupCommercialDeniedBlockKeys(
+  raw: unknown,
+): readonly string[] | undefined {
+  if (!Array.isArray(raw)) {
+    return undefined;
+  }
+  const out: string[] = [];
+  for (const item of raw) {
+    if (typeof item === 'string' && isEntitlementBlockKey(item)) {
+      out.push(item);
+    }
+  }
+  return out.length > 0 ? out : undefined;
+}
+
 export async function fetchPickupStaffEntitlement(
   tenantCode: string,
 ): Promise<PickupStaffEntitlementSnapshot> {
@@ -364,11 +395,26 @@ export async function fetchPickupStaffEntitlement(
   if (body.data === undefined) {
     throw new PickupApiError(res.status, 'Invalid pickup staff entitlement response');
   }
-  const { blockDenyKinds: rawKinds, ...rest } = body.data;
+  const {
+    blockDenyKinds: rawKinds,
+    accessRevision: rawAccessRevision,
+    commercialDeniedBlockKeys: rawCommercialDenied,
+    ...rest
+  } = body.data as PickupStaffEntitlementSnapshot & {
+    accessRevision?: unknown;
+    commercialDeniedBlockKeys?: unknown;
+  };
   const blockDenyKinds = parsePickupBlockDenyKinds(rawKinds);
+  const accessRevision = parseOptionalAccessRevision(rawAccessRevision);
+  const commercialDeniedBlockKeys =
+    parsePickupCommercialDeniedBlockKeys(rawCommercialDenied);
   return {
     ...rest,
     ...(blockDenyKinds !== undefined ? { blockDenyKinds } : {}),
+    ...(accessRevision !== undefined ? { accessRevision } : {}),
+    ...(commercialDeniedBlockKeys !== undefined
+      ? { commercialDeniedBlockKeys }
+      : {}),
     deviceFlags: resolvePickupDeviceFlags(body.data),
     queueConfig: body.data.queueConfig ?? {
       pushStrategy: 'poll',

@@ -21,6 +21,7 @@ import { isPickupHermeticCapabilityGridBypass } from '../shared/entitlements/pic
 import { usePickupStaffSession } from '../shared/session/PickupStaffSessionProvider.js';
 import { isTenantInactiveError } from '../lib/tenantInactive.js';
 import { resolvePickupDeviceFlags } from './pickupDeviceFlags.js';
+import { usePickupAccessRevisionInvalidation } from './usePickupAccessRevisionInvalidation.js';
 
 export type { PickupStaffEntitlementSnapshot as PickupEntitlementSnapshot };
 
@@ -116,6 +117,7 @@ export function usePickupEntitlement(tenantCode: string): UsePickupEntitlementRe
   });
 
   const snapshot = query.data ?? null;
+  usePickupAccessRevisionInvalidation(tenantCode, snapshot?.accessRevision);
   const deviceFlags = resolvePickupDeviceFlags(snapshot);
 
   const entitledFunctions =
