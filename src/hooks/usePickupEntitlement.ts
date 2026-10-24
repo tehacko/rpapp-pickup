@@ -60,6 +60,11 @@ export interface UsePickupEntitlementResult {
    */
   readonly entitledFunctions: readonly PickupStaffFunctionKey[];
   readonly deviceFlags: PickupStaffEntitlementSnapshot['deviceFlags'];
+  /**
+   * Explain-only Option A kinds from the sanitized snapshot (Package F).
+   * Never grants access; consumers must use presentation helpers for upgrade CTA.
+   */
+  readonly blockDenyKinds: PickupStaffEntitlementSnapshot['blockDenyKinds'];
   readonly denialReason: 'staff_pickup_scan' | 'assign_barcode' | 'order_pickup_infrastructure' | null;
   readonly refetch: () => void;
 }
@@ -178,6 +183,7 @@ export function usePickupEntitlement(tenantCode: string): UsePickupEntitlementRe
     isLoginAllowed,
     entitledFunctions,
     deviceFlags,
+    blockDenyKinds: snapshot?.blockDenyKinds,
     denialReason,
     refetch,
   };

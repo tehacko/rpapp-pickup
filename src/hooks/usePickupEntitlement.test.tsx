@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, jest } from '@jest/globals';
+import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { renderHook } from '@testing-library/react';
 
 const mockUseQuery = jest.fn();
@@ -50,6 +50,8 @@ const mockUsePickupStaffSession = usePickupStaffSession as jest.MockedFunction<
 describe('usePickupEntitlement', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    // CAP-06 pickup_staff_ops is PARTIAL → readiness NOT_READY without hermetic skip.
+    window.__RPAPP_E2E_PICKUP_SKIP_CAPABILITY_GRID__ = true;
     mockUsePickupStaffSession.mockReturnValue({
       sessionClaims: null,
       accessToken: null,
@@ -62,6 +64,10 @@ describe('usePickupEntitlement', () => {
       setActivePickupPointId: jest.fn(),
       signOut: jest.fn(),
     } as ReturnType<typeof usePickupStaffSession>);
+  });
+
+  afterEach(() => {
+    delete window.__RPAPP_E2E_PICKUP_SKIP_CAPABILITY_GRID__;
   });
 
   it('allows login when assignBarcode is true even if staffPickupScan is false', () => {
@@ -261,6 +267,82 @@ describe('usePickupEntitlement', () => {
 
     expect(result.current.snapshot).toBeNull();
     expect(result.current.isLoading).toBe(true);
+  });
+
+  it('F-AC-33: core scan login allowed when pickupResupplyEnabled is false', () => {
+    mockUseQuery.mockReturnValue({
+      data: {
+        revision: 1,
+        staffPickupScan: true,
+        assignBarcode: false,
+        orderPickupInfrastructure: true,
+        pickupResupplyEnabled: false,
+      },
+      isSuccess: true,
+      isPending: false,
+      isLoading: false,
+      isError: false,
+      refetch: jest.fn(),
+    });
+
+    const { result } = renderHook(() => usePickupEntitlement('demo-tenant'));
+
+    expect(result.current.isLoginAllowed).toBe(true);
+    expect(result.current.entitledFunctions).toContain('fulfillment_scan');
+    expect(result.current.entitledFunctions).not.toContain('stock_resupply');
+  });
+
+  it('F-AC-32: inventory_operations OFF (pickupResupplyEnabled false) never grants stock_resupply even with resupply session', () => {
+    // Client SSOT is pickupResupplyEnabled ← inventory_operations (not inventory_management).
+    // Backend: inventory_management ON + inventory_operations OFF → pickupResupplyEnabled false
+    // (surfaceEntitlementSnapshot.test.ts F DoD Option A).
+    mockUsePickupStaffSession.mockReturnValue({
+      sessionClaims: {
+        tenantId: 1,
+        salesPointId: 10,
+        role: 'pickup_staff',
+        capabilities: ['resupply'],
+        allowedPickupPointIds: [],
+      },
+      accessToken: 'cookie',
+      tenantCode: 'demo-tenant',
+      sessionHydrated: true,
+      allowedPickupPointIds: [],
+      isRoamingStaff: false,
+      activePickupPointId: 10,
+      establishSession: jest.fn(),
+      setActivePickupPointId: jest.fn(),
+      signOut: jest.fn(),
+    } as ReturnType<typeof usePickupStaffSession>);
+
+    mockUseQuery.mockReturnValue({
+      data: {
+        revision: 1,
+        staffPickupScan: true,
+        assignBarcode: false,
+        orderPickupInfrastructure: true,
+        pickupResupplyEnabled: false,
+        blockDenyKinds: { inventory_operations: 'COMMERCIAL' },
+      },
+      isSuccess: true,
+      isPending: false,
+      isLoading: false,
+      isError: false,
+      refetch: jest.fn(),
+    });
+
+    const { result } = renderHook(() => usePickupEntitlement('demo-tenant'));
+
+    expect(result.current.isLoginAllowed).toBe(true);
+    expect(result.current.entitledFunctions).toContain('fulfillment_scan');
+    expect(result.current.entitledFunctions).not.toContain('stock_resupply');
+    // F DoD: kinds exposed for explain UX; false flag still carries inventory_operations kind.
+    expect(result.current.blockDenyKinds).toEqual({
+      inventory_operations: 'COMMERCIAL',
+    });
+    expect(result.current.snapshot?.blockDenyKinds).toEqual({
+      inventory_operations: 'COMMERCIAL',
+    });
   });
 
   it('grants STOCK_RESUPPLY when pickupResupplyEnabled and session has resupply', () => {

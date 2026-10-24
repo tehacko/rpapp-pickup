@@ -4,7 +4,9 @@ import type { PickupStaffDeviceFlags } from '../hooks/pickupDeviceFlags.js';
 import { resolvePickupDeviceFlags } from '../hooks/pickupDeviceFlags.js';
 import {
   getRetryAfterMs,
+  isClientAccessDenyKind,
   pickLocalizedApiMessage,
+  type ClientAccessDenyKind,
   type LocalizedNameMap,
 } from 'pi-kiosk-shared';
 import { readRequestId, setClientCorrelationId } from 'pi-kiosk-shared/logging';
@@ -77,14 +79,29 @@ function generateIdempotencyKey(): string {
 
 async function parseErrorBody(
   res: Response,
-): Promise<{ message: string; code?: string; recoverable?: boolean; nextAction?: string }> {
+): Promise<{
+  message: string;
+  code?: string;
+  recoverable?: boolean;
+  nextAction?: string;
+  details?: Record<string, unknown>;
+}> {
   try {
     const json = (await res.json()) as {
-      error?: string | { code?: string; message?: string; recoverable?: boolean; nextAction?: string };
+      error?:
+        | string
+        | {
+            code?: string;
+            message?: string;
+            recoverable?: boolean;
+            nextAction?: string;
+            details?: Record<string, unknown>;
+          };
       code?: string;
       message?: string;
       recoverable?: boolean;
       nextAction?: string;
+      details?: Record<string, unknown>;
     };
     const nested =
       typeof json.error === 'object' && json.error !== null ? json.error : null;
@@ -106,11 +123,22 @@ async function parseErrorBody(
     const nextAction =
       (nested !== null && typeof nested.nextAction === 'string' ? nested.nextAction : undefined) ??
       (typeof json.nextAction === 'string' ? json.nextAction : undefined);
+    const details =
+      (nested !== null &&
+      nested.details !== undefined &&
+      typeof nested.details === 'object' &&
+      nested.details !== null
+        ? nested.details
+        : undefined) ??
+      (json.details !== undefined && typeof json.details === 'object' && json.details !== null
+        ? json.details
+        : undefined);
     return {
       message,
       ...(code !== undefined ? { code } : {}),
       ...(recoverable !== undefined ? { recoverable } : {}),
       ...(nextAction !== undefined ? { nextAction } : {}),
+      ...(details !== undefined ? { details } : {}),
     };
   } catch {
     return { message: res.statusText };
@@ -139,6 +167,32 @@ function fallbackErrorCode(status: number, code: string | undefined): string | u
   return undefined;
 }
 
+/** Forward parseErrorBody fields (incl. details.entitlementDenials) onto PickupApiError. */
+function pickupApiErrorOptions(
+  status: number,
+  parsed: {
+    code?: string;
+    recoverable?: boolean;
+    nextAction?: string;
+    details?: Record<string, unknown>;
+  },
+  extra?: { retryAfterMs?: number },
+): {
+  retryAfterMs?: number;
+  code?: string;
+  recoverable?: boolean;
+  nextAction?: string;
+  details?: Record<string, unknown>;
+} {
+  return {
+    code: fallbackErrorCode(status, parsed.code),
+    ...(parsed.recoverable !== undefined ? { recoverable: parsed.recoverable } : {}),
+    ...(parsed.nextAction !== undefined ? { nextAction: parsed.nextAction } : {}),
+    ...(parsed.details !== undefined ? { details: parsed.details } : {}),
+    ...(extra?.retryAfterMs !== undefined ? { retryAfterMs: extra.retryAfterMs } : {}),
+  };
+}
+
 async function handleMutationFailure(res: Response, path: string, method: string): Promise<never> {
   noteRateLimit(res, path, method);
   if (res.status === 401) {
@@ -147,12 +201,8 @@ async function handleMutationFailure(res: Response, path: string, method: string
   if (res.status === 429) {
     throw new PickupApiError(429, 'Rate limited', { retryAfterMs: getRetryAfterMs({ response: res }) });
   }
-  const { message, code, recoverable, nextAction } = await parseErrorBody(res);
-  throw new PickupApiError(res.status, message, {
-    code: fallbackErrorCode(res.status, code),
-    ...(recoverable !== undefined ? { recoverable } : {}),
-    ...(nextAction !== undefined ? { nextAction } : {}),
-  });
+  const parsed = await parseErrorBody(res);
+  throw new PickupApiError(res.status, parsed.message, pickupApiErrorOptions(res.status, parsed));
 }
 
 function pickupFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
@@ -235,6 +285,15 @@ function withPairedDeviceCode<T extends Record<string, unknown>>(
   return { ...body, deviceCode };
 }
 
+/** Option A pickup deny-block keys (aligned with BE surfaceEntitlementSnapshot). */
+export type PickupStaffDenyBlockKey =
+  | 'inventory_operations'
+  | 'staff_pickup_scan'
+  | 'order_pickup_infrastructure'
+  | 'catalog_administration'
+  | 'promotions_program'
+  | 'payment_cash';
+
 export interface PickupStaffEntitlementSnapshot {
   readonly revision: number;
   readonly staffPickupScan: boolean;
@@ -247,8 +306,16 @@ export interface PickupStaffEntitlementSnapshot {
    * Tenant flag for field restock/checkup. Combined with session capability
    * `resupply` in `usePickupEntitlement` to grant `stock_resupply`.
    * Exposed on GET /pickup/staff/entitlement (`surfaceEntitlementSnapshot`).
+   * Mapped from `inventory_operations` (Package D/F — not inventory_management).
    */
   readonly pickupResupplyEnabled?: boolean;
+  /**
+   * Explain-only Option A deny kinds — never grants access / never unlocks booleans.
+   * Fail-closed via `parsePickupBlockDenyKinds` (unknown omit; empty → undefined).
+   */
+  readonly blockDenyKinds?: Readonly<
+    Partial<Record<PickupStaffDenyBlockKey, ClientAccessDenyKind>>
+  >;
   readonly deviceFlags: PickupStaffDeviceFlags;
   readonly queueConfig: {
     readonly pushStrategy: 'poll' | 'sse';
@@ -261,6 +328,25 @@ export interface PickupStaffEntitlementSnapshot {
 
 export type { PickupStaffDeviceFlags };
 
+/**
+ * Package F0 Option A — keep only recognized ClientAccessDenyKind entries.
+ * Unknown / junk ⇒ omit (UNKNOWN presentation; never invent COMMERCIAL; never unlock booleans).
+ */
+export function parsePickupBlockDenyKinds(
+  raw: unknown,
+): PickupStaffEntitlementSnapshot['blockDenyKinds'] | undefined {
+  if (raw === undefined || raw === null || typeof raw !== 'object') {
+    return undefined;
+  }
+  const out: Partial<Record<PickupStaffDenyBlockKey, ClientAccessDenyKind>> = {};
+  for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
+    if (isClientAccessDenyKind(value)) {
+      out[key as PickupStaffDenyBlockKey] = value;
+    }
+  }
+  return Object.keys(out).length > 0 ? out : undefined;
+}
+
 export async function fetchPickupStaffEntitlement(
   tenantCode: string,
 ): Promise<PickupStaffEntitlementSnapshot> {
@@ -268,15 +354,21 @@ export async function fetchPickupStaffEntitlement(
     `/api/${encodeURIComponent(tenantCode)}/v1/pickup/staff/entitlement`,
   );
   if (!res.ok) {
-    const { message, code } = await parseErrorBody(res);
-    throw new PickupApiError(res.status, message, { code });
+    if (res.status === 401) {
+      noteUnauthorized(`/api/${encodeURIComponent(tenantCode)}/v1/pickup/staff/entitlement`);
+    }
+    const parsed = await parseErrorBody(res);
+    throw new PickupApiError(res.status, parsed.message, pickupApiErrorOptions(res.status, parsed));
   }
   const body = (await res.json()) as { data?: PickupStaffEntitlementSnapshot };
   if (body.data === undefined) {
     throw new PickupApiError(res.status, 'Invalid pickup staff entitlement response');
   }
+  const { blockDenyKinds: rawKinds, ...rest } = body.data;
+  const blockDenyKinds = parsePickupBlockDenyKinds(rawKinds);
   return {
-    ...body.data,
+    ...rest,
+    ...(blockDenyKinds !== undefined ? { blockDenyKinds } : {}),
     deviceFlags: resolvePickupDeviceFlags(body.data),
     queueConfig: body.data.queueConfig ?? {
       pushStrategy: 'poll',
@@ -324,9 +416,14 @@ export async function loginPickupStaff(
   });
   if (!res.ok) {
     noteRateLimit(res, `/api/${tenantCode}/v1/pickup/auth/login`, 'POST');
+    // Commercial/entitlement 403 must never trigger session-expired (401 only).
     const retryAfterMs = res.status === 429 ? getRetryAfterMs({ response: res }) : undefined;
-    const { message, code } = await parseErrorBody(res);
-    throw new PickupApiError(res.status, message, { retryAfterMs, code });
+    const parsed = await parseErrorBody(res);
+    throw new PickupApiError(
+      res.status,
+      parsed.message,
+      pickupApiErrorOptions(res.status, parsed, { retryAfterMs }),
+    );
   }
   const body = (await res.json()) as { data?: PickupStaffLoginResult };
   return body.data ?? null;
@@ -360,8 +457,12 @@ export async function completePickupEmployeeRegistration(input: {
   if (!res.ok) {
     noteRateLimit(res, path, 'POST');
     const retryAfterMs = res.status === 429 ? getRetryAfterMs({ response: res }) : undefined;
-    const { message, code } = await parseErrorBody(res);
-    throw new PickupApiError(res.status, message, { retryAfterMs, code });
+    const parsed = await parseErrorBody(res);
+    throw new PickupApiError(
+      res.status,
+      parsed.message,
+      pickupApiErrorOptions(res.status, parsed, { retryAfterMs }),
+    );
   }
   const body = (await res.json()) as { data?: PickupEmployeeRegistrationResult };
   if (body.data === undefined) {
@@ -393,8 +494,12 @@ export async function loginPickupEmployee(input: {
   if (!res.ok) {
     noteRateLimit(res, path, 'POST');
     const retryAfterMs = res.status === 429 ? getRetryAfterMs({ response: res }) : undefined;
-    const { message, code } = await parseErrorBody(res);
-    throw new PickupApiError(res.status, message, { retryAfterMs, code });
+    const parsed = await parseErrorBody(res);
+    throw new PickupApiError(
+      res.status,
+      parsed.message,
+      pickupApiErrorOptions(res.status, parsed, { retryAfterMs }),
+    );
   }
   const body = (await res.json()) as {
     data?: { expiresInSeconds: number; salesPointId: number };
@@ -422,8 +527,12 @@ export async function verifyPickupStaffPin(
       noteUnauthorized(path);
     }
     const retryAfterMs = res.status === 429 ? getRetryAfterMs({ response: res }) : undefined;
-    const { message, code } = await parseErrorBody(res);
-    throw new PickupApiError(res.status, message, { retryAfterMs, code });
+    const parsed = await parseErrorBody(res);
+    throw new PickupApiError(
+      res.status,
+      parsed.message,
+      pickupApiErrorOptions(res.status, parsed, { retryAfterMs }),
+    );
   }
 }
 
