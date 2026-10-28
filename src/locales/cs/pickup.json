@@ -781,5 +781,14 @@
   "pickup.selfScan.verifyNotPaid": "Nezaplaceno",
   "pickup.selfScan.verifyStatus": "Stav: {{status}}",
   "pickup.selfScan.verifyLookedUpAt": "Načteno {{at}}",
-  "pickup.selfScan.verifyResultLabel": "Ověření"
+  "pickup.selfScan.verifyResultLabel": "Ověření",
+  "pickup.order.markShipped": "Označit jako odeslané",
+  "pickup.order.tenantHandoffKindLabel": "Druh předání",
+  "pickup.order.tenantHandoffKindPlaceholder": "Vyberte druh předání…",
+  "pickup.order.tenantHandoffKind.DISPATCHED_TO_CARRIER": "Předáno dopravci",
+  "pickup.order.tenantHandoffKind.ARRIVED_AT_PARCEL_PICKUP_POINT": "Na výdejním místě balíků",
+  "pickup.order.tenantHandoffKind.CUSTOMER_COLLECTED_ASSERTED_BY_TENANT": "Zákazník vyzvedl (potvrzeno tenantem)",
+  "pickup.toast.markShippedSuccess": "Označeno jako odeslané",
+  "pickup.toast.markShippedFailed": "Nepodařilo se označit odeslání. Vyberte druh předání a zkuste znovu.",
+  "pickup.toast.tenantHandoffKindRequired": "Před označením odeslání vyberte druh předání."
 }

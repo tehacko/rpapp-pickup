@@ -781,5 +781,14 @@
   "pickup.selfScan.verifyNotPaid": "Not paid",
   "pickup.selfScan.verifyStatus": "Status: {{status}}",
   "pickup.selfScan.verifyLookedUpAt": "Looked up at {{at}}",
-  "pickup.selfScan.verifyResultLabel": "Verification"
+  "pickup.selfScan.verifyResultLabel": "Verification",
+  "pickup.order.markShipped": "Mark shipped",
+  "pickup.order.tenantHandoffKindLabel": "Handoff kind",
+  "pickup.order.tenantHandoffKindPlaceholder": "Select handoff kind…",
+  "pickup.order.tenantHandoffKind.DISPATCHED_TO_CARRIER": "Dispatched to carrier",
+  "pickup.order.tenantHandoffKind.ARRIVED_AT_PARCEL_PICKUP_POINT": "Arrived at parcel pickup point",
+  "pickup.order.tenantHandoffKind.CUSTOMER_COLLECTED_ASSERTED_BY_TENANT": "Customer collected (tenant asserted)",
+  "pickup.toast.markShippedSuccess": "Marked as shipped",
+  "pickup.toast.markShippedFailed": "Could not mark shipped. Select handoff kind and retry.",
+  "pickup.toast.tenantHandoffKindRequired": "Select a handoff kind before marking shipped."
 }

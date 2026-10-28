@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Ban, Check, ChefHat, Coins, Mail, Package, Pause, PackageCheck, Phone } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -19,6 +20,11 @@ import type { OrderScreenActions } from './useOrderScreen.js';
 import type { OrderScreenState } from './orderScreenState.js';
 import { PromoDiscountLine } from './PromoDiscountLine.js';
 import { StaffUnavailableEtaPanel } from './StaffUnavailableEtaPanel.js';
+import {
+  TENANT_HANDOFF_KINDS,
+  isTenantHandoffKind,
+  type TenantHandoffKind,
+} from './tenantHandoffKind.js';
 import { usePickupEntitlement } from '../../hooks/usePickupEntitlement.js';
 import { formatPickupCashAmountLabel } from '../cash-confirm/formatPickupCashAmountLabel.js';
 import { PickupRefundIntake } from '../refunds/PickupRefundIntake.js';
@@ -100,6 +106,7 @@ export function OrderScreenView({
   const promotionsEnabled = entitlement.snapshot?.promotionsProgram === true;
   const encodedTenant = encodeURIComponent(tenantCode);
   const queuePath = `/${encodedTenant}/queue`;
+  const [tenantHandoffKind, setTenantHandoffKind] = useState<TenantHandoffKind | ''>('');
 
   if (screenState.kind === 'loading') {
     return (
@@ -212,16 +219,54 @@ export function OrderScreenView({
     );
   } else if (viewModel.showMarkShipped) {
     stickyPrimary = (
-      <Button
-        type="button"
-        data-testid="pickup-mark-shipped"
-        onClick={actions.onMarkShipped}
-        disabled={viewModel.isCoolingDown}
-        className="inline-flex items-center gap-2"
-      >
-        <PackageCheck className="h-4 w-4 stroke-[1.75]" aria-hidden />
-        {t('pickup.order.markShipped', { defaultValue: 'Mark shipped' })}
-      </Button>
+      <div className="flex w-full flex-col gap-2">
+        <label
+          className="m-0 text-sm font-medium text-[var(--color-on-surface)]"
+          htmlFor="pickup-tenant-handoff-kind"
+        >
+          {t('pickup.order.tenantHandoffKindLabel', {
+            defaultValue: 'Handoff kind',
+          })}
+        </label>
+        <select
+          id="pickup-tenant-handoff-kind"
+          data-testid="pickup-tenant-handoff-kind"
+          className="min-h-[2.75rem] w-full rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-3 text-sm"
+          value={tenantHandoffKind}
+          onChange={(e) => {
+            const next = e.target.value;
+            setTenantHandoffKind(isTenantHandoffKind(next) ? next : '');
+          }}
+        >
+          <option value="">
+            {t('pickup.order.tenantHandoffKindPlaceholder', {
+              defaultValue: 'Select handoff kind…',
+            })}
+          </option>
+          {TENANT_HANDOFF_KINDS.map((kind) => (
+            <option key={kind} value={kind}>
+              {t(`pickup.order.tenantHandoffKind.${kind}`, { defaultValue: kind })}
+            </option>
+          ))}
+        </select>
+        <Button
+          type="button"
+          data-testid="pickup-mark-shipped"
+          onClick={() => {
+            if (!isTenantHandoffKind(tenantHandoffKind)) {
+              return;
+            }
+            actions.onMarkShipped(tenantHandoffKind);
+          }}
+          disabled={
+            viewModel.isCoolingDown || !isTenantHandoffKind(tenantHandoffKind)
+          }
+          className="inline-flex items-center gap-2"
+        >
+          <PackageCheck className="h-4 w-4 stroke-[1.75]" aria-hidden />
+          {t('pickup.order.markShipped', { defaultValue: 'Mark shipped' })}
+        </Button>
+      </div>
     );
   } else {
     stickyPrimary = (

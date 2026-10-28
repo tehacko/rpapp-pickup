@@ -15,6 +15,7 @@ import {
 } from './buildOrderPageViewModel.js';
 import type { IOrderFulfillmentGateway } from './IOrderFulfillmentGateway.js';
 import { mutationsLog } from './logging.js';
+import { isTenantHandoffKind } from './tenantHandoffKind.js';
 
 export interface OrderMutationContext {
   readonly tenantCode: string;
@@ -223,9 +224,21 @@ export async function markOrderReadyToShip(ctx: OrderMutationContext): Promise<v
   }
 }
 
-/** Shipping Light — READY_TO_SHIP → SHIPPED. */
-export async function markOrderShipped(ctx: OrderMutationContext): Promise<void> {
+/** Shipping Light — READY_TO_SHIP → SHIPPED (requires tenantHandoffKind). */
+export async function markOrderShipped(
+  ctx: OrderMutationContext,
+  tenantHandoffKind: unknown,
+): Promise<void> {
   if (!ctx.order || !ctx.accessToken || ctx.submitCooldown.isCoolingDown) {
+    return;
+  }
+  if (!isTenantHandoffKind(tenantHandoffKind)) {
+    ctx.showToast(
+      ctx.t('pickup.toast.tenantHandoffKindRequired', {
+        defaultValue: 'Select a handoff kind before marking shipped.',
+      }),
+      'error',
+    );
     return;
   }
   try {
@@ -234,6 +247,7 @@ export async function markOrderShipped(ctx: OrderMutationContext): Promise<void>
       ctx.accessToken,
       ctx.order.fulfillmentId,
       ctx.order.version,
+      { tenantHandoffKind },
     );
     ctx.showToast(
       ctx.t('pickup.toast.markShippedSuccess', { defaultValue: 'Marked as shipped' }),

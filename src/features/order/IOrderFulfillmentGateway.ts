@@ -88,7 +88,14 @@ export interface IOrderFulfillmentGateway {
     accessToken: string,
     fulfillmentId: number,
     version: number,
-    opts?: { carrierName?: string | null; trackingRef?: string | null },
+    opts: {
+      tenantHandoffKind:
+        | 'DISPATCHED_TO_CARRIER'
+        | 'ARRIVED_AT_PARCEL_PICKUP_POINT'
+        | 'CUSTOMER_COLLECTED_ASSERTED_BY_TENANT';
+      carrierName?: string | null;
+      trackingRef?: string | null;
+    },
   ): Promise<void>;
 
   releaseHold(

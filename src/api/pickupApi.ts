@@ -817,19 +817,36 @@ export async function markReadyToShip(
   await handleMutationFailure(res, path, 'POST');
 }
 
-/** Shipping Light — READY_TO_SHIP → SHIPPED (requires Idempotency-Key). */
+const TENANT_HANDOFF_KINDS_RUNTIME = new Set([
+  'DISPATCHED_TO_CARRIER',
+  'ARRIVED_AT_PARCEL_PICKUP_POINT',
+  'CUSTOMER_COLLECTED_ASSERTED_BY_TENANT',
+]);
+
+/** Shipping Light — READY_TO_SHIP → SHIPPED (requires Idempotency-Key + tenantHandoffKind). */
 export async function markShipped(
   tenantCode: string,
   accessToken: string,
   fulfillmentId: number,
   body: {
     version: number;
+    tenantHandoffKind:
+      | 'DISPATCHED_TO_CARRIER'
+      | 'ARRIVED_AT_PARCEL_PICKUP_POINT'
+      | 'CUSTOMER_COLLECTED_ASSERTED_BY_TENANT';
     carrierName?: string | null;
     trackingRef?: string | null;
     deviceCode?: string;
   },
   idempotencyKey: string
 ): Promise<void> {
+  if (!TENANT_HANDOFF_KINDS_RUNTIME.has(body.tenantHandoffKind)) {
+    throw new PickupApiError(
+      400,
+      'tenantHandoffKind is required (DISPATCHED_TO_CARRIER | ARRIVED_AT_PARCEL_PICKUP_POINT | CUSTOMER_COLLECTED_ASSERTED_BY_TENANT). Select a handoff kind and retry.',
+      { code: 'TENANT_HANDOFF_KIND_REQUIRED' },
+    );
+  }
   const path = `/api/${encodeURIComponent(tenantCode)}/v1/pickup/fulfillments/${encodeURIComponent(String(fulfillmentId))}/mark-shipped`;
   const res = await pickupFetch(path, {
     method: 'POST',

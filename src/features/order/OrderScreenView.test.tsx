@@ -273,4 +273,62 @@ describe('OrderScreenView', () => {
     expect(screen.queryByTestId('pickup-order-easy-contact-phone')).toBeNull();
     expect(screen.queryByTestId('pickup-order-easy-contact-email')).toBeNull();
   });
+
+  it('mark-shipped: select has 3 kinds and CTA disabled until kind chosen', () => {
+    const viewModel = buildOrderPageViewModel(
+      makeOrder({
+        fulfillmentStatus: 'READY_TO_SHIP',
+        fulfillmentMode: 'SHIPPING',
+        shippingLightEnabled: true,
+      }),
+      '7',
+      'demo',
+      baseUi,
+      true,
+      true,
+      true,
+      true,
+      true,
+    );
+    expect(viewModel.showMarkShipped).toBe(true);
+
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const actions = createActions();
+    render(
+      <QueryClientProvider client={client}>
+        <MemoryRouter initialEntries={['/demo/order/7?code=ABCD']}>
+          <Routes>
+            <Route
+              path="/:tenantCode/order/:fulfillmentId"
+              element={
+                <OrderScreenView
+                  screenState={{ kind: 'ready', order: viewModel.order }}
+                  viewModel={viewModel}
+                  actions={actions}
+                  tenantCode="demo"
+                />
+              }
+            />
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+    const select = screen.getByTestId('pickup-tenant-handoff-kind') as HTMLSelectElement;
+    expect(select.value).toBe('');
+    const options = Array.from(select.querySelectorAll('option')).map((o) => o.value);
+    expect(options).toEqual([
+      '',
+      'DISPATCHED_TO_CARRIER',
+      'ARRIVED_AT_PARCEL_PICKUP_POINT',
+      'CUSTOMER_COLLECTED_ASSERTED_BY_TENANT',
+    ]);
+
+    const cta = screen.getByTestId('pickup-mark-shipped') as HTMLButtonElement;
+    expect(cta.disabled).toBe(true);
+    cta.click();
+    expect(actions.onMarkShipped).not.toHaveBeenCalled();
+  });
 });

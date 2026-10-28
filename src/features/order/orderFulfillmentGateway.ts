@@ -87,8 +87,9 @@ export const orderFulfillmentGateway: IOrderFulfillmentGateway = {
         fulfillmentId,
         {
           version,
-          carrierName: opts?.carrierName,
-          trackingRef: opts?.trackingRef,
+          tenantHandoffKind: opts.tenantHandoffKind,
+          carrierName: opts.carrierName,
+          trackingRef: opts.trackingRef,
         },
         `shipped-${fulfillmentId}-${version}-${Date.now().toString(36)}`,
       ),

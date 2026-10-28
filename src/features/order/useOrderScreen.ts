@@ -65,7 +65,12 @@ export interface OrderScreenActions {
   readonly onStartPreparation: () => void;
   readonly onMarkReady: () => void;
   readonly onMarkReadyToShip: () => void;
-  readonly onMarkShipped: () => void;
+  readonly onMarkShipped: (
+    tenantHandoffKind:
+      | 'DISPATCHED_TO_CARRIER'
+      | 'ARRIVED_AT_PARCEL_PICKUP_POINT'
+      | 'CUSTOMER_COLLECTED_ASSERTED_BY_TENANT',
+  ) => void;
   readonly onMarkUnavailable: (input: {
     scope: 'ITEM' | 'ORDER';
     lineIds?: number[];
@@ -434,7 +439,8 @@ export function useOrderScreen(
       onStartPreparation: () => void startOrderPreparation(mutationContext),
       onMarkReady: () => void markOrderReady(mutationContext),
       onMarkReadyToShip: () => void markOrderReadyToShip(mutationContext),
-      onMarkShipped: () => void markOrderShipped(mutationContext),
+      onMarkShipped: (tenantHandoffKind) =>
+        void markOrderShipped(mutationContext, tenantHandoffKind),
       onMarkUnavailable: (input) => void markOrderUnavailable(mutationContext, input),
       onUpdatePromisedEta: (iso) => void updateOrderPromisedEta(mutationContext, iso),
       onConfirmCash: () => {

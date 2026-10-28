@@ -33,6 +33,7 @@ import {
   handleOrderRateLimit,
   holdOrderMutation,
   markOrderReady,
+  markOrderShipped,
   refuseOrderLines,
   releaseOrderHold,
   reprintOrderCredentials,
@@ -451,5 +452,34 @@ describe('startOrderPreparation / markOrderReady (P1)', () => {
     await startOrderPreparation(ctx);
     expect(ctx.showToast).toHaveBeenCalledWith('pickup.toast.versionConflict', 'error');
     expect(ctx.refreshOrder).toHaveBeenCalled();
+  });
+});
+
+describe('markOrderShipped (tenantHandoffKind fail-closed)', () => {
+  it('refuses bare mark-shipped without kind (no gateway call)', async () => {
+    const markShipped = jest.fn(async () => undefined);
+    const ctx = makeCtx({
+      order: makeOrder({ fulfillmentStatus: 'READY_TO_SHIP' }),
+      gateway: { markShipped },
+    });
+    await markOrderShipped(ctx, '');
+    expect(markShipped).not.toHaveBeenCalled();
+    expect(ctx.showToast).toHaveBeenCalledWith(
+      'pickup.toast.tenantHandoffKindRequired',
+      'error',
+    );
+  });
+
+  it('POSTs mark-shipped with tenantHandoffKind in opts', async () => {
+    const markShipped = jest.fn(async () => undefined);
+    const ctx = makeCtx({
+      order: makeOrder({ fulfillmentStatus: 'READY_TO_SHIP' }),
+      gateway: { markShipped },
+    });
+    await markOrderShipped(ctx, 'DISPATCHED_TO_CARRIER');
+    expect(markShipped).toHaveBeenCalledWith('demo', 'token', 42, 3, {
+      tenantHandoffKind: 'DISPATCHED_TO_CARRIER',
+    });
+    expect(ctx.showToast).toHaveBeenCalledWith('pickup.toast.markShippedSuccess', 'success');
   });
 });
