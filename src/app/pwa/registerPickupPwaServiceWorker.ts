@@ -1,4 +1,5 @@
 import { Workbox } from 'workbox-window';
+import { bustPickupHttpShellCaches } from './bustPickupHttpShellCaches.js';
 import {
   isPickupCriticalFlowActive,
   queuePickupPwaRefreshWhenIdle,
@@ -43,8 +44,12 @@ export function registerPickupPwaServiceWorker(handlers: PickupPwaUpdateHandlers
         return;
       }
       reloadScheduled = true;
-      broadcastReload();
-      window.location.reload();
+      // Apply/skipWaiting escalation — bust HTTP shell before hard navigate.
+      void (async (): Promise<void> => {
+        await bustPickupHttpShellCaches();
+        broadcastReload();
+        window.location.reload();
+      })();
     };
 
     const refresh = (): void => {

@@ -34,11 +34,39 @@
 		}
 	}
 
-	# PWA no-cache + SW-Allowed — live spawn is start.js → Caddy (not serve.json).
-	# Exact HTML matcher: `path /` is a prefix and would poison /assets/* immutable cache.
-	@pwa_html path_regexp ^/(|index\.html)$
+	# PWA no-store + SW-Allowed — live spawn is start.js → Caddy (not serve.json).
+	# Locales + runtime-config must not stick across deploys (Update / soft reload).
 	@pwa_sw path /sw.js
 	@pwa_manifests path /manifest.webmanifest /manifest-dev.webmanifest
+	@pwa_runtime_config path /runtime-config.json /runtime-config.js
+	@pwa_locales path /locales/*
+	@static_assets path /assets/*
+
+	# Hashed Vite chunks — never SPA-fallback to index.html (MIME poison on stale deploy).
+	# PROOF /assets/* immutable: this dedicated handle runs before the SPA catch-all below
+	# and sets Cache-Control "public, max-age=31536000, immutable". Deep-link SPA no-store
+	# lives only in the catch-all handle — never merge asset serving into that block, and
+	# never use a prefix `path /` matcher that would apply no-store onto /assets/*.
+	handle @static_assets {
+		root * dist
+
+		header {
+			X-Content-Type-Options "nosniff"
+			-Server
+		}
+
+		header Cache-Control "public, max-age=31536000, immutable"
+
+		encode {
+			gzip
+			zstd
+		}
+
+		file_server {
+			hide .git
+			hide .env*
+		}
+	}
 
 	handle {
 		root * dist
@@ -48,10 +76,15 @@
 			-Server
 		}
 
-		header @pwa_html Cache-Control "no-cache, must-revalidate"
-		header @pwa_sw Cache-Control "no-cache, must-revalidate"
+		# SPA shell documents: `/`, `/index.html`, and deep links (try_files → /index.html).
+		# Request path stays the deep route, so a narrow ^/(|index\.html)$ matcher missed them.
+		# Default no-store on this handle only — /assets/* is handled above with immutable.
+		header Cache-Control "no-cache, no-store, must-revalidate"
+		header @pwa_sw Cache-Control "no-cache, no-store, must-revalidate"
 		header @pwa_sw Service-Worker-Allowed "/"
-		header @pwa_manifests Cache-Control "no-cache, must-revalidate"
+		header @pwa_manifests Cache-Control "no-cache, no-store, must-revalidate"
+		header @pwa_runtime_config Cache-Control "no-cache, no-store, must-revalidate"
+		header @pwa_locales Cache-Control "no-cache, must-revalidate"
 
 		encode {
 			gzip

@@ -19,6 +19,9 @@ import {
   PICKUP_PWA_RELOAD_CHANNEL,
   registerPickupPwaServiceWorker,
 } from './registerPickupPwaServiceWorker.js';
+import { bustPickupHttpShellCaches } from './bustPickupHttpShellCaches.js';
+import { runPickupDeployShellRefresh } from './runPickupDeployShellRefresh.js';
+import { runPickupPwaPeerTabReload } from './runPickupPwaPeerTabReload.js';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -91,7 +94,9 @@ export function PickupPwaLifecycle(): JSX.Element | null {
     try {
       channel = new BroadcastChannel(PICKUP_PWA_RELOAD_CHANNEL);
       channel.onmessage = (): void => {
-        window.location.reload();
+        // Peer tabs must bust HTTP shell (+ clear Cache/SW) before hard reload —
+        // bare reload leaves sticky shell after deploy (admin: runAdminPwaPeerTabReload).
+        void runPickupPwaPeerTabReload();
       };
     } catch {
       // BroadcastChannel unavailable
@@ -143,12 +148,21 @@ export function PickupPwaLifecycle(): JSX.Element | null {
 
     const critical = isPickupCriticalFlowActive();
     if (critical && options?.bypassCritical !== true) {
-      // Queue for idle — no blocking overlay (reload is deferred).
+      // Queue for idle — no blocking overlay (reload is deferred via SW controlling).
+      // Still HTTP-bust now so the eventual hard navigate (reloadOnce) is not the only
+      // bust opportunity, and sticky shell cannot linger across tabs.
       emitPickupPwaAnalytics({
         eventName: ANALYTICS_PWA_EVENTS.PWA_UPDATE_APPLIED,
         metadata: { outcome: 'queued_critical' },
       });
-      applyUpdate?.();
+      void (async (): Promise<void> => {
+        try {
+          await bustPickupHttpShellCaches();
+        } catch {
+          // Best-effort — applyUpdate still queues skipWaiting / controlling reload.
+        }
+        applyUpdate?.();
+      })();
       return;
     }
 
@@ -160,17 +174,20 @@ export function PickupPwaLifecycle(): JSX.Element | null {
       metadata: options?.outcome !== undefined ? { outcome: options.outcome } : undefined,
     });
 
-    try {
-      if (applyUpdate !== null) {
-        applyUpdate();
-        return;
+    void (async (): Promise<void> => {
+      try {
+        await runPickupDeployShellRefresh({
+          applyUpdate,
+          reload: () => {
+            window.location.reload();
+          },
+        });
+      } catch {
+        refreshLockRef.current = false;
+        setIsRefreshing(false);
+        setUpdateFailed(true);
       }
-      window.location.reload();
-    } catch {
-      refreshLockRef.current = false;
-      setIsRefreshing(false);
-      setUpdateFailed(true);
-    }
+    })();
   };
 
   const showChromiumInstall = deferredPrompt !== null && installOfferVisible;

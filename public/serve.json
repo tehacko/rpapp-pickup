@@ -1,20 +1,50 @@
 {
   "headers": [
     {
+      "source": "**",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+      ]
+    },
+    {
       "source": "index.html",
       "headers": [
-        { "key": "Cache-Control", "value": "no-cache, must-revalidate" }
+        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
       ]
     },
     {
       "source": "sw.js",
       "headers": [
-        { "key": "Cache-Control", "value": "no-cache, must-revalidate" },
+        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" },
         { "key": "Service-Worker-Allowed", "value": "/" }
       ]
     },
     {
       "source": "manifest.webmanifest",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+      ]
+    },
+    {
+      "source": "manifest-dev.webmanifest",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+      ]
+    },
+    {
+      "source": "runtime-config.json",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+      ]
+    },
+    {
+      "source": "runtime-config.js",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+      ]
+    },
+    {
+      "source": "locales/**/*",
       "headers": [
         { "key": "Cache-Control", "value": "no-cache, must-revalidate" }
       ]
