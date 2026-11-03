@@ -23,6 +23,7 @@ import { StaffUnavailableEtaPanel } from './StaffUnavailableEtaPanel.js';
 import {
   TENANT_HANDOFF_KINDS,
   isTenantHandoffKind,
+  TENANT_HANDOFF_KIND_DEFAULT_LABELS,
   type TenantHandoffKind,
 } from './tenantHandoffKind.js';
 import { usePickupEntitlement } from '../../hooks/usePickupEntitlement.js';
@@ -245,7 +246,9 @@ export function OrderScreenView({
           </option>
           {TENANT_HANDOFF_KINDS.map((kind) => (
             <option key={kind} value={kind}>
-              {t(`pickup.order.tenantHandoffKind.${kind}`, { defaultValue: kind })}
+              {t(`pickup.order.tenantHandoffKind.${kind}`, {
+                defaultValue: TENANT_HANDOFF_KIND_DEFAULT_LABELS[kind],
+              })}
             </option>
           ))}
         </select>
