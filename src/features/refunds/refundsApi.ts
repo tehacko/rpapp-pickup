@@ -16,6 +16,7 @@ import type {
   CreatePickupRefundBody,
   IntakeComplaintBody,
   RecordDispositionBody,
+  ResolveComplaintBody,
   ReturnDispositionReadDTO,
 } from './refundTypes.js';
 import {
@@ -172,12 +173,35 @@ function asComplaintRead(
   }
   const salesPointId =
     typeof row.salesPointId === 'number' && row.salesPointId > 0 ? row.salesPointId : null;
+  const transportEvidence =
+    typeof row.transportEvidence === 'string' && row.transportEvidence.trim().length > 0
+      ? row.transportEvidence.trim()
+      : null;
+  const caseNumber =
+    typeof row.caseNumber === 'string' && row.caseNumber.trim().length > 0
+      ? row.caseNumber.trim()
+      : caseId;
+  let opsEscalateQr: string | null =
+    typeof row.opsEscalateQr === 'string' && row.opsEscalateQr.trim().length > 0
+      ? row.opsEscalateQr.trim()
+      : null;
+  const channelAbsenceEscalate =
+    row.channelAbsenceEscalate === true ||
+    transportEvidence === 'no_channel' ||
+    transportEvidence === 'needs_alternate';
+  if (opsEscalateQr === null && channelAbsenceEscalate) {
+    opsEscalateQr = `rpapp:aftersale:${caseId}`;
+  }
   return {
     caseId,
+    caseNumber,
     transactionId,
     ...(salesPointId !== null ? { salesPointId } : {}),
     status: typeof row.status === 'string' ? row.status : 'OPEN',
     requestedRemedy,
+    transportEvidence,
+    ...(opsEscalateQr !== null ? { opsEscalateQr } : {}),
+    ...(channelAbsenceEscalate ? { channelAbsenceEscalate: true } : {}),
   };
 }
 
@@ -313,6 +337,53 @@ export async function getPickupComplaint(
   );
 }
 
+/**
+ * R46 / Exit #8 — GET /pickup/staff/complaints with optional status / queue.
+ * queue=`awaiting-retrieval` → AWAITING_RETURN (manual ops; ≠ Legal 91+ auto).
+ */
+export function pickupComplaintsListPath(
+  tenantCode: string,
+  query?: { readonly status?: string; readonly queue?: string },
+): string {
+  const params = new URLSearchParams();
+  if (query?.status != null && query.status.length > 0) {
+    params.set('status', query.status);
+  }
+  if (query?.queue != null && query.queue.length > 0) {
+    params.set('queue', query.queue);
+  }
+  const qs = params.toString();
+  const suffix = qs.length > 0 ? `/complaints?${qs}` : '/complaints';
+  return staffPath(tenantCode, suffix);
+}
+
+export async function listPickupComplaints(
+  tenantCode: string,
+  accessToken: string,
+  query?: { readonly status?: string; readonly queue?: string },
+): Promise<readonly ComplaintReadDTO[]> {
+  const path = pickupComplaintsListPath(tenantCode, query);
+  const res = await pickupFetch(path, {
+    method: 'GET',
+    headers: authHeaders(accessToken),
+  });
+  const data = await readSuccessData<{ complaints?: unknown } | unknown>(
+    res,
+    'Invalid complaints list response',
+  );
+  let rows: unknown[] = [];
+  if (Array.isArray(data)) {
+    rows = data;
+  } else if (
+    data != null &&
+    typeof data === 'object' &&
+    Array.isArray((data as { complaints?: unknown }).complaints)
+  ) {
+    rows = (data as { complaints: unknown[] }).complaints;
+  }
+  return rows.map((row) => asComplaintRead(row, null));
+}
+
 async function readDispositionList(
   res: Response,
   fallback: string,
@@ -382,6 +453,25 @@ export async function intakePickupComplaint(
   return asComplaintRead(
     await readSuccessData<unknown>(res, 'Invalid complaint intake response'),
     body.transactionId,
+  );
+}
+
+/** POST …/complaints/:id/resolve — paperHanded → paper_handed (never LEGALLY_NOTIFIED). */
+export async function resolvePickupComplaint(
+  tenantCode: string,
+  accessToken: string,
+  caseId: string,
+  body: ResolveComplaintBody,
+): Promise<ComplaintReadDTO> {
+  const path = staffPath(tenantCode, `/complaints/${encodeURIComponent(caseId)}/resolve`);
+  const res = await pickupFetch(path, {
+    method: 'POST',
+    headers: mutationHeaders(accessToken),
+    body: JSON.stringify(body),
+  });
+  return asComplaintRead(
+    await readSuccessData<unknown>(res, 'Invalid complaint resolve response'),
+    null,
   );
 }
 

@@ -5,6 +5,7 @@ import type {
   CreatePickupRefundBody,
   IntakeComplaintBody,
   RecordDispositionBody,
+  ResolveComplaintBody,
   ReturnDispositionReadDTO,
 } from './refundTypes.js';
 import type { PickupTransactionRefundsListDTO } from './refundsApi.js';
@@ -36,6 +37,12 @@ export interface IRefundsGateway {
     accessToken: string,
     caseId: string,
   ): Promise<ComplaintReadDTO>;
+  /** R46 — GET /pickup/staff/complaints (?status= / ?queue=awaiting-retrieval). */
+  listComplaints(
+    tenantCode: string,
+    accessToken: string,
+    query?: { readonly status?: string; readonly queue?: string },
+  ): Promise<readonly ComplaintReadDTO[]>;
   listComplaintDispositions(
     tenantCode: string,
     accessToken: string,
@@ -50,6 +57,12 @@ export interface IRefundsGateway {
     tenantCode: string,
     accessToken: string,
     body: IntakeComplaintBody,
+  ): Promise<ComplaintReadDTO>;
+  resolveComplaint(
+    tenantCode: string,
+    accessToken: string,
+    caseId: string,
+    body: ResolveComplaintBody,
   ): Promise<ComplaintReadDTO>;
   recordComplaintDisposition(
     tenantCode: string,

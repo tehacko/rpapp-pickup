@@ -7,10 +7,12 @@ import {
   getPickupRefund,
   intakePickupComplaint,
   listPickupComplaintDispositions,
+  listPickupComplaints,
   listPickupRefundDispositions,
   listPickupTransactionRefunds,
   postComplaintDisposition,
   postRefundDisposition,
+  resolvePickupComplaint,
 } from './refundsApi.js';
 
 export const refundsGateway: IRefundsGateway = {
@@ -59,6 +61,14 @@ export const refundsGateway: IRefundsGateway = {
       throw err;
     }
   },
+  async listComplaints(tenantCode, accessToken, query) {
+    try {
+      return await listPickupComplaints(tenantCode, accessToken, query);
+    } catch (err) {
+      reportPickupError(err, 'complaints.list');
+      throw err;
+    }
+  },
   async listComplaintDispositions(tenantCode, accessToken, caseId) {
     try {
       return await listPickupComplaintDispositions(tenantCode, accessToken, caseId);
@@ -80,6 +90,14 @@ export const refundsGateway: IRefundsGateway = {
       return await intakePickupComplaint(tenantCode, accessToken, body);
     } catch (err) {
       reportPickupError(err, 'complaints.intake');
+      throw err;
+    }
+  },
+  async resolveComplaint(tenantCode, accessToken, caseId, body) {
+    try {
+      return await resolvePickupComplaint(tenantCode, accessToken, caseId, body);
+    } catch (err) {
+      reportPickupError(err, 'complaints.resolve');
       throw err;
     }
   },
