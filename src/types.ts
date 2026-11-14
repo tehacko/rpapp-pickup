@@ -30,6 +30,8 @@ export interface ResolveResponse {
   transactionStatus?: string;
   /** Present when backend resolve DTO includes payment method. */
   paymentMethod?: string | null;
+  /** Sale provider for refund Layer A slot (prefer over paymentMethod). */
+  paymentProvider?: string | null;
   /** Dual cash regimes (V1A §4) — deferred CF confirm eligibility. */
   cashConfirmationPolicy?: string | null;
   amountMinor?: number;

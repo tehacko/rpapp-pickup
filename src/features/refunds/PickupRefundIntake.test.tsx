@@ -38,6 +38,7 @@ function pendingRefund(): RefundReadDTO {
     attemptId: 'att-1',
     transactionId: 42,
     reference: null,
+    providerReferenceId: 'psp_pickup_1',
     amountMajor: 80,
     currency: 'CZK',
     staffReason: 'CUSTOMER_CANCEL_RETURN',
@@ -60,6 +61,22 @@ function pendingRefund(): RefundReadDTO {
   };
 }
 
+const returnableLinesFixture = [
+  {
+    productId: 10,
+    variantId: null,
+    quantitySold: 1,
+    quantityReturnable: 1,
+    paidAmountMajor: 80,
+    returnableAmountMajor: 80,
+    taxRate: 21,
+    taxAmount: 13.88,
+    returnableTaxAmountMajor: 13.88,
+    productNameSnapshot: 'Espresso',
+    variantNameSnapshot: null,
+  },
+] as const;
+
 function stubGateway(overrides: Partial<IRefundsGateway> = {}): IRefundsGateway {
   return {
     createRefund: jest.fn(async () => pendingRefund()),
@@ -69,7 +86,16 @@ function stubGateway(overrides: Partial<IRefundsGateway> = {}): IRefundsGateway 
       method: 'ALTERNATIVE_CASH',
     })),
     getRefund: jest.fn(async () => pendingRefund()),
-    listTransactionRefunds: jest.fn(async () => ({ refunds: [pendingRefund()] })),
+    confirmCashHandoff: jest.fn(async () => ({
+      ...pendingRefund(),
+      attemptStatus: 'SUCCEEDED',
+      customerStatus: 'returned',
+    })),
+    listTransactionRefunds: jest.fn(async () => ({
+      refunds: [pendingRefund()],
+      remainingSaleMajor: 80,
+      returnableLines: [...returnableLinesFixture],
+    })),
     intakeComplaint: jest.fn(async () => ({
       caseId: 'case-1',
       transactionId: 42,
@@ -372,12 +398,25 @@ describe('PickupRefundIntake', () => {
       'refund,refund_alternative_method',
     );
     expect(screen.queryByTestId('pickup-refund-method')).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByTestId('pickup-refund-returnable-lines')).toBeInTheDocument();
+    });
     fireEvent.click(screen.getByTestId('pickup-refund-submit'));
     await waitFor(() => {
       expect(gateway.createRefund).toHaveBeenCalledWith(
         'acme',
         'tok',
-        expect.objectContaining({ method: 'ORIGINAL' }),
+        expect.objectContaining({
+          method: 'ORIGINAL',
+          amount: 80,
+          lines: [
+            expect.objectContaining({
+              productId: 10,
+              quantity: 1,
+              amount: 80,
+            }),
+          ],
+        }),
       );
     });
     expect(gateway.createAlternativeRefund).not.toHaveBeenCalled();

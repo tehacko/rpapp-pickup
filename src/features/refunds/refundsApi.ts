@@ -4,7 +4,9 @@ import {
   isRefundMethod,
   isRefundStaffReason,
   mapRefundCustomerStatus,
+  parseRefundProviderSlotProfileSnapshot,
   refundStaffReasonChipCs,
+  type AfterSaleReturnableLineDTO,
   type RefundReadDTO,
   type RefundReadItemDTO,
 } from 'pi-kiosk-shared';
@@ -28,6 +30,7 @@ export interface PickupTransactionRefundsListDTO {
   readonly refunds: readonly RefundReadDTO[];
   readonly remainingSaleMajor?: number;
   readonly projectionQueueStatus?: string | null;
+  readonly returnableLines?: readonly AfterSaleReturnableLineDTO[];
 }
 
 interface AdditiveEnvelope<T> {
@@ -205,6 +208,18 @@ function asComplaintRead(
   };
 }
 
+function providerFailureCodeFields(
+  raw: unknown,
+): { readonly providerFailureCode: string | null } | Record<string, never> {
+  if (typeof raw === 'string') {
+    return { providerFailureCode: raw };
+  }
+  if (raw === null) {
+    return { providerFailureCode: null };
+  }
+  return {};
+}
+
 function asRefundRead(data: unknown, fallbackTransactionId: number): RefundReadDTO {
   const row = (typeof data === 'object' && data !== null ? data : {}) as Record<string, unknown>;
   const staffReason = isRefundStaffReason(row.staffReason) ? row.staffReason : 'OTHER';
@@ -220,11 +235,18 @@ function asRefundRead(data: unknown, fallbackTransactionId: number): RefundReadD
     typeof row.createdAt === 'string' ? row.createdAt : new Date(0).toISOString();
   const updatedAt =
     typeof row.updatedAt === 'string' ? row.updatedAt : createdAt;
+  const providerReferenceId =
+    typeof row.providerReferenceId === 'string' && row.providerReferenceId.trim().length > 0
+      ? row.providerReferenceId.trim()
+      : null;
+  // G1 / DELTA-REF-T04 — staff wire snapshot (four axes + snapshotAt); null when absent/invalid.
+  const slotProfileSnapshot = parseRefundProviderSlotProfileSnapshot(row.slotProfileSnapshot);
   return {
     attemptId: typeof row.attemptId === 'string' ? row.attemptId : '',
     transactionId:
       typeof row.transactionId === 'number' ? row.transactionId : fallbackTransactionId,
     reference: typeof row.reference === 'string' ? row.reference : null,
+    providerReferenceId,
     amountMajor: typeof row.amountMajor === 'number' ? row.amountMajor : 0,
     currency: typeof row.currency === 'string' ? row.currency : 'CZK',
     staffReason,
@@ -236,6 +258,7 @@ function asRefundRead(data: unknown, fallbackTransactionId: number): RefundReadD
     method: isRefundMethod(row.method) ? row.method : 'ORIGINAL',
     attemptStatus: parsedAttemptStatus,
     customerStatus,
+    ...providerFailureCodeFields(row.providerFailureCode),
     slaBreachedAt,
     items: asReadItems(row.items),
     createdAt,
@@ -243,7 +266,43 @@ function asRefundRead(data: unknown, fallbackTransactionId: number): RefundReadD
     ...(typeof row.remainingSaleMajor === 'number'
       ? { remainingSaleMajor: row.remainingSaleMajor }
       : {}),
+    slotProfileSnapshot,
   };
+}
+
+function asReturnableLines(raw: unknown): readonly AfterSaleReturnableLineDTO[] {
+  if (!Array.isArray(raw)) {
+    return [];
+  }
+  const lines: AfterSaleReturnableLineDTO[] = [];
+  for (const entry of raw) {
+    if (typeof entry !== 'object' || entry === null) {
+      continue;
+    }
+    const row = entry as Record<string, unknown>;
+    if (typeof row.productId !== 'number' || !(row.productId > 0)) {
+      continue;
+    }
+    lines.push({
+      productId: row.productId,
+      variantId: typeof row.variantId === 'number' ? row.variantId : null,
+      quantitySold: typeof row.quantitySold === 'number' ? row.quantitySold : 0,
+      quantityReturnable:
+        typeof row.quantityReturnable === 'number' ? row.quantityReturnable : 0,
+      paidAmountMajor: typeof row.paidAmountMajor === 'number' ? row.paidAmountMajor : 0,
+      returnableAmountMajor:
+        typeof row.returnableAmountMajor === 'number' ? row.returnableAmountMajor : 0,
+      taxRate: typeof row.taxRate === 'number' ? row.taxRate : null,
+      taxAmount: typeof row.taxAmount === 'number' ? row.taxAmount : null,
+      returnableTaxAmountMajor:
+        typeof row.returnableTaxAmountMajor === 'number' ? row.returnableTaxAmountMajor : null,
+      productNameSnapshot:
+        typeof row.productNameSnapshot === 'string' ? row.productNameSnapshot : null,
+      variantNameSnapshot:
+        typeof row.variantNameSnapshot === 'string' ? row.variantNameSnapshot : null,
+    });
+  }
+  return lines;
 }
 
 export async function createPickupRefund(
@@ -296,6 +355,25 @@ export async function getPickupRefund(
   return asRefundRead(data, 0);
 }
 
+/** R57 / D-023 — staff attests cash payout handoff → Settle once. */
+export async function confirmPickupCashRefundHandoff(
+  tenantCode: string,
+  accessToken: string,
+  attemptId: string,
+): Promise<RefundReadDTO> {
+  const path = staffPath(
+    tenantCode,
+    `/refunds/${encodeURIComponent(attemptId)}/cash-handoff/confirm`,
+  );
+  const res = await pickupFetch(path, {
+    method: 'POST',
+    headers: mutationHeaders(accessToken),
+    body: JSON.stringify({}),
+  });
+  const data = await readSuccessData<unknown>(res, 'Invalid cash handoff confirm response');
+  return asRefundRead(data, 0);
+}
+
 export async function listPickupTransactionRefunds(
   tenantCode: string,
   accessToken: string,
@@ -318,6 +396,7 @@ export async function listPickupTransactionRefunds(
     ...(data.projectionQueueStatus !== undefined
       ? { projectionQueueStatus: data.projectionQueueStatus }
       : {}),
+    returnableLines: asReturnableLines(data.returnableLines),
   };
 }
 

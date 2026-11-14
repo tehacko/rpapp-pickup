@@ -1,7 +1,11 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Ban, Check, ChefHat, Coins, Mail, Package, Pause, PackageCheck, Phone } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import {
+  inferRefundProviderSlotId,
+  type RefundProviderSlotProfile,
+} from 'pi-kiosk-shared';
 import { Button } from '../../shared/ui/surfacePrimitives.js';
 import { MetaRow } from '../../shared/ui/MetaRow.js';
 import { PageHeader } from '../../shared/ui/PageHeader.js';
@@ -29,6 +33,10 @@ import {
 import { usePickupEntitlement } from '../../hooks/usePickupEntitlement.js';
 import { formatPickupCashAmountLabel } from '../cash-confirm/formatPickupCashAmountLabel.js';
 import { PickupRefundIntake } from '../refunds/PickupRefundIntake.js';
+import {
+  listPickupRefundProviderSlotProfiles,
+  matchPickupSlotProfile,
+} from '../refunds/refundProviderSlotProfile.pickup.js';
 import { usePickupStaffSession } from '../../shared/session/PickupStaffSessionProvider.js';
 
 const CHROME_PAD = {
@@ -108,6 +116,50 @@ export function OrderScreenView({
   const encodedTenant = encodeURIComponent(tenantCode);
   const queuePath = `/${encodedTenant}/queue`;
   const [tenantHandoffKind, setTenantHandoffKind] = useState<TenantHandoffKind | ''>('');
+  const [liveSlotProfile, setLiveSlotProfile] = useState<RefundProviderSlotProfile | null>(null);
+
+  // G8 — precise provider only (never invent CARD→GOPAY). Prefer paymentProvider; CASH method OK.
+  const refundProviderHint = useMemo((): string | null => {
+    const order = viewModel?.order;
+    if (order == null) {
+      return null;
+    }
+    const provider = order.paymentProvider?.trim();
+    if (provider != null && provider.length > 0) {
+      return provider;
+    }
+    const method = order.paymentMethod?.trim();
+    if (method != null && method.toUpperCase() === 'CASH') {
+      return method;
+    }
+    return null;
+  }, [viewModel?.order]);
+
+  const refundProviderSlotId = useMemo(
+    () => (refundProviderHint != null ? inferRefundProviderSlotId(refundProviderHint) : null),
+    [refundProviderHint],
+  );
+
+  // Derive effective profile: clear synchronously when unresolved; fetch only when eligible.
+  const effectiveLiveSlotProfile =
+    accessToken != null && refundProviderSlotId != null ? liveSlotProfile : null;
+
+  useEffect(() => {
+    if (accessToken == null || refundProviderSlotId == null) {
+      return;
+    }
+    let cancelled = false;
+    void listPickupRefundProviderSlotProfiles(accessToken).then((listed) => {
+      if (cancelled) {
+        return;
+      }
+      // Live when DEV auth allows; otherwise seed-fallback matched by precise slotId.
+      setLiveSlotProfile(matchPickupSlotProfile(listed.profiles, refundProviderSlotId));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [accessToken, refundProviderSlotId]);
 
   if (screenState.kind === 'loading') {
     return (
@@ -443,6 +495,10 @@ export function OrderScreenView({
             customerEmail={order.customerEmail}
             customerPhone={order.customerPhone}
             capabilities={sessionClaims?.capabilities ?? []}
+            // G8 — precise provider + live/seed-matched slotProfile (never invent CARD→GOPAY).
+            providerHint={refundProviderHint}
+            providerSlotId={refundProviderSlotId}
+            slotProfile={effectiveLiveSlotProfile}
           />
         ) : null}
       </PickupListLayout>

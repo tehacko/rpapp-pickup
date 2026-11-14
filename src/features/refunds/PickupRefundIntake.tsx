@@ -1,6 +1,32 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
+import {
+  CASH_HANDOFF_REQUIRED_CODE,
+  describeSlotProfileDisclosure,
+  filterRefundMethodsFromSlotProfile,
+  isCashRefundHandoffEligible,
+  isCompleteManualAttestationEvidence,
+  isRefundProviderOutcomeUnknown,
+  mapRefundSettlementLayerBCs,
+  resolveRefundProviderSlotProfile,
+  type AfterSaleReturnableLineDTO,
+  type RefundProviderSlotId,
+  type RefundProviderSlotProfile,
+} from 'pi-kiosk-shared';
+import { PickupRefundLayerA } from './PickupRefundLayerA.js';
+import {
+  PickupManualAttestationForm,
+  draftToPickupManualEvidence,
+  emptyPickupManualAttestationDraft,
+  type PickupManualAttestationDraft,
+} from './PickupManualAttestationForm.js';
+import {
+  buildCreateLinesFromReturnable,
+  defaultSelectedQtyByKey,
+  labelReturnableLine,
+  returnableLineKey,
+} from './returnableLines.js';
 import { PickupApiError } from '../../api/pickupApi.js';
 import { Button } from '../../shared/ui/surfacePrimitives.js';
 import { SectionCard } from '../../shared/ui/SectionCard.js';
@@ -103,6 +129,11 @@ export interface PickupRefundIntakeProps {
   readonly customerPhone?: string | null;
   readonly capabilities: readonly string[];
   readonly gateway?: IRefundsGateway;
+  /** W5/G8 — provider slot for Layer A / method filter (null = unknown fail-closed). */
+  readonly providerSlotId?: RefundProviderSlotId | null;
+  readonly providerHint?: string | null;
+  /** Live/seed-matched profile from OrderScreenView fetch when possible. */
+  readonly slotProfile?: RefundProviderSlotProfile | null;
 }
 
 function isTerminalAttemptStatus(status: string | null | undefined): boolean {
@@ -144,6 +175,9 @@ export function PickupRefundIntake({
   customerPhone,
   capabilities,
   gateway = refundsGateway,
+  providerSlotId,
+  providerHint,
+  slotProfile,
 }: PickupRefundIntakeProps): JSX.Element {
   const { t } = useTranslation('pickup');
   const canRefund = hasPickupRefundCapability(capabilities);
@@ -157,6 +191,9 @@ export function PickupRefundIntake({
   const [nativeFailedSourceId, setNativeFailedSourceId] = useState<string | null>(null);
   /** G26 — mandatory-withdrawal alt cash requires customerConsentToAltMethodAt. */
   const [customerConsentedAlt, setCustomerConsentedAlt] = useState(false);
+  const [altCashEscalationApproved, setAltCashEscalationApproved] = useState(false);
+  const [manualAttestationDraft, setManualAttestationDraft] =
+    useState<PickupManualAttestationDraft>(emptyPickupManualAttestationDraft);
   const [note, setNote] = useState('');
   const [refundError, setRefundError] = useState<{ status: number; message: string } | null>(
     null,
@@ -230,6 +267,46 @@ export function PickupRefundIntake({
   } | null>(null);
   const [complaintDispositionSubmitting, setComplaintDispositionSubmitting] = useState(false);
   const [refundDispositionSubmitting, setRefundDispositionSubmitting] = useState(false);
+  const [returnableQtyState, setReturnableQtyState] = useState<{
+    readonly signature: string;
+    readonly qtyByKey: Record<string, number>;
+  }>({ signature: '', qtyByKey: {} });
+
+  const returnableContextQuery = useQuery({
+    queryKey: ['pickup-staff-returnable-context', tenantCode, transactionId],
+    queryFn: async () => {
+      if (transactionId === undefined) {
+        throw new Error('missing transactionId');
+      }
+      return gateway.listTransactionRefunds(tenantCode, accessToken, transactionId);
+    },
+    enabled: effectiveHasSaleTxn && transactionId !== undefined,
+  });
+
+  const returnableLines = useMemo((): readonly AfterSaleReturnableLineDTO[] => {
+    return returnableContextQuery.data?.returnableLines ?? [];
+  }, [returnableContextQuery.data?.returnableLines]);
+  const returnableSignature = useMemo(
+    () =>
+      returnableLines
+        .map(
+          (line) =>
+            `${line.productId}:${line.variantId ?? 'null'}:${line.quantityReturnable}:${line.returnableAmountMajor}`,
+        )
+        .join('|'),
+    [returnableLines],
+  );
+
+  // Signature-keyed: derive defaults when lines signature changes (no setState-in-effect).
+  const selectedReturnableQtyByKey = useMemo((): Readonly<Record<string, number>> => {
+    if (returnableQtyState.signature === returnableSignature) {
+      return returnableQtyState.qtyByKey;
+    }
+    if (returnableSignature.length === 0) {
+      return {};
+    }
+    return defaultSelectedQtyByKey(returnableLines);
+  }, [returnableQtyState, returnableSignature, returnableLines]);
 
   const refundQuery = useQuery({
     queryKey: ['pickup-staff-refund', tenantCode, attemptId],
@@ -312,14 +389,56 @@ export function PickupRefundIntake({
     }
   }, [refundQuery.data?.attemptStatus, t]);
 
+  // D-023 — REQUIRES_ACTION + CASH_HANDOFF_REQUIRED awaits handoff, not ALTERNATIVE_CASH.
   const statusDrivenFailedSourceId =
     canAltMethod &&
     attemptId !== null &&
-    (refundQuery.data?.attemptStatus === 'FAILED' ||
-      refundQuery.data?.attemptStatus === 'REQUIRES_ACTION')
+    refundQuery.data != null &&
+    (refundQuery.data.attemptStatus === 'FAILED' ||
+      (refundQuery.data.attemptStatus === 'REQUIRES_ACTION' &&
+        refundQuery.data.providerFailureCode !== CASH_HANDOFF_REQUIRED_CODE &&
+        refundQuery.data.method === 'ORIGINAL'))
       ? attemptId
       : null;
   const effectiveNativeFailedSourceId = nativeFailedSourceId ?? statusDrivenFailedSourceId;
+  const resolvedSlotProfile = useMemo(
+    () =>
+      resolveRefundProviderSlotProfile({
+        // G1 / DELTA-REF-T04 — open attempt prefers frozen snapshot over live/seed flip.
+        snapshot: refundQuery.data?.slotProfileSnapshot ?? null,
+        live: slotProfile ?? null,
+        slotId: providerSlotId ?? null,
+        providerHint: providerHint ?? null,
+      }),
+    [providerHint, providerSlotId, refundQuery.data?.slotProfileSnapshot, slotProfile],
+  );
+  const methodOffer = useMemo(
+    () =>
+      resolvedSlotProfile == null
+        ? null
+        : filterRefundMethodsFromSlotProfile({
+            profile: resolvedSlotProfile,
+            originalProvenFailedOrUnavailable: effectiveNativeFailedSourceId !== null,
+            alternativeCashEscalationApproved:
+              altCashEscalationApproved || customerConsentedAlt,
+          }),
+    [
+      altCashEscalationApproved,
+      customerConsentedAlt,
+      effectiveNativeFailedSourceId,
+      resolvedSlotProfile,
+    ],
+  );
+  const layerADisclosure = useMemo(
+    () =>
+      resolvedSlotProfile == null
+        ? null
+        : describeSlotProfileDisclosure(resolvedSlotProfile),
+    [resolvedSlotProfile],
+  );
+  const requiresManualAttestation =
+    resolvedSlotProfile?.payoutEvidence === 'MANUAL_ATTESTATION';
+  // Show alt-cash panel after proven ORIGINAL failure; create still gated by §16.3 offer + escalation.
   const showAltCashOption = canAltMethod && effectiveNativeFailedSourceId !== null;
   const effectiveRefundMethod =
     statusDrivenFailedSourceId !== null ? 'ALTERNATIVE_CASH' : refundMethod;
@@ -353,24 +472,18 @@ export function PickupRefundIntake({
     return '';
   }, [custodyOwnerSalesPointId, salesPointIdProp]);
 
-  /** Money create path still needs ≥1 line — stock disposition uses explicit SKU picker (G5). */
-  const draftLines = useMemo(() => {
-    const selected =
-      dispositionSkuOptions.find((option) => option.key === effectiveDispositionSkuKey) ??
-      dispositionSkuOptions[0];
-    if (selected === undefined) {
-      return [];
-    }
-    const qty = Math.max(1, selected.maxQty);
-    return [
-      {
-        productId: selected.productId,
-        variantId: selected.variantId,
-        quantity: qty,
-        amount: amountMajor,
-      },
-    ];
-  }, [amountMajor, dispositionSkuOptions, effectiveDispositionSkuKey]);
+  /** F10-T14 / R60 — money create binds to After-sale Context returnable lines (not first fulfillment). */
+  const moneyCreatePreview = useMemo(
+    () =>
+      buildCreateLinesFromReturnable({
+        lines: returnableLines,
+        selectedQtyByKey: { ...selectedReturnableQtyByKey },
+      }),
+    [returnableLines, selectedReturnableQtyByKey],
+  );
+  const draftLines = moneyCreatePreview.lines;
+  const draftAmountMajor =
+    moneyCreatePreview.amountMajor > 0 ? moneyCreatePreview.amountMajor : amountMajor;
 
   const selectedDispositionSku =
     dispositionSkuOptions.find((option) => option.key === effectiveDispositionSkuKey) ?? null;
@@ -474,6 +587,55 @@ export function PickupRefundIntake({
     return t('pickup.refunds.customerProcessing');
   }, [refundQuery.data, t]);
 
+  const layerBLabel = useMemo(() => {
+    const row = refundQuery.data;
+    if (row === undefined) {
+      return null;
+    }
+    return mapRefundSettlementLayerBCs(row.attemptStatus, {
+      cashHandoffSettled: row.attemptStatus === 'SUCCEEDED',
+      cashHandoffEligible: isCashRefundHandoffEligible({
+        method: row.method,
+        attemptStatus: row.attemptStatus,
+        providerFailureCode: row.providerFailureCode,
+      }),
+      providerOutcomeUnknown: isRefundProviderOutcomeUnknown(row.providerFailureCode),
+    });
+  }, [refundQuery.data]);
+
+  const showCashHandoff =
+    canRefund &&
+    attemptId !== null &&
+    refundQuery.data != null &&
+    isCashRefundHandoffEligible({
+      method: refundQuery.data.method,
+      attemptStatus: refundQuery.data.attemptStatus,
+      providerFailureCode: refundQuery.data.providerFailureCode,
+    });
+
+  async function onConfirmCashHandoff(): Promise<void> {
+    if (attemptId === null || !canRefund) {
+      return;
+    }
+    setRefundSubmitting(true);
+    setRefundError(null);
+    try {
+      const confirmed = await gateway.confirmCashHandoff(
+        tenantCode,
+        accessToken,
+        attemptId,
+      );
+      await refundQuery.refetch();
+      if (confirmed.attemptStatus === 'SUCCEEDED') {
+        toastApi(t('pickup.refunds.succeededToast'), 'success');
+      }
+    } catch (err) {
+      setRefundError(formatHttpError(err));
+    } finally {
+      setRefundSubmitting(false);
+    }
+  }
+
   const complaintCsUiStatus = useMemo(() => {
     if (complaintQuery.data === undefined && caseId === null) {
       return null;
@@ -522,6 +684,27 @@ export function PickupRefundIntake({
       setRefundError({ status: 403, message: t('pickup.refunds.forbidden') });
       return;
     }
+    if (methodOffer == null || resolvedSlotProfile == null) {
+      setRefundError({
+        status: 400,
+        message:
+          'Refund provider slot unresolved — need precise paymentProvider or live slot profile.',
+      });
+      return;
+    }
+    let manualEvidence: ReturnType<typeof draftToPickupManualEvidence> | undefined;
+    if (requiresManualAttestation) {
+      const evidence = draftToPickupManualEvidence(manualAttestationDraft);
+      if (!isCompleteManualAttestationEvidence(evidence)) {
+        setRefundError({
+          status: 400,
+          message:
+            'MANUAL_ATTESTATION requires evidenceType, evidenceReference, attestedByActorId, attestedAt.',
+        });
+        return;
+      }
+      manualEvidence = evidence;
+    }
     setRefundSubmitting(true);
     try {
       if (
@@ -529,6 +712,21 @@ export function PickupRefundIntake({
         effectiveRefundMethod === 'ALTERNATIVE_CASH' &&
         effectiveNativeFailedSourceId !== null
       ) {
+        if (
+          methodOffer == null ||
+          !altCashEscalationApproved ||
+          !methodOffer.offered.includes('ALTERNATIVE_CASH')
+        ) {
+          setRefundError({
+            status: 409,
+            message:
+              methodOffer == null
+                ? 'Refund provider slot unresolved (need precise paymentProvider or live slot profile).'
+                : 'ALTERNATIVE_CASH requires proven ORIGINAL failure + escalation approval (section 16.3).',
+          });
+          setRefundSubmitting(false);
+          return;
+        }
         if (!customerConsentedAlt) {
           setRefundError({
             status: 409,
@@ -543,14 +741,24 @@ export function PickupRefundIntake({
           effectiveNativeFailedSourceId,
           {
             transactionId,
-            amount: amountMajor,
+            amount: draftAmountMajor,
             currency,
             staffReason,
             method: 'ALTERNATIVE_CASH',
-            lines: draftLines,
+            lines: draftLines.map((line) => ({
+              productId: line.productId,
+              variantId: line.variantId,
+              quantity: line.quantity,
+              amount: line.amount,
+            })),
             transitionReason: 'native_refund_failed',
             customerConsentToAltMethodAt: new Date().toISOString(),
+            // DELTA-REF-T05 — gated above by proven ORIGINAL failure + escalation checkbox.
+            alternativeCashEscalationApproved: true,
             ...(note.trim().length > 0 ? { note: note.trim() } : {}),
+            ...(manualEvidence != null && isCompleteManualAttestationEvidence(manualEvidence)
+              ? { manualAttestationEvidence: manualEvidence }
+              : {}),
           },
         );
         setAttemptId(alt.attemptId);
@@ -563,13 +771,21 @@ export function PickupRefundIntake({
 
       const created = await gateway.createRefund(tenantCode, accessToken, {
         transactionId,
-        amount: amountMajor,
+        amount: draftAmountMajor,
         currency,
         staffReason,
         method: 'ORIGINAL',
-        lines: draftLines,
+        lines: draftLines.map((line) => ({
+          productId: line.productId,
+          variantId: line.variantId,
+          quantity: line.quantity,
+          amount: line.amount,
+        })),
         ...(note.trim().length > 0 ? { note: note.trim() } : {}),
         ...(caseId !== null ? { complaintCaseId: caseId } : {}),
+        ...(manualEvidence != null && isCompleteManualAttestationEvidence(manualEvidence)
+          ? { manualAttestationEvidence: manualEvidence }
+          : {}),
       });
       setAttemptId(created.attemptId);
       setPollStartedAtMs(Date.now());
@@ -1215,12 +1431,116 @@ export function PickupRefundIntake({
               {t('pickup.refunds.moneyRequiresSale')}
             </p>
           ) : null}
-          <p className="text-sm text-[var(--color-on-surface-muted)]">
+          <p className="text-sm text-[var(--color-on-surface-muted)]" data-testid="pickup-refund-amount">
             {t('pickup.refunds.amountLine', {
-              amount: amountMajor.toFixed(2),
+              amount: draftAmountMajor.toFixed(2),
               currency,
             })}
           </p>
+          {effectiveHasSaleTxn ? (
+            <div className="flex flex-col gap-2" data-testid="pickup-refund-returnable-lines">
+              <p className="m-0 text-sm font-medium">
+                {t('pickup.refunds.returnableLinesTitle', {
+                  defaultValue: 'Vratitelné řádky (After-sale Context)',
+                })}
+              </p>
+              {returnableContextQuery.isFetching && returnableLines.length === 0 ? (
+                <p className="m-0 text-sm text-[var(--color-on-surface-muted)]">
+                  {t('pickup.refunds.returnableLoading', { defaultValue: 'Načítám řádky…' })}
+                </p>
+              ) : null}
+              {returnableLines.filter((line) => line.quantityReturnable > 0).length === 0 &&
+              !returnableContextQuery.isFetching ? (
+                <p className="m-0 text-sm text-[var(--color-on-surface-muted)]">
+                  {t('pickup.refunds.returnableEmpty', {
+                    defaultValue: 'Žádné zbývající vratitelné řádky.',
+                  })}
+                </p>
+              ) : (
+                returnableLines
+                  .filter((line) => line.quantityReturnable > 0)
+                  .map((line) => {
+                    const key = returnableLineKey(line.productId, line.variantId);
+                    const qty = selectedReturnableQtyByKey[key] ?? 0;
+                    return (
+                      <label
+                        key={key}
+                        className="flex flex-wrap items-center gap-2 text-sm"
+                        data-testid={`pickup-refund-returnable-line-${key}`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={qty > 0}
+                          onChange={(event) => {
+                            setReturnableQtyState({
+                              signature: returnableSignature,
+                              qtyByKey: {
+                                ...selectedReturnableQtyByKey,
+                                [key]: event.target.checked ? line.quantityReturnable : 0,
+                              },
+                            });
+                          }}
+                        />
+                        <span className="min-w-0 flex-1">{labelReturnableLine(line)}</span>
+                        <input
+                          type="number"
+                          min={0}
+                          max={line.quantityReturnable}
+                          className="w-16 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2 py-1"
+                          value={qty}
+                          onChange={(event) => {
+                            const next = Number(event.target.value);
+                            const clamped = Number.isFinite(next)
+                              ? Math.min(
+                                  line.quantityReturnable,
+                                  Math.max(0, Math.floor(next)),
+                                )
+                              : 0;
+                            setReturnableQtyState({
+                              signature: returnableSignature,
+                              qtyByKey: {
+                                ...selectedReturnableQtyByKey,
+                                [key]: clamped,
+                              },
+                            });
+                          }}
+                        />
+                      </label>
+                    );
+                  })
+              )}
+            </div>
+          ) : null}
+          {layerADisclosure == null || methodOffer == null ? (
+            <p
+              className="m-0 text-sm text-[var(--color-danger)]"
+              data-testid="pickup-refund-slot-unresolved"
+            >
+              Refund provider slot unresolved — need precise paymentProvider or live slot profile.
+            </p>
+          ) : (
+            <>
+              <PickupRefundLayerA
+                disclosure={layerADisclosure}
+                positiveOriginalPath={methodOffer.positiveOriginalPath}
+              />
+              {methodOffer.hideAlternativeBank ? (
+                <p
+                  className="m-0 text-xs text-[var(--color-on-surface-muted)]"
+                  data-testid="pickup-refund-bank-hidden"
+                >
+                  ALTERNATIVE_BANK hidden (alternativeBankUnavailable=true)
+                </p>
+              ) : null}
+            </>
+          )}
+          {requiresManualAttestation ? (
+            <PickupManualAttestationForm
+              value={manualAttestationDraft}
+              disabled={refundSubmitting}
+              onChange={setManualAttestationDraft}
+            />
+          ) : null}
           <label className="flex flex-col gap-1 text-sm">
             {t('pickup.refunds.reason')}
             <select
@@ -1238,13 +1558,23 @@ export function PickupRefundIntake({
               ))}
             </select>
           </label>
-          {showAltCashOption ? (
-            <label className="flex flex-col gap-1 text-sm">
-              {t('pickup.refunds.method')}
+          {/* G8 — always-visible §16.3 method offer when profile resolved (Admin parity; not only alt-after-fail). */}
+          {methodOffer != null ? (
+            <label className="flex flex-col gap-1 text-sm" data-testid="pickup-refund-method-offer">
+              {t('pickup.refunds.method')} (§16.3)
               <select
                 className="min-h-11 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2"
-                value={effectiveRefundMethod}
+                value={
+                  methodOffer.offered.includes(effectiveRefundMethod)
+                    ? effectiveRefundMethod
+                    : (methodOffer.defaultMethod ?? 'ORIGINAL')
+                }
                 data-testid="pickup-refund-method"
+                disabled={
+                  methodOffer.offered.filter(
+                    (m) => m === 'ORIGINAL' || m === 'ALTERNATIVE_CASH',
+                  ).length <= 1
+                }
                 onChange={(e) => {
                   const next = e.target.value;
                   if (next === 'ORIGINAL' || next === 'ALTERNATIVE_CASH') {
@@ -1252,27 +1582,49 @@ export function PickupRefundIntake({
                   }
                 }}
               >
-                <option value="ORIGINAL">ORIGINAL</option>
-                <option value="ALTERNATIVE_CASH">ALTERNATIVE_CASH</option>
+                {methodOffer.offered
+                  .filter((m): m is RefundMethod => m === 'ORIGINAL' || m === 'ALTERNATIVE_CASH')
+                  .map((m) => (
+                    <option key={m} value={m}>
+                      {m}
+                    </option>
+                  ))}
               </select>
-              <span className="text-xs text-[var(--color-on-surface-muted)]">
-                {t('pickup.refunds.altCashAfterNativeFail')}
-              </span>
-              {effectiveRefundMethod === 'ALTERNATIVE_CASH' ? (
-                <label className="mt-2 flex items-start gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    className="mt-1 min-h-5 min-w-5"
-                    checked={customerConsentedAlt}
-                    data-testid="pickup-refund-alt-consent"
-                    onChange={(e) => {
-                      setCustomerConsentedAlt(e.target.checked);
-                    }}
-                  />
-                  <span>
-                    {t('pickup.refunds.altConsent')}
-                  </span>
-                </label>
+              {methodOffer.alternativeCashRequiresEscalation &&
+              !methodOffer.offered.includes('ALTERNATIVE_CASH') ? (
+                <span className="text-xs text-[var(--color-on-surface-muted)]">
+                  {t('pickup.refunds.altCashAfterNativeFail')}
+                </span>
+              ) : null}
+              {showAltCashOption ? (
+                <>
+                  <label className="mt-2 flex items-start gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      className="mt-1 min-h-5 min-w-5"
+                      checked={altCashEscalationApproved}
+                      data-testid="pickup-refund-alt-escalation"
+                      onChange={(e) => {
+                        setAltCashEscalationApproved(e.target.checked);
+                      }}
+                    />
+                    <span>Escalation approved after ORIGINAL failure (section 16.3)</span>
+                  </label>
+                  {effectiveRefundMethod === 'ALTERNATIVE_CASH' ? (
+                    <label className="mt-2 flex items-start gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        className="mt-1 min-h-5 min-w-5"
+                        checked={customerConsentedAlt}
+                        data-testid="pickup-refund-alt-consent"
+                        onChange={(e) => {
+                          setCustomerConsentedAlt(e.target.checked);
+                        }}
+                      />
+                      <span>{t('pickup.refunds.altConsent')}</span>
+                    </label>
+                  ) : null}
+                </>
               ) : null}
             </label>
           ) : null}
@@ -1310,9 +1662,62 @@ export function PickupRefundIntake({
             </p>
           ) : null}
           {refundStatusLabel !== null ? (
-            <p className="text-sm font-medium" data-testid="pickup-refund-status">
-              {refundStatusLabel}
+            <div className="flex flex-col gap-1" data-testid="pickup-refund-status-meta">
+              <p className="text-sm font-medium" data-testid="pickup-refund-status">
+                {refundStatusLabel}
+              </p>
+              {refundQuery.data !== undefined ? (
+                <p className="m-0 text-xs text-[var(--color-on-surface-muted)]" data-testid="pickup-refund-attempt-status">
+                  {refundQuery.data.attemptStatus ?? '—'}
+                  {' / '}
+                  {t('pickup.refunds.providerReference', {
+                    defaultValue: 'Provider reference',
+                  })}
+                  {': '}
+                  {refundQuery.data.providerReferenceId != null &&
+                  refundQuery.data.providerReferenceId.trim().length > 0
+                    ? refundQuery.data.providerReferenceId
+                    : '—'}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+          {layerBLabel !== null ? (
+            <p
+              className="text-sm font-medium"
+              data-testid="pickup-refund-layer-b"
+              data-layer-b={layerBLabel}
+            >
+              {t('pickup.refunds.layerB', {
+                defaultValue: `Settlement (Layer B): ${layerBLabel}`,
+              })}
             </p>
+          ) : null}
+          {showCashHandoff ? (
+            <div
+              className="flex flex-col gap-2 rounded-md border border-[var(--color-border)] p-3"
+              data-testid="pickup-refund-cash-handoff"
+            >
+              <p className="m-0 text-sm">
+                {t('pickup.refunds.cashHandoffHint', {
+                  defaultValue:
+                    'Hotovostní refund čeká na předání. Potvrďte až po fyzickém vyplacení.',
+                })}
+              </p>
+              <Button
+                type="button"
+                intent="primary"
+                disabled={refundSubmitting}
+                data-testid="pickup-refund-cash-handoff-confirm"
+                onClick={() => {
+                  void onConfirmCashHandoff();
+                }}
+              >
+                {t('pickup.refunds.cashHandoffConfirm', {
+                  defaultValue: 'Potvrdit předání hotovosti',
+                })}
+              </Button>
+            </div>
           ) : null}
           {slaBreached ? (
             <AlertBanner

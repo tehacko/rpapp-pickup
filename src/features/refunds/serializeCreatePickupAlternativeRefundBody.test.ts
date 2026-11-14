@@ -52,4 +52,27 @@ describe('serializeCreatePickupAlternativeRefundBody (G20/G26)', () => {
     });
     expect(body.customerConsentToAltMethodAt).toBe(consentedAt);
   });
+
+  it('G2/G6 forwards manualAttestationEvidence + alternativeCashEscalationApproved', () => {
+    const evidence = {
+      evidenceType: 'BANK_TRANSFER_PROOF',
+      evidenceReference: 'ATT-pickup-1',
+      attestedByActorId: 3,
+      attestedAt: '2026-03-14T12:00:00.000Z',
+      notes: null as string | null,
+    };
+    const body = serializeCreatePickupAlternativeRefundBody({
+      transactionId: 42,
+      amount: 80,
+      currency: 'CZK',
+      staffReason: 'CUSTOMER_CANCEL_RETURN',
+      method: 'ALTERNATIVE_CASH',
+      transitionReason: 'native_refund_failed',
+      alternativeCashEscalationApproved: true,
+      manualAttestationEvidence: evidence,
+      lines: [{ productId: 10, quantity: 1, amount: 80 }],
+    });
+    expect(body.manualAttestationEvidence).toEqual(evidence);
+    expect(body.alternativeCashEscalationApproved).toBe(true);
+  });
 });

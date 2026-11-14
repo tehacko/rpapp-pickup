@@ -27,6 +27,11 @@ export interface IRefundsGateway {
     accessToken: string,
     attemptId: string,
   ): Promise<RefundReadDTO>;
+  confirmCashHandoff(
+    tenantCode: string,
+    accessToken: string,
+    attemptId: string,
+  ): Promise<RefundReadDTO>;
   listTransactionRefunds(
     tenantCode: string,
     accessToken: string,
