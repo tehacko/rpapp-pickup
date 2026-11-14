@@ -28,11 +28,21 @@ import {
 export interface PickupRefundIntakeProps {
   readonly tenantCode: string;
   readonly accessToken: string;
-  readonly transactionId: number;
+  /**
+   * Sale proof — omit / leave unused when staff toggles unknown-txn alt-proof (R28 Partial).
+   * Honesty: Partial carve only — NOT F10-T08 limb B; full F10-T09 → DELTA 03 OOS.
+   */
+  readonly transactionId?: number;
+  /**
+   * Prefill / required for alt-proof when sale txn is absent.
+   * BE may also default from staff session salesPointId.
+   */
+  readonly salesPointId?: number;
   readonly currency: string;
   readonly amountMajor: number;
   readonly lines: readonly FulfillmentLine[];
   readonly customerEmail?: string | null;
+  readonly customerPhone?: string | null;
   readonly capabilities: readonly string[];
   readonly gateway?: IRefundsGateway;
 }
@@ -60,14 +70,20 @@ function formatHttpError(err: unknown): { readonly status: number; readonly mess
   return { status: 0, message: 'Request failed' };
 }
 
+function hasSaleTransactionId(transactionId: number | undefined): transactionId is number {
+  return typeof transactionId === 'number' && Number.isInteger(transactionId) && transactionId > 0;
+}
+
 export function PickupRefundIntake({
   tenantCode,
   accessToken,
   transactionId,
+  salesPointId: salesPointIdProp,
   currency,
   amountMajor,
   lines,
   customerEmail,
+  customerPhone,
   capabilities,
   gateway = refundsGateway,
 }: PickupRefundIntakeProps): JSX.Element {
@@ -75,6 +91,7 @@ export function PickupRefundIntake({
   const canRefund = hasPickupRefundCapability(capabilities);
   const canComplaint = hasPickupComplaintIntakeCapability(capabilities);
   const canAltMethod = hasPickupRefundAlternativeCapability(capabilities);
+  const hasSaleTxnProp = hasSaleTransactionId(transactionId);
 
   const [staffReason, setStaffReason] = useState<RefundStaffReason>('CUSTOMER_CANCEL_RETURN');
   /** 05-F05 — ALTERNATIVE_CASH only after native ORIGINAL failure (never ALTERNATIVE_BANK). */
@@ -94,12 +111,31 @@ export function PickupRefundIntake({
   const [complaintDescription, setComplaintDescription] = useState('');
   const [requestedRemedy, setRequestedRemedy] =
     useState<ComplaintRequestedRemedy>('REFUND');
+  /** R28 Partial — unknown-txn alt-proof (salesPointId + otherProofNote); no Forced REFUND. */
+  const [unknownTxnMode, setUnknownTxnMode] = useState(!hasSaleTxnProp);
+  const [altSalesPointId, setAltSalesPointId] = useState(
+    typeof salesPointIdProp === 'number' && salesPointIdProp > 0
+      ? String(salesPointIdProp)
+      : '',
+  );
+  const [otherProofNote, setOtherProofNote] = useState('');
   const [complaintError, setComplaintError] = useState<{
     status: number;
     message: string;
   } | null>(null);
   const [caseId, setCaseId] = useState<string | null>(null);
   const [complaintSubmitting, setComplaintSubmitting] = useState(false);
+
+  let effectiveAltSalesPointId = altSalesPointId.trim();
+  if (
+    effectiveAltSalesPointId === '' &&
+    typeof salesPointIdProp === 'number' &&
+    salesPointIdProp > 0
+  ) {
+    effectiveAltSalesPointId = String(salesPointIdProp);
+  }
+
+  const effectiveHasSaleTxn = hasSaleTxnProp && !unknownTxnMode;
 
   const [complaintDecision, setComplaintDecision] =
     useState<ReturnDispositionDecision>('DO_NOT_RETURN_TO_SELLABLE');
@@ -247,6 +283,13 @@ export function PickupRefundIntake({
   async function onSubmitRefund(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
     setRefundError(null);
+    if (!effectiveHasSaleTxn || transactionId === undefined) {
+      setRefundError({
+        status: 400,
+        message: t('pickup.refunds.moneyRequiresSale'),
+      });
+      return;
+    }
     if (staffReason === 'OTHER' && note.trim().length === 0) {
       setRefundError({ status: 400, message: t('pickup.refunds.noteRequired') });
       return;
@@ -370,17 +413,52 @@ export function PickupRefundIntake({
       setComplaintError({ status: 403, message: t('pickup.complaints.forbidden') });
       return;
     }
+
+    const contactSnapshot = {
+      ...(customerEmail != null && customerEmail.trim().length > 0
+        ? { email: customerEmail.trim() }
+        : {}),
+      ...(customerPhone != null && customerPhone.trim().length > 0
+        ? { phone: customerPhone.trim() }
+        : {}),
+    };
+
+    if (unknownTxnMode || !effectiveHasSaleTxn) {
+      const parsedSp = Number.parseInt(effectiveAltSalesPointId, 10);
+      const proofNote = otherProofNote.trim();
+      if (!Number.isInteger(parsedSp) || parsedSp <= 0 || proofNote.length === 0) {
+        setComplaintError({
+          status: 400,
+          message: t('pickup.complaints.altProofRequired'),
+        });
+        return;
+      }
+      setComplaintSubmitting(true);
+      try {
+        const created = await gateway.intakeComplaint(tenantCode, accessToken, {
+          transactionId: null,
+          salesPointId: parsedSp,
+          otherProofNote: proofNote,
+          requestedRemedy: requestedRemedy === 'REFUND' ? 'OTHER' : requestedRemedy,
+          customerDescription: complaintDescription.trim(),
+          contactSnapshot,
+        });
+        setCaseId(created.caseId);
+      } catch (err) {
+        setComplaintError(formatHttpError(err));
+      } finally {
+        setComplaintSubmitting(false);
+      }
+      return;
+    }
+
     setComplaintSubmitting(true);
     try {
       const created = await gateway.intakeComplaint(tenantCode, accessToken, {
         transactionId,
         requestedRemedy,
         customerDescription: complaintDescription.trim(),
-        contactSnapshot: {
-          ...(customerEmail != null && customerEmail.trim().length > 0
-            ? { email: customerEmail.trim() }
-            : {}),
-        },
+        contactSnapshot,
       });
       setCaseId(created.caseId);
     } catch (err) {
@@ -449,6 +527,59 @@ export function PickupRefundIntake({
     <div className="flex flex-col gap-[var(--pickup-space-4)]" data-testid="pickup-refund-intake">
       <SectionCard title={t('pickup.complaints.title')} data-testid="pickup-complaint-intake">
         <form className="flex flex-col gap-3" onSubmit={(e) => void onSubmitComplaint(e)}>
+          {hasSaleTxnProp ? (
+            <label className="flex items-start gap-2 text-sm">
+              <input
+                type="checkbox"
+                className="mt-1 min-h-5 min-w-5"
+                checked={unknownTxnMode}
+                data-testid="pickup-complaint-unknown-txn"
+                onChange={(e) => {
+                  setUnknownTxnMode(e.target.checked);
+                }}
+              />
+              <span>{t('pickup.complaints.unknownTxn')}</span>
+            </label>
+          ) : (
+            <p
+              className="m-0 text-sm text-[var(--color-on-surface-muted)]"
+              data-testid="pickup-complaint-unknown-txn-hint"
+            >
+              {t('pickup.complaints.unknownTxnHint')}
+            </p>
+          )}
+          {unknownTxnMode || !effectiveHasSaleTxn ? (
+            <div className="flex flex-col gap-3" data-testid="pickup-complaint-alt-proof">
+              <label className="flex flex-col gap-1 text-sm">
+                {t('pickup.complaints.salesPointId')}
+                <input
+                  type="number"
+                  min={1}
+                  inputMode="numeric"
+                  className="min-h-11 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2"
+                  value={altSalesPointId}
+                  data-testid="pickup-complaint-sales-point"
+                  onChange={(e) => {
+                    setAltSalesPointId(e.target.value);
+                  }}
+                />
+              </label>
+              <label className="flex flex-col gap-1 text-sm">
+                {t('pickup.complaints.otherProofNote')}
+                <textarea
+                  className="min-h-20 rounded-md border border-[var(--color-border)] bg-[var(--color-surface)] px-2 py-2"
+                  value={otherProofNote}
+                  data-testid="pickup-complaint-other-proof-note"
+                  onChange={(e) => {
+                    setOtherProofNote(e.target.value);
+                  }}
+                />
+              </label>
+              <p className="m-0 text-xs text-[var(--color-on-surface-muted)]">
+                {t('pickup.complaints.altProofNoRefund')}
+              </p>
+            </div>
+          ) : null}
           <label className="flex flex-col gap-1 text-sm">
             {t('pickup.complaints.remedy')}
             <select
@@ -552,6 +683,14 @@ export function PickupRefundIntake({
 
       <SectionCard title={t('pickup.refunds.title')} data-testid="pickup-refund-form">
         <form className="flex flex-col gap-3" onSubmit={(e) => void onSubmitRefund(e)}>
+          {!effectiveHasSaleTxn ? (
+            <p
+              className="m-0 text-sm text-[var(--color-on-surface-muted)]"
+              data-testid="pickup-refund-blocked-unknown-txn"
+            >
+              {t('pickup.refunds.moneyRequiresSale')}
+            </p>
+          ) : null}
           <p className="text-sm text-[var(--color-on-surface-muted)]">
             {t('pickup.refunds.amountLine', {
               amount: amountMajor.toFixed(2),
@@ -624,7 +763,7 @@ export function PickupRefundIntake({
               }}
             />
           </label>
-          {canRefund ? (
+          {canRefund && effectiveHasSaleTxn ? (
             <Button
               type="submit"
               intent="primary"

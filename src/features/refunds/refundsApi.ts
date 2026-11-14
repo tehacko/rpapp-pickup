@@ -141,7 +141,10 @@ function asReadItems(raw: unknown): readonly RefundReadItemDTO[] {
   return items;
 }
 
-function asComplaintRead(data: unknown, fallbackTransactionId: number): ComplaintReadDTO {
+function asComplaintRead(
+  data: unknown,
+  fallbackTransactionId?: number | null,
+): ComplaintReadDTO {
   const row = (typeof data === 'object' && data !== null ? data : {}) as Record<string, unknown>;
   let caseId = '';
   if (typeof row.caseId === 'string') {
@@ -161,10 +164,18 @@ function asComplaintRead(data: unknown, fallbackTransactionId: number): Complain
     requestedRemedyRaw === 'OTHER'
       ? requestedRemedyRaw
       : 'OTHER';
+  let transactionId: number | null = null;
+  if (typeof row.transactionId === 'number' && row.transactionId > 0) {
+    transactionId = row.transactionId;
+  } else if (typeof fallbackTransactionId === 'number' && fallbackTransactionId > 0) {
+    transactionId = fallbackTransactionId;
+  }
+  const salesPointId =
+    typeof row.salesPointId === 'number' && row.salesPointId > 0 ? row.salesPointId : null;
   return {
     caseId,
-    transactionId:
-      typeof row.transactionId === 'number' ? row.transactionId : fallbackTransactionId,
+    transactionId,
+    ...(salesPointId !== null ? { salesPointId } : {}),
     status: typeof row.status === 'string' ? row.status : 'OPEN',
     requestedRemedy,
   };
@@ -296,7 +307,10 @@ export async function getPickupComplaint(
     method: 'GET',
     headers: authHeaders(accessToken),
   });
-  return asComplaintRead(await readSuccessData<unknown>(res, 'Invalid complaint get response'), 0);
+  return asComplaintRead(
+    await readSuccessData<unknown>(res, 'Invalid complaint get response'),
+    null,
+  );
 }
 
 async function readDispositionList(

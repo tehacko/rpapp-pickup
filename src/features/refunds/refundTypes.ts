@@ -57,18 +57,26 @@ export function serializeCreatePickupAlternativeRefundBody(
 }
 
 export interface IntakeComplaintBody {
-  readonly transactionId: number;
+  /**
+   * Sale proof — optional when alt-proof (`salesPointId` + `otherProofNote`) is supplied (R28 / G27).
+   */
+  readonly transactionId?: number | null;
+  /** Required with non-empty `otherProofNote` when `transactionId` is absent (BE may default from staff SP). */
+  readonly salesPointId?: number | null;
   readonly requestedRemedy: ComplaintRequestedRemedy;
   readonly customerDescription: string;
   readonly otherProofNote?: string;
   readonly contactSnapshot: {
     readonly email?: string;
+    readonly phone?: string;
   };
 }
 
 export interface ComplaintReadDTO {
   readonly caseId: string;
-  readonly transactionId: number;
+  /** Null when case was opened via alt-proof (no linked sale). */
+  readonly transactionId: number | null;
+  readonly salesPointId?: number | null;
   readonly status: string;
   readonly requestedRemedy?: ComplaintRequestedRemedy;
 }

@@ -388,4 +388,168 @@ describe('PickupRefundIntake', () => {
       );
     });
   });
+
+  it('R28 Partial: unknown-txn alt-proof posts salesPointId+otherProofNote and hides money CTA', async () => {
+    const gateway = stubGateway({
+      intakeComplaint: jest.fn(async () => ({
+        caseId: 'case-alt',
+        transactionId: null,
+        salesPointId: 9,
+        status: 'SUBMITTED',
+        requestedRemedy: 'OTHER',
+      })),
+    });
+
+    render(
+      wrap(
+        <PickupRefundIntake
+          tenantCode="acme"
+          accessToken="tok"
+          transactionId={42}
+          salesPointId={9}
+          currency="CZK"
+          amountMajor={80}
+          lines={[line]}
+          capabilities={['refund', 'complaint_intake']}
+          gateway={gateway}
+        />,
+      ),
+    );
+
+    fireEvent.click(screen.getByTestId('pickup-complaint-unknown-txn'));
+    expect(screen.getByTestId('pickup-complaint-alt-proof')).toBeInTheDocument();
+    expect(screen.getByTestId('pickup-refund-blocked-unknown-txn')).toBeInTheDocument();
+    expect(screen.queryByTestId('pickup-refund-submit')).not.toBeInTheDocument();
+    expect(screen.getByTestId('pickup-complaint-sales-point')).toHaveValue(9);
+
+    fireEvent.change(screen.getByTestId('pickup-complaint-other-proof-note'), {
+      target: { value: 'staff witnessed cash purchase desk-2' },
+    });
+    fireEvent.change(screen.getByTestId('pickup-complaint-description'), {
+      target: { value: 'no receipt — paid cash' },
+    });
+    fireEvent.click(screen.getByTestId('pickup-complaint-submit'));
+
+    await waitFor(() => {
+      expect(gateway.intakeComplaint).toHaveBeenCalledWith(
+        'acme',
+        'tok',
+        expect.objectContaining({
+          transactionId: null,
+          salesPointId: 9,
+          otherProofNote: 'staff witnessed cash purchase desk-2',
+        }),
+      );
+    });
+    expect(gateway.createRefund).not.toHaveBeenCalled();
+  });
+
+  it('R28 Partial: opens alt-proof path when transactionId prop is absent', () => {
+    const gateway = stubGateway();
+    render(
+      wrap(
+        <PickupRefundIntake
+          tenantCode="acme"
+          accessToken="tok"
+          salesPointId={3}
+          currency="CZK"
+          amountMajor={0}
+          lines={[]}
+          capabilities={['complaint_intake']}
+          gateway={gateway}
+        />,
+      ),
+    );
+
+    expect(screen.getByTestId('pickup-complaint-unknown-txn-hint')).toBeInTheDocument();
+    expect(screen.getByTestId('pickup-complaint-alt-proof')).toBeInTheDocument();
+    expect(screen.queryByTestId('pickup-refund-submit')).not.toBeInTheDocument();
+    expect(gateway.createRefund).not.toHaveBeenCalled();
+  });
+
+  it('R28 Partial: unknown-txn without alt-proof fields blocks intake (no Forced REFUND)', async () => {
+    const gateway = stubGateway();
+    render(
+      wrap(
+        <PickupRefundIntake
+          tenantCode="acme"
+          accessToken="tok"
+          salesPointId={3}
+          currency="CZK"
+          amountMajor={0}
+          lines={[]}
+          capabilities={['complaint_intake']}
+          gateway={gateway}
+        />,
+      ),
+    );
+
+    fireEvent.change(screen.getByTestId('pickup-complaint-description'), {
+      target: { value: 'paid cash — no receipt' },
+    });
+    fireEvent.change(screen.getByTestId('pickup-complaint-remedy'), {
+      target: { value: 'REFUND' },
+    });
+    fireEvent.click(screen.getByTestId('pickup-complaint-submit'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('pickup-complaint-error')).toHaveTextContent(
+        'pickup.complaints.altProofRequired',
+      );
+    });
+    expect(gateway.intakeComplaint).not.toHaveBeenCalled();
+    expect(gateway.createRefund).not.toHaveBeenCalled();
+  });
+
+  it('R28 Partial: unknown-txn coerces requestedRemedy REFUND → OTHER on intake', async () => {
+    const gateway = stubGateway({
+      intakeComplaint: jest.fn(async () => ({
+        caseId: 'case-alt-2',
+        transactionId: null,
+        salesPointId: 3,
+        status: 'SUBMITTED',
+        requestedRemedy: 'OTHER',
+      })),
+    });
+
+    render(
+      wrap(
+        <PickupRefundIntake
+          tenantCode="acme"
+          accessToken="tok"
+          salesPointId={3}
+          currency="CZK"
+          amountMajor={0}
+          lines={[]}
+          capabilities={['complaint_intake']}
+          gateway={gateway}
+        />,
+      ),
+    );
+
+    fireEvent.change(screen.getByTestId('pickup-complaint-other-proof-note'), {
+      target: { value: 'witnessed cash at desk' },
+    });
+    fireEvent.change(screen.getByTestId('pickup-complaint-description'), {
+      target: { value: 'defect — no txn' },
+    });
+    fireEvent.change(screen.getByTestId('pickup-complaint-remedy'), {
+      target: { value: 'REFUND' },
+    });
+    fireEvent.click(screen.getByTestId('pickup-complaint-submit'));
+
+    await waitFor(() => {
+      expect(gateway.intakeComplaint).toHaveBeenCalledWith(
+        'acme',
+        'tok',
+        expect.objectContaining({
+          transactionId: null,
+          salesPointId: 3,
+          otherProofNote: 'witnessed cash at desk',
+          requestedRemedy: 'OTHER',
+        }),
+      );
+    });
+    expect(gateway.createRefund).not.toHaveBeenCalled();
+  });
 });

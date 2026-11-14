@@ -436,10 +436,12 @@ export function OrderScreenView({
             tenantCode={tenantCode}
             accessToken={accessToken}
             transactionId={order.transactionId}
+            salesPointId={order.salesPointId}
             currency={order.currency ?? 'CZK'}
             amountMajor={(order.amountMinor ?? 0) / 100}
             lines={order.lines}
             customerEmail={order.customerEmail}
+            customerPhone={order.customerPhone}
             capabilities={sessionClaims?.capabilities ?? []}
           />
         ) : null}
