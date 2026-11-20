@@ -242,7 +242,8 @@ describe('PickupPwaLifecycle deploy shell refresh wiring', () => {
 
   beforeEach(() => {
     emitPickupPwaAnalytics.mockClear();
-    runPickupDeployShellRefreshMock.mockClear();
+    runPickupDeployShellRefreshMock.mockReset();
+    runPickupDeployShellRefreshMock.mockImplementation(async () => undefined);
     bustPickupHttpShellCachesMock.mockClear();
     runPickupPwaPeerTabReloadMock.mockClear();
     isPickupCriticalFlowActiveMock.mockReset();
@@ -263,8 +264,14 @@ describe('PickupPwaLifecycle deploy shell refresh wiring', () => {
     isPickupCriticalFlowActiveMock.mockReturnValue(true);
     registerMock.mockImplementation((handlers) => {
       handlers.setUpdateReady(true);
+      // Mirror registerPickupPwaServiceWorker G4 wiring: real refresh, not re-queue.
       handlers.setApplyUpdate(() => applyUpdate);
     });
+    runPickupDeployShellRefreshMock.mockImplementation(
+      async (deps: { applyUpdate: (() => void) | null; reload: () => void }) => {
+        deps.applyUpdate?.();
+      },
+    );
 
     render(<PickupPwaLifecycle />);
     const button = await screen.findByTestId('pickup-pwa-apply-update');
@@ -277,6 +284,15 @@ describe('PickupPwaLifecycle deploy shell refresh wiring', () => {
     await waitFor(() => {
       expect(runPickupDeployShellRefreshMock).toHaveBeenCalledTimes(1);
     });
+    expect(runPickupDeployShellRefreshMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        applyUpdate,
+        reload: expect.any(Function),
+      }),
+    );
+    // bypassCritical → beginSafeRefresh must invoke the real applyUpdate (skipWaiting path),
+    // not stop at a re-queue-only wrapper.
+    expect(applyUpdate).toHaveBeenCalledTimes(1);
     expect(bustPickupHttpShellCachesMock).not.toHaveBeenCalled();
   });
 

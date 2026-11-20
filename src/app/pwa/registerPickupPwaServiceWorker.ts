@@ -1,4 +1,5 @@
 import { Workbox } from 'workbox-window';
+import { isViteDev } from '../../shared/vite/readViteMetaEnv.js';
 import { bustPickupHttpShellCaches } from './bustPickupHttpShellCaches.js';
 import {
   isPickupCriticalFlowActive,
@@ -6,7 +7,8 @@ import {
 } from './scanActiveGate.js';
 
 export const PICKUP_PWA_RELOAD_CHANNEL = 'rpapp-pickup-pwa-reload';
-const CONTROLLING_RELOAD_FALLBACK_MS = 4_000;
+/** Controlling-event fallback before hard reload (exported for unit tests). */
+export const CONTROLLING_RELOAD_FALLBACK_MS = 4_000;
 
 export interface PickupPwaUpdateHandlers {
   readonly setUpdateReady: (ready: boolean) => void;
@@ -31,7 +33,8 @@ export function registerPickupPwaServiceWorker(handlers: PickupPwaUpdateHandlers
   if (!('serviceWorker' in navigator)) {
     return;
   }
-  if (import.meta.env.DEV) {
+  // Jest maps `isViteDev` → false so register takes the Workbox path in unit tests.
+  if (isViteDev()) {
     return;
   }
 
@@ -61,14 +64,16 @@ export function registerPickupPwaServiceWorker(handlers: PickupPwaUpdateHandlers
     };
 
     if (isPickupCriticalFlowActive()) {
+      // Auto path: activate when critical attrs clear (scan / re-PIN).
       queuePickupPwaRefreshWhenIdle(refresh);
       handlers.setUpdateReady(true);
-      handlers.setApplyUpdate(() => () => {
-        queuePickupPwaRefreshWhenIdle(refresh);
-      });
+      // Hard-modal Apply (bypassCritical + beginSafeRefresh) must call real
+      // skipWaiting/reload — never a re-queue-only wrapper (G4 deadlock).
+      handlers.setApplyUpdate(() => refresh);
       return;
     }
     handlers.setUpdateReady(true);
+    // Double arrow: React setState treats a function arg as an updater.
     handlers.setApplyUpdate(() => refresh);
   });
 
