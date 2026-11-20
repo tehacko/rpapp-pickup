@@ -68,7 +68,6 @@ export function PickupPwaLifecycle(): JSX.Element | null {
   const updateShownEmittedRef = useRef(false);
   const installOfferMarkedRef = useRef(false);
   const refreshLockRef = useRef(false);
-  const criticalFlowActive = isPickupCriticalFlowActive();
 
   useEffect(() => {
     const onBeforeInstall = (event: Event): void => {
@@ -238,144 +237,127 @@ export function PickupPwaLifecycle(): JSX.Element | null {
   };
 
   const handleApplyUpdate = (): void => {
-    beginSafeRefresh();
+    // Hard update-required gate: user cannot continue on a stale shell.
+    beginSafeRefresh({ outcome: 'update_required', bypassCritical: true });
   };
 
   const handleForceRefresh = (): void => {
     beginSafeRefresh({ outcome: 'force_refresh', bypassCritical: true });
   };
 
-  if (
-    !showChromiumInstall &&
-    !showIosInstallGuide &&
-    !updateReady &&
-    !offline &&
-    !forceUpdateEnabled &&
-    !isRefreshing
-  ) {
+  const hardUpdateRequired = updateReady && !isRefreshing;
+  const showSoftChrome =
+    !hardUpdateRequired &&
+    !isRefreshing &&
+    (showChromiumInstall || showIosInstallGuide || offline || forceUpdateEnabled);
+
+  if (!showSoftChrome && !hardUpdateRequired && !isRefreshing) {
     return null;
   }
 
-  const applyDisabled = isRefreshing || criticalFlowActive;
+  let blockingOverlay: JSX.Element | null = null;
+  if (isRefreshing) {
+    blockingOverlay = <PwaRefreshBlockingOverlay label={t('pwa.refreshing')} />;
+  } else if (hardUpdateRequired) {
+    blockingOverlay = (
+      <PwaRefreshBlockingOverlay
+        testId="pickup-pwa-update-required"
+        title={t('pwa.updateTitle')}
+        label={
+          updateFailed ? t('pwa.updateFailed') : t('pwa.updateRequiredBody')
+        }
+        actionLabel={t('pwa.updateAction')}
+        onAction={handleApplyUpdate}
+        actionTestId="pickup-pwa-apply-update"
+      />
+    );
+  }
 
   return (
     <>
-      {isRefreshing ? (
-        <PwaRefreshBlockingOverlay label={t('pwa.refreshing')} />
-      ) : null}
-      <div
-        className="fixed inset-x-0 bottom-[var(--pickup-bottom-chrome,0px)] z-[var(--pickup-z-50)] mx-auto max-w-xl px-3"
-        data-testid="pickup-pwa-lifecycle"
-        aria-hidden={isRefreshing || undefined}
-      >
-        {offline ? (
-          <div className="mb-2 rounded-md border border-[var(--color-border)] bg-[var(--color-surface-elevated)] p-3 shadow-sm">
-            <p className="text-sm text-[var(--color-on-surface)]">{t('pwa.offlineBanner')}</p>
-          </div>
-        ) : null}
-        {showChromiumInstall ? (
-          <div
-            className="mb-2 rounded-md border border-[var(--color-border)] bg-[var(--color-surface-elevated)] p-3 shadow-sm"
-            role="region"
-            aria-label={t('pwa.installTitle')}
-          >
-            <h2 className="m-0 text-base font-semibold text-[var(--color-on-surface)]">
-              {t('pwa.installTitle')}
-            </h2>
-            <p className="mt-1 text-sm text-[var(--color-on-surface-muted)]">
-              {t('pwa.installPrompt')}
-            </p>
-            <div className="mt-3 flex flex-col gap-2 min-[30rem]:flex-row min-[30rem]:items-stretch">
-              <Button
-                type="button"
-                intent="primary"
-                className="w-full min-[30rem]:min-w-0 min-[30rem]:flex-1"
-                onClick={() => void handleInstall()}
-                disabled={isRefreshing}
-                data-testid="pickup-pwa-install-button"
-              >
-                {t('pwa.installAction')}
-              </Button>
+      {blockingOverlay}
+      {showSoftChrome ? (
+        <div
+          className="fixed inset-x-0 bottom-[var(--pickup-bottom-chrome,0px)] z-[var(--pickup-z-50)] mx-auto max-w-xl px-3"
+          data-testid="pickup-pwa-lifecycle"
+        >
+          {offline ? (
+            <div className="mb-2 rounded-md border border-[var(--color-border)] bg-[var(--color-surface-elevated)] p-3 shadow-sm">
+              <p className="text-sm text-[var(--color-on-surface)]">{t('pwa.offlineBanner')}</p>
+            </div>
+          ) : null}
+          {showChromiumInstall ? (
+            <div
+              className="mb-2 rounded-md border border-[var(--color-border)] bg-[var(--color-surface-elevated)] p-3 shadow-sm"
+              role="region"
+              aria-label={t('pwa.installTitle')}
+            >
+              <h2 className="m-0 text-base font-semibold text-[var(--color-on-surface)]">
+                {t('pwa.installTitle')}
+              </h2>
+              <p className="mt-1 text-sm text-[var(--color-on-surface-muted)]">
+                {t('pwa.installPrompt')}
+              </p>
+              <div className="mt-3 flex flex-col gap-2 min-[30rem]:flex-row min-[30rem]:items-stretch">
+                <Button
+                  type="button"
+                  intent="primary"
+                  className="w-full min-[30rem]:min-w-0 min-[30rem]:flex-1"
+                  onClick={() => void handleInstall()}
+                  data-testid="pickup-pwa-install-button"
+                >
+                  {t('pwa.installAction')}
+                </Button>
+                <Button
+                  type="button"
+                  intent="secondary"
+                  className="w-full min-[30rem]:min-w-0 min-[30rem]:flex-1"
+                  onClick={handleDismissInstall}
+                  data-testid="pickup-pwa-install-dismiss"
+                >
+                  {t('pwa.installDismiss')}
+                </Button>
+              </div>
+            </div>
+          ) : null}
+          {showIosInstallGuide ? (
+            <div
+              className="mb-2 rounded-md border border-[var(--color-border)] bg-[var(--color-surface-elevated)] p-3 shadow-sm"
+              data-testid="pickup-pwa-ios-guide"
+              role="region"
+              aria-label={t('pwa.installTitle')}
+            >
+              <h2 className="m-0 text-base font-semibold text-[var(--color-on-surface)]">
+                {t('pwa.installTitle')}
+              </h2>
+              <p className="mt-1 text-sm text-[var(--color-on-surface-muted)]">
+                {t('pwa.iosInstallGuide')}
+              </p>
               <Button
                 type="button"
                 intent="secondary"
-                className="w-full min-[30rem]:min-w-0 min-[30rem]:flex-1"
+                className="mt-3 w-full"
                 onClick={handleDismissInstall}
-                disabled={isRefreshing}
                 data-testid="pickup-pwa-install-dismiss"
               >
                 {t('pwa.installDismiss')}
               </Button>
             </div>
-          </div>
-        ) : null}
-        {showIosInstallGuide ? (
-          <div
-            className="mb-2 rounded-md border border-[var(--color-border)] bg-[var(--color-surface-elevated)] p-3 shadow-sm"
-            data-testid="pickup-pwa-ios-guide"
-            role="region"
-            aria-label={t('pwa.installTitle')}
-          >
-            <h2 className="m-0 text-base font-semibold text-[var(--color-on-surface)]">
-              {t('pwa.installTitle')}
-            </h2>
-            <p className="mt-1 text-sm text-[var(--color-on-surface-muted)]">
-              {t('pwa.iosInstallGuide')}
-            </p>
-            <Button
-              type="button"
-              intent="secondary"
-              className="mt-3 w-full"
-              onClick={handleDismissInstall}
-              disabled={isRefreshing}
-              data-testid="pickup-pwa-install-dismiss"
-            >
-              {t('pwa.installDismiss')}
-            </Button>
-          </div>
-        ) : null}
-        {updateReady ? (
-          <div
-            className="rounded-md border border-[var(--color-border)] bg-[var(--color-surface-elevated)] p-3 shadow-sm"
-            data-testid="pickup-pwa-update-ready"
-          >
-            <p className="text-sm text-[var(--color-on-surface)]">
-              {criticalFlowActive
-                ? t('pwa.updateDeferredCritical')
-                : t('pwa.updateReady')}
-            </p>
-            {updateFailed ? (
-              <p className="mt-1 text-xs text-[var(--color-danger,var(--color-error))]" role="alert">
-                {t('pwa.updateFailed')}
-              </p>
-            ) : null}
-            <Button
-              type="button"
-              className="mt-2"
-              onClick={handleApplyUpdate}
-              disabled={applyDisabled}
-              aria-busy={isRefreshing || undefined}
-              data-testid="pickup-pwa-apply-update"
-            >
-              {isRefreshing ? t('pwa.refreshing') : t('pwa.updateAction')}
-            </Button>
-          </div>
-        ) : null}
-        {forceUpdateEnabled ? (
-          <div className="mt-2 rounded-md border border-[var(--color-border)] bg-[var(--color-surface-elevated)] p-3 shadow-sm">
-            <Button
-              type="button"
-              className="mt-0"
-              onClick={handleForceRefresh}
-              disabled={isRefreshing}
-              aria-busy={isRefreshing || undefined}
-              data-testid="pwa-force-refresh"
-            >
-              {isRefreshing ? t('pwa.refreshing') : t('pwa.forceRefresh')}
-            </Button>
-          </div>
-        ) : null}
-      </div>
+          ) : null}
+          {forceUpdateEnabled ? (
+            <div className="mt-2 rounded-md border border-[var(--color-border)] bg-[var(--color-surface-elevated)] p-3 shadow-sm">
+              <Button
+                type="button"
+                className="mt-0"
+                onClick={handleForceRefresh}
+                data-testid="pwa-force-refresh"
+              >
+                {t('pwa.forceRefresh')}
+              </Button>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
     </>
   );
 }

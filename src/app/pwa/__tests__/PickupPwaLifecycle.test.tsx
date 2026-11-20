@@ -258,12 +258,9 @@ describe('PickupPwaLifecycle deploy shell refresh wiring', () => {
     readViteMetaEnvSpy.mockReset();
   });
 
-  it('Apply under critical busts HTTP shell then queues applyUpdate (no bare apply)', async () => {
+  it('hard update-required Apply bypasses critical and runs deploy shell refresh', async () => {
     const applyUpdate = jest.fn();
-    // Banner enables Apply while non-critical; flip critical before click so
-    // beginSafeRefresh hits the deferred-critical early return (race / late gate).
-    let critical = false;
-    isPickupCriticalFlowActiveMock.mockImplementation(() => critical);
+    isPickupCriticalFlowActiveMock.mockReturnValue(true);
     registerMock.mockImplementation((handlers) => {
       handlers.setUpdateReady(true);
       handlers.setApplyUpdate(() => applyUpdate);
@@ -271,17 +268,16 @@ describe('PickupPwaLifecycle deploy shell refresh wiring', () => {
 
     render(<PickupPwaLifecycle />);
     const button = await screen.findByTestId('pickup-pwa-apply-update');
+    expect(screen.getByTestId('pickup-pwa-update-required')).toBeInTheDocument();
     expect(button).not.toBeDisabled();
-    critical = true;
     await act(async () => {
       button.click();
     });
 
     await waitFor(() => {
-      expect(bustPickupHttpShellCachesMock).toHaveBeenCalledTimes(1);
+      expect(runPickupDeployShellRefreshMock).toHaveBeenCalledTimes(1);
     });
-    expect(applyUpdate).toHaveBeenCalledTimes(1);
-    expect(runPickupDeployShellRefreshMock).not.toHaveBeenCalled();
+    expect(bustPickupHttpShellCachesMock).not.toHaveBeenCalled();
   });
 
   it('peer-tab reload channel runs runPickupPwaPeerTabReload (not bare reload)', async () => {
